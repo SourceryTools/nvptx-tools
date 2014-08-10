@@ -1,10 +1,13 @@
+CXX = @CXX@
+CPPFLAGS = @CPPFLAGS@
+CXXFLAGS = @CXXFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+
 LN_S=@LN_S@
 AR = @AR@
 RANLIB = @RANLIB@
 INSTALL = @INSTALL@
-CXXFLAGS = @CXXFLAGS@
-LDFLAGS = @LDFLAGS@
-LIBS = @LIBS@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
@@ -21,19 +24,19 @@ PROGRAMS=nvptx-none-ld nvptx-none-as @NVPTX_RUN@
 all: $(PROGRAMS)
 
 nvptx-none-ld: $(srcdir)/nvptx-ld.c
-	$(CXX) $(srcdir)/nvptx-ld.c -o nvptx-none-ld -g3 -O $(CXXFLAGS) $(LDFLAGS) \
-		-L ../libiberty -liberty $(LIBS) \
-		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
+		$< -o $@ \
+		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx-none-as: $(srcdir)/nvptx-as.c
-	$(CXX) $(srcdir)/nvptx-as.c -o nvptx-none-as -g3 -O $(CXXFLAGS) $(LDFLAGS) \
-		-L ../libiberty -liberty $(LIBS) \
-		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
+		$< -o $@ \
+		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx-none-run: $(srcdir)/nvptx-run.c
-	$(CXX) $(srcdir)/nvptx-run.c -o nvptx-none-run -g3 -O $(CXXFLAGS) $(LDFLAGS) \
-		-L ../libiberty -liberty $(LIBS) \
-		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
+		$< -o $@ \
+		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
 .PHONY: install
 

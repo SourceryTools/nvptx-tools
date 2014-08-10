@@ -45,11 +45,15 @@ install: all
 	for x in $(PROGRAMS); do \
 		$(INSTALL_PROGRAM) -m 755 $$x $(DESTDIR)$(bindir)/$$x; \
 	done
-	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/as
-	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ld
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
-	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-as  $(DESTDIR)$(prefix)/nvptx-none/bin/as
-	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ld  $(DESTDIR)$(prefix)/nvptx-none/bin/ld
 	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
 	$(LN_S) $(RANLIB) $(DESTDIR)$(bindir)/nvptx-none-ranlib
+	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ar
+	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/as
+	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ld
+	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ranlib
+	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ar  $(DESTDIR)$(prefix)/nvptx-none/bin/ar
+	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-as  $(DESTDIR)$(prefix)/nvptx-none/bin/as
+	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ld  $(DESTDIR)$(prefix)/nvptx-none/bin/ld
+	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ranlib  $(DESTDIR)$(prefix)/nvptx-none/bin/ranlib

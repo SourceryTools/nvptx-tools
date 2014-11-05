@@ -1,0 +1,7 @@
+all:
+	(cd libiberty && $(MAKE))
+	(cd tools && $(MAKE))
+
+.PHONY: install
+install:
+	(cd tools && $(MAKE) install)

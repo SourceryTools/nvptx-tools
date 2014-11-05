@@ -1,0 +1,51 @@
+LN_S=@LN_S@
+AR = @AR@
+RANLIB = @RANLIB@
+INSTALL = @INSTALL@
+CXXFLAGS = @CXXFLAGS@
+LDFLAGS = @LDFLAGS@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+libdir = @libdir@
+srcdir = @srcdir@
+
+mkinstalldirs=$(SHELL) $(srcdir)/../mkinstalldirs
+
+all: nvptx-none-ld nvptx-none-as nvptx-none-run
+
+nvptx-none-ld:
+	$(CXX) $(srcdir)/nvptx-ld.c -o nvptx-none-ld -g3 -O $(CXXFLAGS) $(LDFLAGS) \
+		-L ../libiberty -liberty \
+		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
+
+nvptx-none-as:
+	$(CXX) $(srcdir)/nvptx-as.c -o nvptx-none-as -g3 -O $(CXXFLAGS) $(LDFLAGS) \
+		-L ../libiberty -liberty \
+		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
+
+nvptx-none-run:
+	$(CXX) $(srcdir)/nvptx-run.c -o nvptx-none-run -g3 -O $(CXXFLAGS) $(LDFLAGS) \
+		-L ../libiberty -liberty \
+		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
+
+.PHONY: install
+install: all
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/lib
+	$(INSTALL_PROGRAM) -m 755 nvptx-none-run $(DESTDIR)$(bindir)/nvptx-none-run
+	$(INSTALL_PROGRAM) -m 755 nvptx-none-ld $(DESTDIR)$(bindir)/nvptx-none-ld
+	$(INSTALL_PROGRAM) -m 755 nvptx-none-as $(DESTDIR)$(bindir)/nvptx-none-as
+	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/as
+	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ld
+	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar
+	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
+	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-as  $(DESTDIR)$(prefix)/nvptx-none/bin/as
+	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ld  $(DESTDIR)$(prefix)/nvptx-none/bin/ld
+	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
+	$(LN_S) $(RANLIB) $(DESTDIR)$(bindir)/nvptx-none-ranlib

@@ -551,7 +551,7 @@ PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
 ac_unique_file="nvptxtools"
-ac_unique_file="crt0.o"
+ac_unique_file="nvptx-run.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 AR

@@ -1,6 +1,6 @@
 AC_INIT(nvptxtools)
 AC_PREREQ(2.64)
-AC_CONFIG_SRCDIR(crt0.o)
+AC_CONFIG_SRCDIR(nvptx-run.c)
 
 AC_PROG_CC
 AC_PROG_CXX

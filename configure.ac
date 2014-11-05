@@ -1,4 +1,4 @@
-AC_INIT(tools/nvptx-none-as)
+AC_INIT(tools/nvptx-as.c)
 AC_PREREQ(2.64)
 
 AC_CONFIG_SUBDIRS([libiberty tools])

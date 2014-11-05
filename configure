@@ -550,7 +550,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="tools/nvptx-none-as"
+ac_unique_file="tools/nvptx-as.c"
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS

@@ -509,6 +509,26 @@ write_stmts (FILE *out, const Stmt *stmts)
     write_stmt (out, stmts);
 }
 
+#define is_keyword(T,S) \
+  (sizeof (S) == (T)->len && !memcmp ((T)->ptr + 1, (S), (T)->len - 1))
+
+/* Parse a line until the end, regardless of semicolons.  */
+
+static Token *
+parse_line_nosemi (Token *tok, Stmt **append_where)
+{
+  Token *start = tok;
+
+  do
+    tok++;
+  while (!tok[-1].end);
+
+  Stmt *stmt = alloc_stmt (V_dot, start, tok, 0);
+  append_stmt (append_where, stmt);
+
+  return tok;
+}
+
 static Token *
 parse_insn (Token *tok)
 {
@@ -520,6 +540,19 @@ parse_insn (Token *tok)
       unsigned s = V_insn;
       Token *start = tok;
 
+      if (tok->kind == K_dotted)
+	{
+	  if (is_keyword (tok, "file"))
+	    {
+	      tok = parse_line_nosemi (tok, &decls);
+	      continue;
+	    }
+	  if (is_keyword (tok, "loc"))
+	    {
+	      tok = parse_line_nosemi (tok, &fns);
+	      continue;
+	    }
+	}
       switch (tok++->kind)
 	{
 	case K_comment:
@@ -575,28 +608,6 @@ parse_insn (Token *tok)
 
   return tok;
 }
-
-/* comma separated list of tokens */
-
-static Token *
-parse_list_nosemi (Token *tok)
-{
-  Token *start = tok;
-
-  do
-    if (!(++tok)->kind)
-      break;
-  while ((++tok)->kind == ',');
-
-  tok[-1].end = 1;
-  Stmt *stmt = alloc_stmt (V_dot, start, tok, 0);
-  append_stmt (&decls, stmt);
-
-  return tok;
-}
-
-#define is_keyword(T,S) \
-  (sizeof (S) == (T)->len && !memcmp ((T)->ptr + 1, (S), (T)->len - 1))
 
 static Token *
 parse_init (Token *tok, symbol *sym)
@@ -668,11 +679,12 @@ parse_file (Token *tok)
     {
       if (is_keyword (tok, "version")
 	  || is_keyword (tok, "target")
-	  || is_keyword (tok, "address_size"))
+	  || is_keyword (tok, "address_size")
+	  || is_keyword (tok, "file"))
 	{
 	  if (comment)
 	    append_stmt (&decls, comment);
-	  tok = parse_list_nosemi (tok);
+	  tok = parse_line_nosemi (tok, &decls);
 	}
       else
 	{

@@ -17,17 +17,17 @@ mkinstalldirs=$(SHELL) $(srcdir)/../mkinstalldirs
 
 all: nvptx-none-ld nvptx-none-as nvptx-none-run
 
-nvptx-none-ld:
+nvptx-none-ld: $(srcdir)/nvptx-ld.c
 	$(CXX) $(srcdir)/nvptx-ld.c -o nvptx-none-ld -g3 -O $(CXXFLAGS) $(LDFLAGS) \
 		-L ../libiberty -liberty \
 		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
 
-nvptx-none-as:
+nvptx-none-as: $(srcdir)/nvptx-as.c
 	$(CXX) $(srcdir)/nvptx-as.c -o nvptx-none-as -g3 -O $(CXXFLAGS) $(LDFLAGS) \
 		-L ../libiberty -liberty \
 		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
 
-nvptx-none-run:
+nvptx-none-run: $(srcdir)/nvptx-run.c
 	$(CXX) $(srcdir)/nvptx-run.c -o nvptx-none-run -g3 -O $(CXXFLAGS) $(LDFLAGS) \
 		-L ../libiberty -liberty \
 		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include

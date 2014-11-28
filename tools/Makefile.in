@@ -16,7 +16,9 @@ srcdir = @srcdir@
 
 mkinstalldirs=$(SHELL) $(srcdir)/../mkinstalldirs
 
-all: nvptx-none-ld nvptx-none-as @NVPTX_RUN@
+PROGRAMS=nvptx-none-ld nvptx-none-as @NVPTX_RUN@
+
+all: $(PROGRAMS)
 
 nvptx-none-ld: $(srcdir)/nvptx-ld.c
 	$(CXX) $(srcdir)/nvptx-ld.c -o nvptx-none-ld -g3 -O $(CXXFLAGS) $(LDFLAGS) \
@@ -34,14 +36,15 @@ nvptx-none-run: $(srcdir)/nvptx-run.c
 		-DLIBPATH=\"$(prefix)/nvptx-none/lib\" -I$(srcdir)/../include
 
 .PHONY: install
+
 install: all
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/lib
-	$(INSTALL_PROGRAM) -m 755 nvptx-none-run $(DESTDIR)$(bindir)/nvptx-none-run
-	$(INSTALL_PROGRAM) -m 755 nvptx-none-ld $(DESTDIR)$(bindir)/nvptx-none-ld
-	$(INSTALL_PROGRAM) -m 755 nvptx-none-as $(DESTDIR)$(bindir)/nvptx-none-as
+	for x in $(PROGRAMS); do \
+		$(INSTALL_PROGRAM) -m 755 $$x $(DESTDIR)$(bindir)/$$x; \
+	done
 	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/as
 	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ld
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar

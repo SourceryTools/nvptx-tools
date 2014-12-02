@@ -183,16 +183,16 @@ This program has absolutely no warranty.\n",
   int d_argc = 1;
   CUdeviceptr d_retval, d_progname, d_argv;
   size_t nameln = strlen (progname);
-  r = cuMemAlloc(&d_retval, 4);
+  r = cuMemAlloc(&d_retval, sizeof (int));
   fatal_unless_success (r, "cuMemAlloc failed");
-  r = cuMemAlloc(&d_argv, 8);
+  r = cuMemAlloc(&d_argv, sizeof (void *));
   fatal_unless_success (r, "cuMemAlloc failed");
   r = cuMemAlloc(&d_progname, nameln + 1);
   fatal_unless_success (r, "cuMemAlloc failed");
 
   r = cuMemcpyHtoD(d_progname, progname, nameln + 1);
   fatal_unless_success (r, "cuMemcpy failed");
-  r = cuMemcpyHtoD(d_argv, &d_progname, 8);
+  r = cuMemcpyHtoD(d_argv, &d_progname, sizeof (void *));
   fatal_unless_success (r, "cuMemcpy failed");
 
 #if 0

@@ -36,7 +36,6 @@ fi
 if test "x$with_cuda_driver_lib" != x; then
   CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver_lib"
 fi
-LIBS="$LIBS -lcuda"
 
 CXXFLAGS="$CXXFLAGS $CUDA_DRIVER_CPPFLAGS"
 LDFLAGS="$LDFLAGS $CUDA_DRIVER_LDFLAGS"
@@ -48,14 +47,13 @@ CFLAGS="$CUDA_DRIVER_CPPFLAGS $CFLAGS"
 cudart_save_LDFLAGS=$LDFLAGS
 LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
 cudart_save_LIBS=$LIBS
-LIBS="$LIBS -lcudart"
+LIBS="$LIBS -lcuda -lcudart"
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [#include "cuda.h"
 #include <cuda_runtime.h>
 ],
 [const char *p; CUresult r; cuGetErrorString (r, &p); cudaDeviceReset (); ])],
-[NVPTX_RUN=nvptx-none-run
-cudart_save_LIBS="$LIBS"])
+[NVPTX_RUN=nvptx-none-run])
 AC_MSG_RESULT($NVPTX_RUN)
 
 CFLAGS=$cudart_save_CFLAGS

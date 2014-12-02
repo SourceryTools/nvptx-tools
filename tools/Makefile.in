@@ -36,7 +36,7 @@ nvptx-none-as: $(srcdir)/nvptx-as.c
 nvptx-none-run: $(srcdir)/nvptx-run.c
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
-		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
+		-L ../libiberty -liberty $(LDFLAGS) $(LIBS) -lcuda -lcudart
 
 .PHONY: install
 

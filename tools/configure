@@ -3133,7 +3133,6 @@ fi
 if test "x$with_cuda_driver_lib" != x; then
   CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver_lib"
 fi
-LIBS="$LIBS -lcuda"
 
 CXXFLAGS="$CXXFLAGS $CUDA_DRIVER_CPPFLAGS"
 LDFLAGS="$LDFLAGS $CUDA_DRIVER_LDFLAGS"
@@ -3146,7 +3145,7 @@ CFLAGS="$CUDA_DRIVER_CPPFLAGS $CFLAGS"
 cudart_save_LDFLAGS=$LDFLAGS
 LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
 cudart_save_LIBS=$LIBS
-LIBS="$LIBS -lcudart"
+LIBS="$LIBS -lcuda -lcudart"
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3163,7 +3162,6 @@ const char *p; CUresult r; cuGetErrorString (r, &p); cudaDeviceReset ();
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
   NVPTX_RUN=nvptx-none-run
-cudart_save_LIBS="$LIBS"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext

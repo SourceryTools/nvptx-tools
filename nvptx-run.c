@@ -180,7 +180,7 @@ This program has absolutely no warranty.\n",
   r = cuCtxCreate (&ctx, 0, dev);
   fatal_unless_success (r, "cuCtxCreate failed");
     
-  int d_argc = 0;
+  int d_argc = 1;
   CUdeviceptr d_retval, d_progname, d_argv;
   size_t nameln = strlen (progname);
   r = cuMemAlloc(&d_retval, 4);

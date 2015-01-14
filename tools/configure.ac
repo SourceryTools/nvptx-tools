@@ -12,6 +12,9 @@ gcc_AC_PROG_INSTALL
 AC_PATH_PROG(RANLIB, ranlib)
 AC_PATH_PROG(AR, ar)
 
+ACX_PKGVERSION([nvptx-tools])
+ACX_BUGURL([https://github.com/MentorEmbedded/nvptx-tools/issues])
+
 # Look for the CUDA driver package.
 CUDA_DRIVER_CPPFLAGS=
 CUDA_DRIVER_LDFLAGS=

@@ -952,13 +952,13 @@ Report bugs to %s.\n",
 	  exit (0);
 	case 'V':
 	  printf ("\
-nvtpx-none-as (nvptx-tools) %s\n\
+nvtpx-none-as %s%s\n\
 Copyright %s Free Software Foundation, Inc.\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\
 the GNU General Public License version 3 or later.\n\
 This program has absolutely no warranty.\n",
-		  NVPTX_TOOLS_VERSION, "2015");
+		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
 	default:
 	  break;

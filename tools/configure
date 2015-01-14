@@ -586,6 +586,9 @@ ac_unique_file="nvptx-run.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 NVPTX_RUN
+REPORT_BUGS_TEXI
+REPORT_BUGS_TO
+PKGVERSION
 AR
 RANLIB
 INSTALL_DATA
@@ -643,6 +646,8 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_pkgversion
+with_bugurl
 with_cuda_driver
 with_cuda_driver_include
 with_cuda_driver_lib
@@ -1264,6 +1269,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-pkgversion=PKG   Use PKG in the version string in place of
+                          "nvptx-tools"
+  --with-bugurl=URL       Direct users to URL to report a bug
   --with-cuda-driver=PATH specify prefix directory for installed CUDA driver
                           package. Equivalent to
                           --with-cuda-driver-include=PATH/include plus
@@ -3099,6 +3107,52 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
+
+
+
+
+
+# Check whether --with-pkgversion was given.
+if test "${with_pkgversion+set}" = set; then :
+  withval=$with_pkgversion; case "$withval" in
+      yes) as_fn_error $? "package version not specified" "$LINENO" 5 ;;
+      no)  PKGVERSION= ;;
+      *)   PKGVERSION="($withval) " ;;
+     esac
+else
+  PKGVERSION="(nvptx-tools) "
+
+fi
+
+
+
+
+
+# Check whether --with-bugurl was given.
+if test "${with_bugurl+set}" = set; then :
+  withval=$with_bugurl; case "$withval" in
+      yes) as_fn_error $? "bug URL not specified" "$LINENO" 5 ;;
+      no)  BUGURL=
+	   ;;
+      *)   BUGURL="$withval"
+	   ;;
+     esac
+else
+  BUGURL="https://github.com/MentorEmbedded/nvptx-tools/issues"
+
+fi
+
+  case ${BUGURL} in
+  "")
+    REPORT_BUGS_TO=
+    REPORT_BUGS_TEXI=
+    ;;
+  *)
+    REPORT_BUGS_TO="<$BUGURL>"
+    REPORT_BUGS_TEXI=@uref{`echo "$BUGURL" | sed 's/@/@@/g'`}
+    ;;
+  esac;
+
 
 
 

@@ -1,5 +1,8 @@
 CXX = @CXX@
 CPPFLAGS = @CPPFLAGS@
+CPPFLAGS_EXTRA = -DPKGVERSION="\"@PKGVERSION@\"" \
+		 -DREPORT_BUGS_TO="\"@REPORT_BUGS_TO@\""
+CPPFLAGS_ALL = $(CPPFLAGS) $(CPPFLAGS_EXTRA)
 CXXFLAGS = @CXXFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
@@ -24,17 +27,17 @@ PROGRAMS=nvptx-none-ld nvptx-none-as @NVPTX_RUN@
 all: $(PROGRAMS)
 
 nvptx-none-ld: $(srcdir)/nvptx-ld.c $(srcdir)/version.h
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx-none-as: $(srcdir)/nvptx-as.c $(srcdir)/version.h
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx-none-run: $(srcdir)/nvptx-run.c
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS) -lcuda -lcudart
 

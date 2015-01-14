@@ -39,6 +39,8 @@
 
 #include <list>
 
+#include "version.h"
+
 static const char *outname = NULL;
 
 static void __attribute__ ((format (printf, 1, 2)))
@@ -898,6 +900,8 @@ static struct option long_options[] = {
   {"traditional-format",     no_argument, 0,  0 },
   {"save-temps",  no_argument,       0,  0 },
   {"no-verify",  no_argument,       0,  0 },
+  {"help", no_argument, 0, 'h' },
+  {"version", no_argument, 0, 'V' },
   {0,         0,                 0,  0 }
 };
 
@@ -933,6 +937,29 @@ main (int argc, char **argv)
 	case 'I':
 	  /* Ignore include paths.  */
 	  break;
+	case 'h':
+	  printf ("\
+Usage: nvptx-none-as [option...] [asmfile]\n\
+Options:\n\
+  -o FILE               Write output to FILE\n\
+  -v                    Be verbose\n\
+  --no-verify           Do not verify output is acceptable to ptxas\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+		  REPORT_BUGS_TO);
+	  exit (0);
+	case 'V':
+	  printf ("\
+nvtpx-none-as (nvptx-tools) %s\n\
+Copyright %s Free Software Foundation, Inc.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
+This program is free software; you may redistribute it under the terms of\n\
+the GNU General Public License version 3 or later.\n\
+This program has absolutely no warranty.\n",
+		  NVPTX_TOOLS_VERSION, "2015");
+	  exit (0);
 	default:
 	  break;
 	}

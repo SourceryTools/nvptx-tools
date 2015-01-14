@@ -23,12 +23,12 @@ PROGRAMS=nvptx-none-ld nvptx-none-as @NVPTX_RUN@
 
 all: $(PROGRAMS)
 
-nvptx-none-ld: $(srcdir)/nvptx-ld.c
+nvptx-none-ld: $(srcdir)/nvptx-ld.c $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-as: $(srcdir)/nvptx-as.c
+nvptx-none-as: $(srcdir)/nvptx-as.c $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)

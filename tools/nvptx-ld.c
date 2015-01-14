@@ -32,6 +32,8 @@
 #include <string>
 #include <iostream>
 
+#include "version.h"
+
 struct file_hash_entry;
 
 typedef struct symbol_hash_entry
@@ -324,6 +326,12 @@ process_refs_defs (file *f, const char *ptx)
     }
 }
 
+static const struct option long_options[] = {
+  {"help", no_argument, 0, 'h' },
+  {"version", no_argument, 0, 'V' },
+  {0, 0, 0, 0 }
+};
+
 int
 main (int argc, char **argv)
 {
@@ -333,7 +341,8 @@ main (int argc, char **argv)
   bool verbose = false;
 
   int o;
-  while ((o = getopt (argc, argv, "L:l:o:v")) != -1)
+  int option_index = 0;
+  while ((o = getopt_long (argc, argv, "L:l:o:v", long_options, &option_index)) != -1)
     {
       switch (o)
 	{
@@ -354,6 +363,30 @@ main (int argc, char **argv)
 	case 'L':
 	  libpaths.push_back (optarg);
 	  break;
+	case 'h':
+	  printf ("\
+Usage: nvptx-none-ld [option...] [files]\n\
+Options:\n\
+  -o FILE               Write output to FILE\n\
+  -v                    Be verbose\n\
+  -l LIBRARY            Link with LIBRARY\n\
+  -L DIR                Search for libraries in DIR\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+		  REPORT_BUGS_TO);
+	  exit (0);
+	case 'V':
+	  printf ("\
+nvtpx-none-ld (nvptx-tools) %s\n\
+Copyright %s Free Software Foundation, Inc.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
+This program is free software; you may redistribute it under the terms of\n\
+the GNU General Public License version 3 or later.\n\
+This program has absolutely no warranty.\n",
+		  NVPTX_TOOLS_VERSION, "2015");
+	  exit (0);
 	default:
 	  break;
 	}

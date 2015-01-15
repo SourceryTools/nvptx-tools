@@ -43,12 +43,40 @@ fi
 CXXFLAGS="$CXXFLAGS $CUDA_DRIVER_CPPFLAGS"
 LDFLAGS="$LDFLAGS $CUDA_DRIVER_LDFLAGS"
 
+# Look for the CUDA runtime package.
+CUDA_RUNTIME_CPPFLAGS=
+CUDA_RUNTIME_LDFLAGS=
+AC_ARG_WITH(cuda-runtime,
+        [AS_HELP_STRING([--with-cuda-runtime=PATH],
+                [specify prefix directory for installed CUDA runtime package.
+                 Equivalent to --with-cuda-runtime-include=PATH/include
+                 plus --with-cuda-runtime-lib=PATH/lib])])
+AC_ARG_WITH(cuda-runtime-include,
+        [AS_HELP_STRING([--with-cuda-runtime-include=PATH],
+                [specify directory for installed CUDA runtime include files])])
+AC_ARG_WITH(cuda-runtime-lib,
+        [AS_HELP_STRING([--with-cuda-runtime-lib=PATH],
+                [specify directory for the installed CUDA runtime library])])
+if test "x$with_cuda_runtime" != x; then
+  CUDA_RUNTIME_CPPFLAGS=-I$with_cuda_runtime/include
+  CUDA_RUNTIME_LDFLAGS="-L$with_cuda_runtime/lib"
+fi
+if test "x$with_cuda_runtime_include" != x; then
+  CUDA_RUNTIME_CPPFLAGS=-I$with_cuda_runtime_include
+fi
+if test "x$with_cuda_runtime_lib" != x; then
+  CUDA_RUNTIME_LDFLAGS="-L$with_cuda_runtime_lib"
+fi
+
+CXXFLAGS="$CXXFLAGS $CUDA_RUNTIME_CPPFLAGS"
+LDFLAGS="$LDFLAGS $CUDA_RUNTIME_LDFLAGS"
+
 AC_MSG_CHECKING([for extra programs to build requiring -lcudart])
 NVPTX_RUN=
 cudart_save_CFLAGS=$CFLAGS
-CFLAGS="$CUDA_DRIVER_CPPFLAGS $CFLAGS"
+CFLAGS="$CUDA_DRIVER_CPPFLAGS $CUDA_RUNTIME_CPPFLAGS $CFLAGS"
 cudart_save_LDFLAGS=$LDFLAGS
-LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
+LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
 cudart_save_LIBS=$LIBS
 LIBS="$LIBS -lcuda -lcudart"
 AC_LINK_IFELSE([AC_LANG_PROGRAM(

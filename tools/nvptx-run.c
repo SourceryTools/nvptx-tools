@@ -15,11 +15,14 @@ You should have received a copy of the GNU General Public License
 along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
+#include <getopt.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+
+#include "version.h"
 
 static void __attribute__ ((format (printf, 1, 2)))
 fatal_error (const char * cmsgid, ...)
@@ -115,15 +118,53 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
   fatal_unless_success (r, "could not find kernel __main");
 }
 
+static const struct option long_options[] =
+  {
+    { "help", no_argument, 0, 'h' },
+    { "version", no_argument, 0, 'V' },
+    { 0, 0, 0, 0 }
+  };
+
 int
 main (int argc, char **argv)
 {
-  if (argc > 2)
+  int o;
+  int option_index = 0;
+  while ((o = getopt_long (argc, argv, "o:I:v", long_options, &option_index)) != -1)
+    {
+      switch (o)
+	{
+	case 'h':
+	  printf ("\
+Usage: nvptx-none-run [option...] FILE\n\
+Options:\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+		  REPORT_BUGS_TO);
+	  exit (0);
+	case 'V':
+	  printf ("\
+nvtpx-none-run %s%s\n\
+Copyright %s Free Software Foundation, Inc.\n\
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
+This program is free software; you may redistribute it under the terms of\n\
+the GNU General Public License version 3 or later.\n\
+This program has absolutely no warranty.\n",
+		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
+	  exit (0);
+	default:
+	  break;
+	}
+    }
+
+  if (argc > optind + 1)
     fatal_error ("more than one argument");
-  else if (argc < 2)
+  else if (argc < optind + 1)
     fatal_error ("no input file specified");
 
-  const char *progname = argv[1];
+  const char *progname = argv[optind];
   FILE *f = fopen (progname, "r");
   if (f == NULL)
     fatal_error ("input file not found");

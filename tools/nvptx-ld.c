@@ -1,5 +1,5 @@
-/* An "linker" for ptx.
-   Copyright (C) 2014 Free Software Foundation, Inc.
+/* A "linker" for PTX.
+   Copyright (C) 2014, 2015 Mentor Graphics
    Contributed by Bernd Schmidt <bernds@codesourcery.com>
 
    This program is free software; you can redistribute it and/or
@@ -13,7 +13,7 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with GCC; see the file COPYING3.  If not see
+   along with nvptx-tools; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
 #include <string.h>

@@ -1,5 +1,5 @@
-/* An "assembler" for ptx.
-   Copyright (C) 2014 Free Software Foundation, Inc.
+/* An "assembler" for PTX.
+   Copyright (C) 2014, 2015 Mentor Graphics
    Contributed by Nathan Sidwell <nathan@codesourcery.com>
    Contributed by Bernd Schmidt <bernds@codesourcery.com>
 
@@ -14,10 +14,11 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with GCC; see the file COPYING3.  If not see
+   along with nvptx-tools; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
-/* Munges gcc-generated PTX assembly so that it becomes acceptable for ptxas.
+/* Munges GCC-generated PTX assembly so that it becomes acceptable for ptxas
+   and the CUDA driver library.
 
    This is not a complete assembler.  We presume the source is well
    formed from the compiler and can die horribly if it is not.  */

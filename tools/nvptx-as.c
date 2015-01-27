@@ -954,7 +954,7 @@ Report bugs to %s.\n",
 	case 'V':
 	  printf ("\
 nvtpx-none-as %s%s\n\
-Copyright %s Free Software Foundation, Inc.\n\
+Copyright %s Mentor Graphics\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\
 the GNU General Public License version 3 or later.\n\

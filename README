@@ -1,0 +1,12 @@
+nvptx-tools: a collection of tools for use with nvptx-none GCC toolchains.
+
+  * nvptx-none-as: "assembler" for PTX.
+  * nvptx-none-ld: "linker" for PTX.
+  * nvptx-none-run: run PTX binaries compiled with -mmainkernel.
+
+Additionally, the following symlinks are installed:
+
+  * nvptx-none-ar: link to the GNU/Linux host system's ar.
+  * nvptx-none-ranlib: link to the GNU/Linux host system's ranlib.
+
+Report bugs to <https://github.com/MentorEmbedded/nvptx-tools/issues>.

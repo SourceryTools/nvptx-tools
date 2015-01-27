@@ -36,7 +36,7 @@ nvptx-none-as: $(srcdir)/nvptx-as.c $(srcdir)/version.h
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-run: $(srcdir)/nvptx-run.c
+nvptx-none-run: $(srcdir)/nvptx-run.c $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/../include \
 		$< -o $@ \
 		-L ../libiberty -liberty $(LDFLAGS) $(LIBS) -lcuda -lcudart

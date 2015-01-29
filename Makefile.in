@@ -49,8 +49,6 @@ nvptx-none-run: $(srcdir)/nvptx-run.c libiberty.stmp $(srcdir)/version.h
 .PHONY: install
 install: all
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
-	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none
-	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
 	for x in $(PROGRAMS); do \
 		$(INSTALL_PROGRAM) -m 755 $$x $(DESTDIR)$(bindir)/$$x; \
 	done
@@ -59,11 +57,11 @@ install: all
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
 	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
 	$(LN_S) $(RANLIB) $(DESTDIR)$(bindir)/nvptx-none-ranlib
-	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ar
-	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/as
-	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ld
-	rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/ranlib
-	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ar  $(DESTDIR)$(prefix)/nvptx-none/bin/ar
-	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-as  $(DESTDIR)$(prefix)/nvptx-none/bin/as
-	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ld  $(DESTDIR)$(prefix)/nvptx-none/bin/ld
-	$(LN_S) $(DESTDIR)$(bindir)/nvptx-none-ranlib  $(DESTDIR)$(prefix)/nvptx-none/bin/ranlib
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
+	rel=$$(perl -MFile::Spec -e 'print File::Spec->abs2rel(@ARGV)' \
+	  $(DESTDIR)$(bindir) $(DESTDIR)$(prefix)/nvptx-none/bin) && \
+	for p in ar as ld ranlib; do \
+	  rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p" && \
+	  $(LN_S) "$$rel"/nvptx-none-"$$p" $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p"; \
+	done

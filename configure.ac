@@ -91,5 +91,5 @@ LDFLAGS=$cudart_save_LDFLAGS
 LIBS=$cudart_save_LIBS
 
 AC_CONFIG_SUBDIRS([libiberty])
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile dejagnu.exp])
 AC_OUTPUT

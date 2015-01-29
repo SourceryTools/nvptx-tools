@@ -55,6 +55,7 @@ install: all
 	for x in $(PROGRAMS); do \
 		$(INSTALL_PROGRAM) -m 755 $$x $(DESTDIR)$(bindir)/$$x; \
 	done
+	[ -z "@NVPTX_RUN@" ] || $(INSTALL_PROGRAM) -m 755 $(srcdir)/nvptx-run-single $(DESTDIR)$(bindir)/nvptx-none-run-single
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
 	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar

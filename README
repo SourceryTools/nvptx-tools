@@ -3,6 +3,8 @@ nvptx-tools: a collection of tools for use with nvptx-none GCC toolchains.
   * nvptx-none-as: "assembler" for PTX.
   * nvptx-none-ld: "linker" for PTX.
   * nvptx-none-run: run PTX binaries compiled with -mmainkernel.
+  * nvptx-none-run-single: as nvptx-none-run, locked, such that system-wide
+    only one instance of it is running at a time.
 
 Additionally, the following symlinks are installed:
 

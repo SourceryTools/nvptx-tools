@@ -75,14 +75,16 @@ LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
 save_LIBS=$LIBS
 LIBS="$LIBS -lcuda -lcudart"
 
+AC_CHECK_FUNCS([[cuGetErrorName] [cuGetErrorString]])
+AC_CHECK_DECLS([[cuGetErrorName], [cuGetErrorString]],
+  [], [], [[#include <cuda.h>]])
+
 AC_MSG_CHECKING([for extra programs to build requiring -lcudart])
 NVPTX_RUN=
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
-[#include "cuda.h"
-#include <cuda_runtime.h>
-],
-[const char *p; CUresult r; cuGetErrorString (r, &p); cudaDeviceReset (); ])],
-[NVPTX_RUN=nvptx-none-run])
+  [#include <cuda_runtime.h>],
+  [cudaDeviceReset ();])],
+  [NVPTX_RUN=nvptx-none-run])
 AC_MSG_RESULT($NVPTX_RUN)
 AC_SUBST(NVPTX_RUN)
 

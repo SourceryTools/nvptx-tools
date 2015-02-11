@@ -24,6 +24,17 @@
 
 #include "version.h"
 
+/* Some CUDA installations have a mismatch between what's declared in <cuda.h>,
+   and what libcuda actually provides.  */
+
+#if defined HAVE_CUGETERRORNAME && !HAVE_DECL_CUGETERRORNAME
+extern "C" CUresult cuGetErrorName (CUresult, const char **);
+#endif
+#if defined HAVE_CUGETERRORSTRING && !HAVE_DECL_CUGETERRORSTRING
+extern "C" CUresult cuGetErrorString (CUresult, const char **);
+#endif
+
+
 static void __attribute__ ((format (printf, 1, 2)))
 fatal_error (const char * cmsgid, ...)
 {
@@ -44,9 +55,15 @@ fatal_unless_success (CUresult r, const char *err)
   if (r == CUDA_SUCCESS)
     return;
 
-  const char *p;
-  cuGetErrorString (r, &p);
-  fatal_error ("%s: %s", err, p);
+  const char *s = "[unknown]";
+  const char *n = "[unknown]";
+#if defined HAVE_CUGETERRORSTRING
+  cuGetErrorString (r, &s);
+#endif
+#if defined HAVE_CUGETERRORNAME
+  cuGetErrorName (r, &n);
+#endif
+  fatal_error ("%s: %s (%s, %d)", err, s, n, (int) r);
 }
 
 static void

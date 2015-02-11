@@ -557,6 +557,10 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 subdirs
 NVPTX_RUN
+CUDA_RUNTIME_LDFLAGS
+CUDA_RUNTIME_CPPFLAGS
+CUDA_DRIVER_LDFLAGS
+CUDA_DRIVER_CPPFLAGS
 AR
 RANLIB
 INSTALL_DATA
@@ -3114,7 +3118,9 @@ fi
 
 # Look for the CUDA driver package.
 CUDA_DRIVER_CPPFLAGS=
+
 CUDA_DRIVER_LDFLAGS=
+
 
 # Check whether --with-cuda-driver was given.
 if test "${with_cuda_driver+set}" = set; then :
@@ -3144,12 +3150,11 @@ if test "x$with_cuda_driver_lib" != x; then
   CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver_lib"
 fi
 
-CXXFLAGS="$CXXFLAGS $CUDA_DRIVER_CPPFLAGS"
-LDFLAGS="$LDFLAGS $CUDA_DRIVER_LDFLAGS"
-
 # Look for the CUDA runtime package.
 CUDA_RUNTIME_CPPFLAGS=
+
 CUDA_RUNTIME_LDFLAGS=
+
 
 # Check whether --with-cuda-runtime was given.
 if test "${with_cuda_runtime+set}" = set; then :
@@ -3179,18 +3184,16 @@ if test "x$with_cuda_runtime_lib" != x; then
   CUDA_RUNTIME_LDFLAGS="-L$with_cuda_runtime_lib"
 fi
 
-CXXFLAGS="$CXXFLAGS $CUDA_RUNTIME_CPPFLAGS"
-LDFLAGS="$LDFLAGS $CUDA_RUNTIME_LDFLAGS"
+save_CPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CUDA_RUNTIME_CPPFLAGS $CPPFLAGS"
+save_LDFLAGS=$LDFLAGS
+LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
+save_LIBS=$LIBS
+LIBS="$LIBS -lcuda -lcudart"
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for extra programs to build requiring -lcudart" >&5
 $as_echo_n "checking for extra programs to build requiring -lcudart... " >&6; }
 NVPTX_RUN=
-cudart_save_CFLAGS=$CFLAGS
-CFLAGS="$CUDA_DRIVER_CPPFLAGS $CUDA_RUNTIME_CPPFLAGS $CFLAGS"
-cudart_save_LDFLAGS=$LDFLAGS
-LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
-cudart_save_LIBS=$LIBS
-LIBS="$LIBS -lcuda -lcudart"
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3213,9 +3216,10 @@ rm -f core conftest.err conftest.$ac_objext \
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $NVPTX_RUN" >&5
 $as_echo "$NVPTX_RUN" >&6; }
 
-CFLAGS=$cudart_save_CFLAGS
-LDFLAGS=$cudart_save_LDFLAGS
-LIBS=$cudart_save_LIBS
+
+CPPFLAGS=$save_CPPFLAGS
+LDFLAGS=$save_LDFLAGS
+LIBS=$save_LIBS
 
 
 

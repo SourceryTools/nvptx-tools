@@ -16,7 +16,9 @@ AC_PATH_PROG(AR, ar)
 
 # Look for the CUDA driver package.
 CUDA_DRIVER_CPPFLAGS=
+AC_SUBST([CUDA_DRIVER_CPPFLAGS])
 CUDA_DRIVER_LDFLAGS=
+AC_SUBST([CUDA_DRIVER_LDFLAGS])
 AC_ARG_WITH(cuda-driver,
         [AS_HELP_STRING([--with-cuda-driver=PATH],
                 [specify prefix directory for installed CUDA driver package.
@@ -39,12 +41,11 @@ if test "x$with_cuda_driver_lib" != x; then
   CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver_lib"
 fi
 
-CXXFLAGS="$CXXFLAGS $CUDA_DRIVER_CPPFLAGS"
-LDFLAGS="$LDFLAGS $CUDA_DRIVER_LDFLAGS"
-
 # Look for the CUDA runtime package.
 CUDA_RUNTIME_CPPFLAGS=
+AC_SUBST([CUDA_RUNTIME_CPPFLAGS])
 CUDA_RUNTIME_LDFLAGS=
+AC_SUBST([CUDA_RUNTIME_LDFLAGS])
 AC_ARG_WITH(cuda-runtime,
         [AS_HELP_STRING([--with-cuda-runtime=PATH],
                 [specify prefix directory for installed CUDA runtime package.
@@ -67,17 +68,15 @@ if test "x$with_cuda_runtime_lib" != x; then
   CUDA_RUNTIME_LDFLAGS="-L$with_cuda_runtime_lib"
 fi
 
-CXXFLAGS="$CXXFLAGS $CUDA_RUNTIME_CPPFLAGS"
-LDFLAGS="$LDFLAGS $CUDA_RUNTIME_LDFLAGS"
+save_CPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CUDA_RUNTIME_CPPFLAGS $CPPFLAGS"
+save_LDFLAGS=$LDFLAGS
+LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
+save_LIBS=$LIBS
+LIBS="$LIBS -lcuda -lcudart"
 
 AC_MSG_CHECKING([for extra programs to build requiring -lcudart])
 NVPTX_RUN=
-cudart_save_CFLAGS=$CFLAGS
-CFLAGS="$CUDA_DRIVER_CPPFLAGS $CUDA_RUNTIME_CPPFLAGS $CFLAGS"
-cudart_save_LDFLAGS=$LDFLAGS
-LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
-cudart_save_LIBS=$LIBS
-LIBS="$LIBS -lcuda -lcudart"
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [#include "cuda.h"
 #include <cuda_runtime.h>
@@ -86,9 +85,10 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [NVPTX_RUN=nvptx-none-run])
 AC_MSG_RESULT($NVPTX_RUN)
 AC_SUBST(NVPTX_RUN)
-CFLAGS=$cudart_save_CFLAGS
-LDFLAGS=$cudart_save_LDFLAGS
-LIBS=$cudart_save_LIBS
+
+CPPFLAGS=$save_CPPFLAGS
+LDFLAGS=$save_LDFLAGS
+LIBS=$save_LIBS
 
 AC_CONFIG_SUBDIRS([libiberty])
 AC_CONFIG_FILES([Makefile dejagnu.exp])

@@ -224,14 +224,15 @@ This program has absolutely no warranty.\n",
   }
 
 #if 0
-  /* Default seems to be 8k stack, 8M heap.  */
+  /* Default seems to be 1 KiB stack, 8 MiB heap.  */
   size_t stack, heap;
   cuCtxGetLimit (&stack, CU_LIMIT_STACK_SIZE);
   cuCtxGetLimit (&heap, CU_LIMIT_MALLOC_HEAP_SIZE);
   printf ("stack %ld heap %ld\n", stack, heap);
 #endif
 
-  r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, 256 * 1024);
+  /* <https://github.com/MentorEmbedded/nvptx-tools/issues/8>.  */
+  r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, 128 * 1024);
   fatal_unless_success (r, "could not set stack limit");
   r = cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 256 * 1024 * 1024);
   fatal_unless_success (r, "could not set heap limit");

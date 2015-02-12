@@ -35,7 +35,7 @@ fatal_error (const char * cmsgid, ...)
   fprintf (stderr, "\n");
   va_end (ap);
 
-  exit (1);
+  exit (127);
 }
 
 static void
@@ -241,11 +241,5 @@ This program has absolutely no warranty.\n",
   cuCtxDestroy (ctx);
   cudaDeviceReset ();
 
-  if (result != 0)
-    {
-      printf ("Program result: %d\n", result);
-      abort ();
-    }
-
-  return 0;
+  return result;
 }

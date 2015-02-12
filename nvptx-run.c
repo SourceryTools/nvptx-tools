@@ -136,7 +136,7 @@ main (int argc, char **argv)
 	{
 	case 'h':
 	  printf ("\
-Usage: nvptx-none-run [option...] FILE\n\
+Usage: nvptx-none-run [option...] program [argument...]\n\
 Options:\n\
   --help                Print this help and exit\n\
   --version             Print version number and exit\n\
@@ -159,15 +159,13 @@ This program has absolutely no warranty.\n",
 	}
     }
 
-  if (argc > optind + 1)
-    fatal_error ("more than one argument");
-  else if (argc < optind + 1)
-    fatal_error ("no input file specified");
+  if (argc < optind + 1)
+    fatal_error ("no program file specified");
 
   const char *progname = argv[optind];
   FILE *f = fopen (progname, "r");
   if (f == NULL)
-    fatal_error ("input file not found");
+    fatal_error ("program file not found");
 
   CUresult r;
   r = cuInit (0);
@@ -179,21 +177,34 @@ This program has absolutely no warranty.\n",
   fatal_unless_success (r, "cuDeviceGet failed");
   r = cuCtxCreate (&ctx, 0, dev);
   fatal_unless_success (r, "cuCtxCreate failed");
-    
-  int d_argc = 1;
-  CUdeviceptr d_retval, d_progname, d_argv;
-  size_t nameln = strlen (progname);
+
+  CUdeviceptr d_retval;
   r = cuMemAlloc(&d_retval, sizeof (int));
   fatal_unless_success (r, "cuMemAlloc failed");
-  r = cuMemAlloc(&d_argv, sizeof (void *));
-  fatal_unless_success (r, "cuMemAlloc failed");
-  r = cuMemAlloc(&d_progname, nameln + 1);
-  fatal_unless_success (r, "cuMemAlloc failed");
-
-  r = cuMemcpyHtoD(d_progname, progname, nameln + 1);
-  fatal_unless_success (r, "cuMemcpy failed");
-  r = cuMemcpyHtoD(d_argv, &d_progname, sizeof (void *));
-  fatal_unless_success (r, "cuMemcpy failed");
+  int d_argc = argc - optind;
+  /* The argv pointers, followed by the actual argv strings.  */
+  CUdeviceptr  d_argv;
+  {
+    size_t s_d_argv = d_argc * sizeof (char *);
+    for (int arg = optind; arg < argc; ++arg)
+      s_d_argv += strlen (argv[arg]) + 1;
+    r = cuMemAlloc(&d_argv, s_d_argv);
+    fatal_unless_success (r, "cuMemAlloc failed");
+    /* Skip the argv pointers.  */
+    size_t pos = d_argc * sizeof (char *);
+    for (int arg = optind; arg < argc; ++arg)
+    {
+      CUdeviceptr d_arg = (CUdeviceptr) ((char *) d_argv + pos);
+      size_t len = strlen (argv[arg]) + 1;
+      r = cuMemcpyHtoD(d_arg, argv[arg], len);
+      fatal_unless_success (r, "cuMemcpyHtoD (d_arg) failed");
+      r = cuMemcpyHtoD((CUdeviceptr) ((char *) d_argv
+				      + (arg - optind) * sizeof (char *)),
+		       &d_arg, sizeof (char *));
+      fatal_unless_success (r, "cuMemcpyHtoD (d_argv) failed");
+      pos += len;
+    }
+  }
 
 #if 0
   /* Default seems to be 8k stack, 8M heap.  */
@@ -223,7 +234,6 @@ This program has absolutely no warranty.\n",
 
   cuMemFree (d_retval);
   cuMemFree (d_argv);
-  cuMemFree (d_progname);
 
   if (hModule)
     cuModuleUnload (hModule);

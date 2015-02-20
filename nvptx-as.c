@@ -991,6 +991,7 @@ This program has absolutely no warranty.\n",
       obstack_ptr_grow (&argv_obstack, outname);
       obstack_ptr_grow (&argv_obstack, "--gpu-name");
       obstack_ptr_grow (&argv_obstack, "sm_30");
+      obstack_ptr_grow (&argv_obstack, "-O0");
       obstack_ptr_grow (&argv_obstack, NULL);
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
       fork_execute (new_argv[0], new_argv);

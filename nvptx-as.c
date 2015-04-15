@@ -913,10 +913,11 @@ main (int argc, char **argv)
   FILE *out = stdout;
   bool verbose __attribute__((unused)) = false;
   bool verify = true;
+  const char *smver = "sm_30";
 
   int o;
   int option_index = 0;
-  while ((o = getopt_long (argc, argv, "o:I:v", long_options, &option_index)) != -1)
+  while ((o = getopt_long (argc, argv, "o:I:m:v", long_options, &option_index)) != -1)
     {
       switch (o)
 	{
@@ -934,6 +935,9 @@ main (int argc, char **argv)
 	      exit (1);
 	    }
 	  outname = optarg;
+	  break;
+	case 'm':
+	  smver = optarg;
 	  break;
 	case 'I':
 	  /* Ignore include paths.  */
@@ -990,7 +994,7 @@ This program has absolutely no warranty.\n",
       obstack_ptr_grow (&argv_obstack, "/dev/null");
       obstack_ptr_grow (&argv_obstack, outname);
       obstack_ptr_grow (&argv_obstack, "--gpu-name");
-      obstack_ptr_grow (&argv_obstack, "sm_30");
+      obstack_ptr_grow (&argv_obstack, smver);
       obstack_ptr_grow (&argv_obstack, "-O0");
       obstack_ptr_grow (&argv_obstack, NULL);
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);

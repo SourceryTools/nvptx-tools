@@ -970,21 +970,24 @@ This program has absolutely no warranty.\n",
 	}
     }
 
-  if (optind + 1 != argc)
-    fatal_error ("not exactly one input file specified");
+  if (optind + 1 < argc)
+    fatal_error ("too many input files specified");
 
-  out = fopen (outname, "w");
+  if (outname)
+    out = fopen (outname, "w");
   if (!out)
     fatal_error ("cannot open '%s'", outname);
 
-  in = fopen (argv[optind], "r");
+  if (argc > optind)
+    in = fopen (argv[optind], "r");
   if (!in)
     fatal_error ("cannot open input ptx file");
 
   process (in, out);
-  fclose (out);
+  if  (outname)
+    fclose (out);
 
-  if (verify)
+  if (verify && outname)
     {
       struct obstack argv_obstack;
       obstack_init (&argv_obstack);

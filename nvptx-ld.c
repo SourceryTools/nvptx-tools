@@ -260,6 +260,20 @@ dequeue_unresolved (struct symbol_hash_entry *e)
 }
 
 static void
+define_intrinsics ()
+{
+  static const char *const intrins[] =
+    {"vprintf", "malloc", "free", NULL};
+  unsigned ix;
+
+  for (ix = 0; intrins[ix]; ix++)
+    {
+      struct symbol_hash_entry *e = symbol_hash_lookup (intrins[ix], 1);
+      e->included = true;
+    }
+}
+
+static void
 process_refs_defs (file *f, const char *ptx)
 {
   while (*ptx != '\0')
@@ -293,10 +307,7 @@ process_refs_defs (file *f, const char *ptx)
 	  const char *end = strchr (ptx, '\n');
 	  if (end == 0)
 	    end = ptx + strlen (ptx);
-	  if ((end - ptx == 6 && memcmp (ptx, "malloc", 6) == 0)
-	      || (end - ptx == 4 && memcmp (ptx, "free", 4) == 0)
-	      || (end - ptx == 7 && memcmp (ptx, "vprintf", 7) == 0))
-	    continue;
+
 	  const char *sym = xstrndup (ptx, end - ptx);
 	  struct symbol_hash_entry *e = symbol_hash_lookup (sym, 1);
 
@@ -402,6 +413,8 @@ This program has absolutely no warranty.\n",
   symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
                               NULL);
 
+  define_intrinsics ();
+  
   FILE *outfile = fopen (outname, "w");
   if (outfile == NULL)
     {

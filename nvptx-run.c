@@ -20,7 +20,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <cuda.h>
-#include <cuda_runtime.h>
 
 #include "version.h"
 
@@ -251,7 +250,6 @@ This program has absolutely no warranty.\n",
     cuModuleUnload (hModule);
 
   cuCtxDestroy (ctx);
-  cudaDeviceReset ();
 
   return result;
 }

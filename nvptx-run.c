@@ -71,22 +71,16 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 {
   CUresult r;
    
+  char elog[8192];
+  CUjit_option opts[] = {
+    CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES
+  };
+  void *optvals[] = {
+    elog, (void*) sizeof elog
+  };
   CUlinkState linkstate;
-  CUjit_option opts[5];
-  void *optvals[5];
-#define LOGSIZE 8192
-  char elog[LOGSIZE];
 
-  opts[0] = CU_JIT_TARGET;
-  optvals[0] = (void *) CU_TARGET_COMPUTE_30;
-
-  opts[1] = CU_JIT_ERROR_LOG_BUFFER;
-  optvals[1] = &elog[0];
-
-  opts[2] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
-  optvals[2] = (void *) LOGSIZE;
-
-  r = cuLinkCreate (3, opts, optvals, &linkstate);
+  r = cuLinkCreate (sizeof opts / sizeof *opts, opts, optvals, &linkstate);
   fatal_unless_success (r, "cuLinkCreate failed");
   
   fseek (f, 0, SEEK_END);

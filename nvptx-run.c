@@ -18,6 +18,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <cuda.h>
 
@@ -130,6 +131,9 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 
 static const struct option long_options[] =
   {
+    { "stack-size", required_argument, 0, 'S' },
+    { "heap-size", required_argument, 0, 'H' },
+    { "lanes", required_argument, 0, 'L' },
     { "help", no_argument, 0, 'h' },
     { "version", no_argument, 0, 'V' },
     { 0, 0, 0, 0 }
@@ -140,14 +144,33 @@ main (int argc, char **argv)
 {
   int o;
   int option_index = 0;
-  while ((o = getopt_long (argc, argv, "o:I:v", long_options, &option_index)) != -1)
+  long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
+  while ((o = getopt_long (argc, argv, "S:H:L:hV", long_options, &option_index)) != -1)
     {
       switch (o)
 	{
+	case 'S':
+	  stack_size = strtol (optarg, NULL, 0);
+	  if (stack_size <= 0)
+	    fatal_error ("invalid stack size");
+	  break;
+	case 'H':
+	  heap_size = strtol (optarg, NULL, 0);
+	  if (heap_size <= 0)
+	    fatal_error ("invalid heap size");
+	  break;
+	case 'L':
+	  num_lanes = strtol (optarg, NULL, 0);
+	  if (num_lanes < 1 || num_lanes > 32)
+	    fatal_error ("invalid lane count");
+	  break;
 	case 'h':
 	  printf ("\
 Usage: nvptx-none-run [option...] program [argument...]\n\
 Options:\n\
+  -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
+  -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
+  -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
   --help                Print this help and exit\n\
   --version             Print version number and exit\n\
 \n\
@@ -224,10 +247,33 @@ This program has absolutely no warranty.\n",
   printf ("stack %ld heap %ld\n", stack, heap);
 #endif
 
-  /* <https://github.com/MentorEmbedded/nvptx-tools/issues/8>.  */
-  r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, 128 * 1024);
+  if (!stack_size)
+    {
+      /* It appears that CUDA driver sometimes accounts memory as if stacks
+         were reserved for the maximum number of threads the device can host,
+	 even if only a few are launched.  Compute the default accordingly.  */
+      int sm_count, thread_max;
+      r = cuDeviceGetAttribute (&sm_count,
+				CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev);
+      fatal_unless_success (r, "could not get SM count");
+      r = cuDeviceGetAttribute
+	(&thread_max, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
+      fatal_unless_success (r, "could not get max threads per SM count");
+      size_t mem;
+      r = cuDeviceTotalMem (&mem, dev);
+      fatal_unless_success (r, "could not get available memory");
+      /* Subtract heap size and a 128 MiB extra.  */
+      mem -= heap_size + 128 * 1024 * 1024;
+      mem /= sm_count * thread_max;
+      /* Always limit default size to 128 KiB maximum.  */
+      if (mem > 128 * 1024)
+	mem = 128 * 1024;
+      /* Round down to 8-byte boundary.  */
+      stack_size = mem & -8u;
+    }
+  r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, stack_size);
   fatal_unless_success (r, "could not set stack limit");
-  r = cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 256 * 1024 * 1024);
+  r = cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, heap_size);
   fatal_unless_success (r, "could not set heap limit");
 
   CUmodule hModule = 0;
@@ -236,7 +282,7 @@ This program has absolutely no warranty.\n",
 
   void *args[] = { &d_retval, &d_argc, &d_argv };
     
-  r = cuLaunchKernel (hKernel, 1, 1, 1, 1, 1, 1, 1024, NULL, args, NULL);
+  r = cuLaunchKernel (hKernel, 1, 1, 1, num_lanes, 1, 1, 1024, NULL, args, NULL);
   fatal_unless_success (r, "error launching kernel");
 
   int result;

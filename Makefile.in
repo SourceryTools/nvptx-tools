@@ -10,8 +10,6 @@ LIBS = @LIBS@
 
 CUDA_DRIVER_CPPFLAGS = @CUDA_DRIVER_CPPFLAGS@
 CUDA_DRIVER_LDFLAGS = @CUDA_DRIVER_LDFLAGS@
-CUDA_RUNTIME_CPPFLAGS = @CUDA_RUNTIME_CPPFLAGS@
-CUDA_RUNTIME_LDFLAGS = @CUDA_RUNTIME_LDFLAGS@
 
 AR = @AR@
 RANLIB = @RANLIB@
@@ -48,11 +46,11 @@ nvptx-none-ld: $(srcdir)/nvptx-ld.c libiberty.stmp $(srcdir)/version.h
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx-none-run: $(srcdir)/nvptx-run.c libiberty.stmp $(srcdir)/version.h
-	$(CXX) $(CUDA_DRIVER_CPPFLAGS) $(CUDA_RUNTIME_CPPFLAGS) \
+	$(CXX) $(CUDA_DRIVER_CPPFLAGS) \
 		$(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
-		$(CUDA_DRIVER_LDFLAGS) $(CUDA_RUNTIME_LDFLAGS) \
-		-Llibiberty -liberty $(LDFLAGS) $(LIBS) -lcuda -lcudart
+		$(CUDA_DRIVER_LDFLAGS) \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS) -lcuda
 
 .PHONY: install
 install: all

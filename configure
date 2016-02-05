@@ -557,8 +557,6 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 subdirs
 NVPTX_RUN
-CUDA_RUNTIME_LDFLAGS
-CUDA_RUNTIME_CPPFLAGS
 CUDA_DRIVER_LDFLAGS
 CUDA_DRIVER_CPPFLAGS
 AR
@@ -626,9 +624,6 @@ with_bugurl
 with_cuda_driver
 with_cuda_driver_include
 with_cuda_driver_lib
-with_cuda_runtime
-with_cuda_runtime_include
-with_cuda_runtime_lib
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1260,17 +1255,6 @@ Optional Packages:
                           files
   --with-cuda-driver-lib=PATH
                           specify directory for the installed CUDA driver
-                          library
-  --with-cuda-runtime=PATH
-                          specify prefix directory for installed CUDA runtime
-                          package. Equivalent to
-                          --with-cuda-runtime-include=PATH/include plus
-                          --with-cuda-runtime-lib=PATH/lib
-  --with-cuda-runtime-include=PATH
-                          specify directory for installed CUDA runtime include
-                          files
-  --with-cuda-runtime-lib=PATH
-                          specify directory for the installed CUDA runtime
                           library
 
 Some influential environment variables:
@@ -3256,46 +3240,12 @@ if test "x$with_cuda_driver_lib" != x; then
   CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver_lib"
 fi
 
-# Look for the CUDA runtime package.
-CUDA_RUNTIME_CPPFLAGS=
-
-CUDA_RUNTIME_LDFLAGS=
-
-
-# Check whether --with-cuda-runtime was given.
-if test "${with_cuda_runtime+set}" = set; then :
-  withval=$with_cuda_runtime;
-fi
-
-
-# Check whether --with-cuda-runtime-include was given.
-if test "${with_cuda_runtime_include+set}" = set; then :
-  withval=$with_cuda_runtime_include;
-fi
-
-
-# Check whether --with-cuda-runtime-lib was given.
-if test "${with_cuda_runtime_lib+set}" = set; then :
-  withval=$with_cuda_runtime_lib;
-fi
-
-if test "x$with_cuda_runtime" != x; then
-  CUDA_RUNTIME_CPPFLAGS=-I$with_cuda_runtime/include
-  CUDA_RUNTIME_LDFLAGS="-L$with_cuda_runtime/lib"
-fi
-if test "x$with_cuda_runtime_include" != x; then
-  CUDA_RUNTIME_CPPFLAGS=-I$with_cuda_runtime_include
-fi
-if test "x$with_cuda_runtime_lib" != x; then
-  CUDA_RUNTIME_LDFLAGS="-L$with_cuda_runtime_lib"
-fi
-
 save_CPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CUDA_RUNTIME_CPPFLAGS $CPPFLAGS"
+CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CPPFLAGS"
 save_LDFLAGS=$LDFLAGS
-LDFLAGS="$CUDA_DRIVER_LDFLAGS $CUDA_RUNTIME_LDFLAGS $LDFLAGS"
+LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
 save_LIBS=$LIBS
-LIBS="$LIBS -lcuda -lcudart"
+LIBS="$LIBS -lcuda"
 
 
 for ac_func in cuGetErrorName cuGetErrorString
@@ -3335,16 +3285,16 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for extra programs to build requiring -lcudart" >&5
-$as_echo_n "checking for extra programs to build requiring -lcudart... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for extra programs to build requiring -lcuda" >&5
+$as_echo_n "checking for extra programs to build requiring -lcuda... " >&6; }
 NVPTX_RUN=
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <cuda_runtime.h>
+#include <cuda.h>
 int
 main ()
 {
-cudaDeviceReset ();
+cuInit (0);
   ;
   return 0;
 }

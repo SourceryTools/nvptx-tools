@@ -66,7 +66,7 @@ fatal_unless_success (CUresult r, const char *err)
   fatal_error ("%s: %s (%s, %d)", err, s, n, (int) r);
 }
 
-static size_t jitopt_lineinfo, jitopt_debuginfo;
+static size_t jitopt_lineinfo, jitopt_debuginfo, jitopt_optimize = 4;
 
 static void
 compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
@@ -78,11 +78,13 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
     CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES,
     CU_JIT_GENERATE_LINE_INFO,
     CU_JIT_GENERATE_DEBUG_INFO,
+    CU_JIT_OPTIMIZATION_LEVEL,
   };
   void *optvals[] = {
     elog, (void*) sizeof elog,
     (void*) jitopt_lineinfo,
     (void*) jitopt_debuginfo,
+    (void*) jitopt_optimize,
   };
   CUlinkState linkstate;
 
@@ -140,6 +142,7 @@ static const struct option long_options[] =
     { "stack-size", required_argument, 0, 'S' },
     { "heap-size", required_argument, 0, 'H' },
     { "lanes", required_argument, 0, 'L' },
+    { "optlevel", required_argument, 0, 'O' },
     { "lineinfo", no_argument, 0, 'g' },
     { "debuginfo", no_argument, 0, 'G' },
     { "help", no_argument, 0, 'h' },
@@ -152,7 +155,7 @@ main (int argc, char **argv)
 {
   int o;
   long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
-  while ((o = getopt_long (argc, argv, "S:H:L:gGhV", long_options, 0)) != -1)
+  while ((o = getopt_long (argc, argv, "S:H:L:O:gGhV", long_options, 0)) != -1)
     {
       switch (o)
 	{
@@ -171,6 +174,11 @@ main (int argc, char **argv)
 	  if (num_lanes < 1 || num_lanes > 32)
 	    fatal_error ("invalid lane count");
 	  break;
+	case 'O':
+	  jitopt_optimize = (size_t) optarg[0] - '0';
+	  if (jitopt_optimize > 4 || optarg[1] != 0)
+	    fatal_error ("invalid optimization level");
+	  break;
 	case 'g':
 	  jitopt_lineinfo = 1;
 	  break;
@@ -184,6 +192,7 @@ Options:\n\
   -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
   -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
   -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
+  -O, --optlevel N      Pass PTX JIT option to set optimization level N\n\
   -g, --lineinfo        Pass PTX JIT option to generate line information\n\
   -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
   --help                Print this help and exit\n\

@@ -24,8 +24,8 @@
 
 #include "version.h"
 
-/* Some CUDA installations have a mismatch between what's declared in <cuda.h>,
-   and what libcuda actually provides.  */
+/* On systems where installed NVIDIA driver is newer than CUDA Toolkit,
+   libcuda.so may have these functions even though <cuda.h> does not.  */
 
 #if defined HAVE_CUGETERRORNAME && !HAVE_DECL_CUGETERRORNAME
 extern "C" CUresult cuGetErrorName (CUresult, const char **);
@@ -66,6 +66,8 @@ fatal_unless_success (CUresult r, const char *err)
   fatal_error ("%s: %s (%s, %d)", err, s, n, (int) r);
 }
 
+static size_t jitopt_lineinfo, jitopt_debuginfo;
+
 static void
 compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 {
@@ -73,10 +75,14 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
    
   char elog[8192];
   CUjit_option opts[] = {
-    CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES
+    CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES,
+    CU_JIT_GENERATE_LINE_INFO,
+    CU_JIT_GENERATE_DEBUG_INFO,
   };
   void *optvals[] = {
-    elog, (void*) sizeof elog
+    elog, (void*) sizeof elog,
+    (void*) jitopt_lineinfo,
+    (void*) jitopt_debuginfo,
   };
   CUlinkState linkstate;
 
@@ -134,6 +140,8 @@ static const struct option long_options[] =
     { "stack-size", required_argument, 0, 'S' },
     { "heap-size", required_argument, 0, 'H' },
     { "lanes", required_argument, 0, 'L' },
+    { "lineinfo", no_argument, 0, 'g' },
+    { "debuginfo", no_argument, 0, 'G' },
     { "help", no_argument, 0, 'h' },
     { "version", no_argument, 0, 'V' },
     { 0, 0, 0, 0 }
@@ -143,9 +151,8 @@ int
 main (int argc, char **argv)
 {
   int o;
-  int option_index = 0;
   long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
-  while ((o = getopt_long (argc, argv, "S:H:L:hV", long_options, &option_index)) != -1)
+  while ((o = getopt_long (argc, argv, "S:H:L:gGhV", long_options, 0)) != -1)
     {
       switch (o)
 	{
@@ -164,6 +171,12 @@ main (int argc, char **argv)
 	  if (num_lanes < 1 || num_lanes > 32)
 	    fatal_error ("invalid lane count");
 	  break;
+	case 'g':
+	  jitopt_lineinfo = 1;
+	  break;
+	case 'G':
+	  jitopt_debuginfo = 1;
+	  break;
 	case 'h':
 	  printf ("\
 Usage: nvptx-none-run [option...] program [argument...]\n\
@@ -171,6 +184,8 @@ Options:\n\
   -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
   -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
   -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
+  -g, --lineinfo        Pass PTX JIT option to generate line information\n\
+  -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
   --help                Print this help and exit\n\
   --version             Print version number and exit\n\
 \n\

@@ -51,6 +51,7 @@ LIBS="$LIBS -lcuda"
 AC_CHECK_FUNCS([[cuGetErrorName] [cuGetErrorString]])
 AC_CHECK_DECLS([[cuGetErrorName], [cuGetErrorString]],
   [], [], [[#include <cuda.h>]])
+AC_CHECK_HEADERS(unistd.h sys/stat.h)
 
 AC_MSG_CHECKING([for extra programs to build requiring -lcuda])
 NVPTX_RUN=

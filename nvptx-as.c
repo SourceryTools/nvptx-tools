@@ -30,6 +30,9 @@
 #include <string.h>
 #include <wait.h>
 #include <unistd.h>
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 #include <errno.h>
 #define obstack_chunk_alloc malloc
 #define obstack_chunk_free free
@@ -41,6 +44,38 @@
 #include <list>
 
 #include "version.h"
+
+#ifndef R_OK
+#define R_OK 4
+#define W_OK 2
+#define X_OK 1
+#endif
+
+#ifndef DIR_SEPARATOR
+#  define DIR_SEPARATOR '/'
+#endif
+
+#if defined (_WIN32) || defined (__MSDOS__) \
+    || defined (__DJGPP__) || defined (__OS2__)
+#  define HAVE_DOS_BASED_FILE_SYSTEM
+#  define HAVE_HOST_EXECUTABLE_SUFFIX
+#  define HOST_EXECUTABLE_SUFFIX ".exe"
+#  ifndef DIR_SEPARATOR_2 
+#    define DIR_SEPARATOR_2 '\\'
+#  endif
+#  define PATH_SEPARATOR ';'
+#else
+#  define PATH_SEPARATOR ':'
+#endif
+
+#ifndef DIR_SEPARATOR_2
+#  define IS_DIR_SEPARATOR(ch) ((ch) == DIR_SEPARATOR)
+#else
+#  define IS_DIR_SEPARATOR(ch) \
+	(((ch) == DIR_SEPARATOR) || ((ch) == DIR_SEPARATOR_2))
+#endif
+
+#define DIR_UP ".."
 
 static const char *outname = NULL;
 
@@ -816,13 +851,25 @@ traverse (void **slot, void *data)
 }
 
 static void
-process (FILE *in, FILE *out)
+process (FILE *in, FILE *out, int verify, const char *outname)
 {
   symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
                               NULL);
 
   const char *input = read_file (in);
   Token *tok = tokenize (input);
+
+  /* By default, when ptxas is not in PATH, do minimalistic verification,
+     just require that the first non-comment directive is .version.  */
+  if (verify < 0)
+    {
+      size_t i;
+      for (i = 0; tok[i].kind == K_comment; i++)
+	;
+      if (tok[i].kind != K_dotted || !is_keyword (&tok[i], "version"))
+	fatal_error ("missing .version directive at start of file '%s'",
+		     outname);
+    }
 
   do
     tok = parse_file (tok);
@@ -897,9 +944,83 @@ fork_execute (const char *prog, char *const *argv)
   do_wait (prog, pex);
 }
 
+/* Determine if progname is available in PATH.  */
+static bool
+program_available (const char *progname)
+{
+  char *temp = getenv ("PATH");
+  if (temp)
+    {
+      char *startp, *endp, *nstore, *alloc_ptr = NULL;
+      size_t prefixlen = strlen (temp) + 1;
+      size_t len;
+      if (prefixlen < 2)
+	prefixlen = 2;
+
+      len = prefixlen + strlen (progname) + 1;
+#ifdef HAVE_HOST_EXECUTABLE_SUFFIX
+      len += strlen (HOST_EXECUTABLE_SUFFIX);
+#endif
+      if (len < MAX_ALLOCA_SIZE)
+	nstore = (char *) alloca (len);
+      else
+	alloc_ptr = nstore = (char *) malloc (len);
+
+      startp = endp = temp;
+      while (1)
+	{
+	  if (*endp == PATH_SEPARATOR || *endp == 0)
+	    {
+	      if (endp == startp)
+		{
+		  nstore[0] = '.';
+		  nstore[1] = DIR_SEPARATOR;
+		  nstore[2] = '\0';
+		}
+	      else
+		{
+		  memcpy (nstore, startp, endp - startp);
+		  if (! IS_DIR_SEPARATOR (endp[-1]))
+		    {
+		      nstore[endp - startp] = DIR_SEPARATOR;
+		      nstore[endp - startp + 1] = 0;
+		    }
+		  else
+		    nstore[endp - startp] = 0;
+		}
+	      strcat (nstore, progname);
+	      if (! access (nstore, X_OK)
+#ifdef HAVE_HOST_EXECUTABLE_SUFFIX
+		  || ! access (strcat (nstore, HOST_EXECUTABLE_SUFFIX), X_OK)
+#endif
+		 )
+		{
+#if defined (HAVE_SYS_STAT_H) && defined (S_ISREG)
+		  struct stat st;
+		  if (stat (nstore, &st) >= 0 && S_ISREG (st.st_mode))
+#endif
+		    {
+		      free (alloc_ptr);
+		      return true;
+		    }
+		}
+
+	      if (*endp == 0)
+		break;
+	      endp = startp = endp + 1;
+	    }
+	  else
+	    endp++;
+	}
+      free (alloc_ptr);
+    }
+  return false;
+}
+
 static struct option long_options[] = {
   {"traditional-format",     no_argument, 0,  0 },
   {"save-temps",  no_argument,       0,  0 },
+  {"verify",  no_argument,       0,  0 },
   {"no-verify",  no_argument,       0,  0 },
   {"help", no_argument, 0, 'h' },
   {"version", no_argument, 0, 'V' },
@@ -912,7 +1033,7 @@ main (int argc, char **argv)
   FILE *in = stdin;
   FILE *out = stdout;
   bool verbose __attribute__((unused)) = false;
-  bool verify = true;
+  int verify = -1;
   const char *smver = "sm_30";
 
   int o;
@@ -923,7 +1044,9 @@ main (int argc, char **argv)
 	{
 	case 0:
 	  if (option_index == 2)
-	    verify = false;
+	    verify = 1;
+	  else if (option_index == 3)
+	    verify = 0;
 	  break;
 	case 'v':
 	  verbose = true;
@@ -948,6 +1071,7 @@ Usage: nvptx-none-as [option...] [asmfile]\n\
 Options:\n\
   -o FILE               Write output to FILE\n\
   -v                    Be verbose\n\
+  --verify              Do verify output is acceptable to ptxas\n\
   --no-verify           Do not verify output is acceptable to ptxas\n\
   --help                Print this help and exit\n\
   --version             Print version number and exit\n\
@@ -983,11 +1107,17 @@ This program has absolutely no warranty.\n",
   if (!in)
     fatal_error ("cannot open input ptx file");
 
-  process (in, out);
-  if  (outname)
+  if (outname == NULL)
+    verify = 0;
+  else if (verify == -1)
+    if (program_available ("ptxas"))
+      verify = 1;
+
+  process (in, out, verify, outname);
+  if (outname)
     fclose (out);
 
-  if (verify && outname)
+  if (verify > 0)
     {
       struct obstack argv_obstack;
       obstack_init (&argv_obstack);

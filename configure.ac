@@ -65,6 +65,8 @@ CPPFLAGS=$save_CPPFLAGS
 LDFLAGS=$save_LDFLAGS
 LIBS=$save_LIBS
 
+AC_CHECK_DECLS(getopt)
+
 AC_CONFIG_SUBDIRS([libiberty])
 AC_CONFIG_FILES([Makefile dejagnu.exp])
 AC_OUTPUT

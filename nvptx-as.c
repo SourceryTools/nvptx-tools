@@ -892,7 +892,7 @@ fork_execute (const char *prog, char *const *argv)
 	  fatal_error ("%s: %m", errmsg);
 	}
       else
-	fatal_error (errmsg);
+	fatal_error ("%s", errmsg);
     }
   do_wait (prog, pex);
 }

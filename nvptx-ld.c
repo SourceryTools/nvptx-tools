@@ -441,9 +441,9 @@ This program has absolutely no warranty.\n",
       off_t len = ftell (f);
       fseek (f, 0, SEEK_SET);
       char *buf = new char[len + 1];
-      fread (buf, 1, len, f);
+      size_t read_len = fread (buf, 1, len, f);
       buf[len] = '\0';
-      if (ferror (f))
+      if (read_len != len || ferror (f))
 	{
 	  cerr << "error reading " << name << "\n";
 	  goto error_out;

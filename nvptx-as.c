@@ -284,6 +284,7 @@ tokenize (const char *ptr)
   Token *toks = XNEWVEC (Token, alloc);
   int in_comment = 0;
   int not_comment = 0;
+  unsigned char c;
 
   for (;; num++)
     {
@@ -296,7 +297,10 @@ tokenize (const char *ptr)
       base = ptr;
       if (in_comment)
 	goto block_comment;
-      switch (kind = *ptr++)
+      c = (unsigned char)*ptr++;
+      if (c > 127)
+	fatal_error ("non-ascii character encountered: 0x%x", c);
+      switch (kind = c)
 	{
 	default:
 	  break;

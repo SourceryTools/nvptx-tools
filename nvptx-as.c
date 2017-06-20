@@ -791,6 +791,15 @@ parse_file (Token *tok)
 	      tok++->end = 1;
 	      if ((vis & V_mask) == V_var && !is_decl)
 		{
+		  if (def == NULL)
+		    {
+		      const char *eol = strchr (start->ptr, '\n');
+		      const char *line
+			= ((eol == NULL)
+			   ? start->ptr
+			   : strndup (start->ptr, eol - start->ptr));
+		      fatal_error ("expected identifier in line '%s'", line);
+		    }
 		  /* variable */
 		  Stmt *stmt = alloc_stmt (vis, start, tok, def);
 		  if (comment)

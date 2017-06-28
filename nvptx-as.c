@@ -284,6 +284,7 @@ tokenize (const char *ptr)
   Token *toks = XNEWVEC (Token, alloc);
   int in_comment = 0;
   int not_comment = 0;
+  unsigned char c;
 
   for (;; num++)
     {
@@ -296,7 +297,10 @@ tokenize (const char *ptr)
       base = ptr;
       if (in_comment)
 	goto block_comment;
-      switch (kind = *ptr++)
+      c = (unsigned char)*ptr++;
+      if (c > 127)
+	fatal_error ("non-ascii character encountered: 0x%x", c);
+      switch (kind = c)
 	{
 	default:
 	  break;
@@ -787,6 +791,15 @@ parse_file (Token *tok)
 	      tok++->end = 1;
 	      if ((vis & V_mask) == V_var && !is_decl)
 		{
+		  if (def == NULL)
+		    {
+		      const char *eol = strchr (start->ptr, '\n');
+		      const char *line
+			= ((eol == NULL)
+			   ? start->ptr
+			   : strndup (start->ptr, eol - start->ptr));
+		      fatal_error ("expected identifier in line '%s'", line);
+		    }
 		  /* variable */
 		  Stmt *stmt = alloc_stmt (vis, start, tok, def);
 		  if (comment)

@@ -46,7 +46,27 @@ CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CPPFLAGS"
 save_LDFLAGS=$LDFLAGS
 LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
 save_LIBS=$LIBS
-LIBS="$LIBS -lcuda"
+
+# With certain (distribution?) variants of CUDA installations in combination
+# with certain linker configurations, "gcc -lcuda" might fail:
+#
+#     [...]/ld: warning: libnvidia-fatbinaryloader.so.375.66, needed by [...]/libcuda.so, not found (try using -rpath or -rpath-link)
+#     [...]/libcuda.so: undefined reference to `elfLink_Start'
+#     [...]/libcuda.so: undefined reference to `fatBinaryCtl_Compile'
+#     [...]
+#     [...]/libcuda.so: undefined reference to `gpucompRestoreLogLine'
+#     collect2: error: ld returned 1 exit status
+#
+# This is because of "libnvidia-fatbinaryloader.so*" residing in some
+# non-standard directory that the run-time "ld.so" might look into, but the
+# compile-time "ld" doesn't.  In this case, try linking with
+# "--allow-shlib-undefined".
+CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=
+AC_SUBST([CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED])
+AC_CHECK_LIB([cuda], [cuInit],
+  [:],
+  [CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=-Wl,--allow-shlib-undefined])
+LIBS="$LIBS -lcuda $CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED"
 
 AC_CHECK_FUNCS([[cuGetErrorName] [cuGetErrorString]])
 AC_CHECK_DECLS([[cuGetErrorName], [cuGetErrorString]],

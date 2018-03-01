@@ -597,6 +597,7 @@ NVPTX_RUN
 EGREP
 GREP
 CPP
+CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED
 CUDA_DRIVER_LDFLAGS
 CUDA_DRIVER_CPPFLAGS
 AR
@@ -3484,8 +3485,67 @@ CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CPPFLAGS"
 save_LDFLAGS=$LDFLAGS
 LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
 save_LIBS=$LIBS
-LIBS="$LIBS -lcuda"
 
+# With certain (distribution?) variants of CUDA installations in combination
+# with certain linker configurations, "gcc -lcuda" might fail:
+#
+#     [...]/ld: warning: libnvidia-fatbinaryloader.so.375.66, needed by [...]/libcuda.so, not found (try using -rpath or -rpath-link)
+#     [...]/libcuda.so: undefined reference to `elfLink_Start'
+#     [...]/libcuda.so: undefined reference to `fatBinaryCtl_Compile'
+#     [...]
+#     [...]/libcuda.so: undefined reference to `gpucompRestoreLogLine'
+#     collect2: error: ld returned 1 exit status
+#
+# This is because of "libnvidia-fatbinaryloader.so*" residing in some
+# non-standard directory that the run-time "ld.so" might look into, but the
+# compile-time "ld" doesn't.  In this case, try linking with
+# "--allow-shlib-undefined".
+CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cuInit in -lcuda" >&5
+$as_echo_n "checking for cuInit in -lcuda... " >&6; }
+if test "${ac_cv_lib_cuda_cuInit+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcuda  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char cuInit ();
+int
+main ()
+{
+return cuInit ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_cuda_cuInit=yes
+else
+  ac_cv_lib_cuda_cuInit=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cuda_cuInit" >&5
+$as_echo "$ac_cv_lib_cuda_cuInit" >&6; }
+if test "x$ac_cv_lib_cuda_cuInit" = x""yes; then :
+  :
+else
+  CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=-Wl,--allow-shlib-undefined
+fi
+
+LIBS="$LIBS -lcuda $CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED"
 
 for ac_func in cuGetErrorName cuGetErrorString
 do :

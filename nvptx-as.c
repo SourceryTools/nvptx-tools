@@ -153,8 +153,6 @@ symbol_hash_lookup (const char *string)
   return (symbol *) *e;
 }
 
-#define COMMENT_PREFIX "#"
-
 typedef enum Kind
 {
   /* 0-ff used for single char tokens */

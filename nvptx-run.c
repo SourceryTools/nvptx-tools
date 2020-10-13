@@ -24,6 +24,45 @@
 
 #include "version.h"
 
+static int verbose = 0;
+
+static void
+print_hr (FILE *f, size_t val)
+{
+  const char * units[] = { "B", "KiB", "MiB", "GiB" };
+  unsigned count = 0;
+  size_t rem = 0;
+  while (val >= 1024
+         && count < sizeof (units) / sizeof (units[0]))
+    {
+      rem = val % 1024;
+      val = val / 1024;
+      count++;
+    }
+  /* Scale remainder to double in [0, 1].  */
+  double fraction = (double)rem / 1024;
+  /* Scale remainder to int in [0, 100].  */
+  unsigned int int_fraction = (unsigned)(fraction * 100);
+  fprintf (f, "%zu.%02u %s", val, int_fraction, units[count]);
+}
+
+static void
+print_val (FILE *f, const char * p, size_t val)
+{
+  fprintf (f, "%s: %zu (", p, val);
+  print_hr (f, val);
+  fprintf (f, ")\n");
+}
+
+static void
+report_val (FILE *f, const char * p, size_t val)
+{
+  if (!verbose)
+    return;
+
+  print_val (f, p, val);
+}
+
 /* On systems where installed NVIDIA driver is newer than CUDA Toolkit,
    libcuda.so may have these functions even though <cuda.h> does not.  */
 
@@ -147,6 +186,7 @@ static const struct option long_options[] =
     { "debuginfo", no_argument, 0, 'G' },
     { "help", no_argument, 0, 'h' },
     { "version", no_argument, 0, 'V' },
+    { "verbose", no_argument, 0, 'v' },
     { 0, 0, 0, 0 }
   };
 
@@ -155,7 +195,7 @@ main (int argc, char **argv)
 {
   int o;
   long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
-  while ((o = getopt_long (argc, argv, "+S:H:L:O:gGhV", long_options, 0)) != -1)
+  while ((o = getopt_long (argc, argv, "+S:H:L:O:gGhVv", long_options, 0)) != -1)
     {
       switch (o)
 	{
@@ -195,6 +235,7 @@ Options:\n\
   -O, --optlevel N      Pass PTX JIT option to set optimization level N\n\
   -g, --lineinfo        Pass PTX JIT option to generate line information\n\
   -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
+  -v, --verbose         Run in verbose mode\n\
   --help                Print this help and exit\n\
   --version             Print version number and exit\n\
 \n\
@@ -211,6 +252,9 @@ the GNU General Public License version 3 or later.\n\
 This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
+	case 'v':
+	  verbose = 1;
+	  break;
 	default:
 	  break;
 	}
@@ -234,6 +278,27 @@ This program has absolutely no warranty.\n",
   fatal_unless_success (r, "cuDeviceGet failed");
   r = cuCtxCreate (&ctx, 0, dev);
   fatal_unless_success (r, "cuCtxCreate failed");
+
+  size_t mem;
+  if (!stack_size || verbose)
+    {
+      r = cuDeviceTotalMem (&mem, dev);
+      fatal_unless_success (r, "could not get available memory");
+      report_val (stderr, "Total device memory", mem);
+    }
+
+  size_t free_mem;
+  size_t dummy;
+  if (verbose)
+    {
+      /* Set stack size limit to 0 to get more accurate free_mem.  */
+      r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, 0);
+      fatal_unless_success (r, "could not set stack limit");
+
+      r = cuMemGetInfo (&free_mem, &dummy);
+      fatal_unless_success (r, "could not get free memory");
+      report_val (stderr, "Initial free device memory", free_mem);
+    }
 
   CUdeviceptr d_retval;
   r = cuMemAlloc(&d_retval, sizeof (int));
@@ -263,29 +328,34 @@ This program has absolutely no warranty.\n",
     }
   }
 
-#if 0
-  /* Default seems to be 1 KiB stack, 8 MiB heap.  */
-  size_t stack, heap;
-  cuCtxGetLimit (&stack, CU_LIMIT_STACK_SIZE);
-  cuCtxGetLimit (&heap, CU_LIMIT_MALLOC_HEAP_SIZE);
-  printf ("stack %ld heap %ld\n", stack, heap);
-#endif
+  if (verbose)
+    {
+      size_t free_mem_update;
+      r = cuMemGetInfo (&free_mem_update, &dummy);
+      fatal_unless_success (r, "could not get free memory");
+      report_val (stderr, "Program args reservation (effective)",
+		  free_mem - free_mem_update);
+      free_mem = free_mem_update;
+    }
+
+  int sm_count, thread_max;
+  if (!stack_size || verbose)
+    {
+      r = cuDeviceGetAttribute (&sm_count,
+				CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev);
+      fatal_unless_success (r, "could not get SM count");
+
+      r = cuDeviceGetAttribute
+	(&thread_max, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
+      fatal_unless_success (r, "could not get max threads per SM count");
+    }
 
   if (!stack_size)
     {
       /* It appears that CUDA driver sometimes accounts memory as if stacks
          were reserved for the maximum number of threads the device can host,
 	 even if only a few are launched.  Compute the default accordingly.  */
-      int sm_count, thread_max;
-      r = cuDeviceGetAttribute (&sm_count,
-				CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev);
-      fatal_unless_success (r, "could not get SM count");
-      r = cuDeviceGetAttribute
-	(&thread_max, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
-      fatal_unless_success (r, "could not get max threads per SM count");
-      size_t mem;
-      r = cuDeviceTotalMem (&mem, dev);
-      fatal_unless_success (r, "could not get available memory");
+
       /* Subtract heap size and a 128 MiB extra.  */
       mem -= heap_size + 128 * 1024 * 1024;
       mem /= sm_count * thread_max;
@@ -295,10 +365,27 @@ This program has absolutely no warranty.\n",
       /* Round down to 8-byte boundary.  */
       stack_size = mem & -8u;
     }
+
   r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, stack_size);
   fatal_unless_success (r, "could not set stack limit");
+  report_val (stderr, "Set stack size limit", stack_size);
+
+  if (verbose)
+    {
+      report_val (stderr, "Stack size limit reservation (estimated)",
+		  stack_size * sm_count * thread_max);
+      size_t free_mem_update;
+      r = cuMemGetInfo (&free_mem_update, &dummy);
+      fatal_unless_success (r, "could not get free memory");
+      report_val (stderr, "Stack size limit reservation (effective)",
+		  free_mem - free_mem_update);
+      free_mem = free_mem_update;
+      report_val (stderr, "Free device memory", free_mem);
+    }
+
   r = cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, heap_size);
   fatal_unless_success (r, "could not set heap limit");
+  report_val (stderr, "Set heap size limit", heap_size);
 
   CUmodule hModule = 0;
   CUfunction hKernel = 0;

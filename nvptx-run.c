@@ -155,7 +155,7 @@ main (int argc, char **argv)
 {
   int o;
   long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
-  while ((o = getopt_long (argc, argv, "S:H:L:O:gGhV", long_options, 0)) != -1)
+  while ((o = getopt_long (argc, argv, "+S:H:L:O:gGhV", long_options, 0)) != -1)
     {
       switch (o)
 	{

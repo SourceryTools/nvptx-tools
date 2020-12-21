@@ -54,6 +54,20 @@ nvptx-none-run: $(srcdir)/nvptx-run.c libiberty.stmp $(srcdir)/version.h
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS) \
 		-lcuda $(CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED)
 
+
+# Testsuite
+
+.PHONY: check
+check:
+
+# libiberty
+
+check: check-libiberty
+.PHONY: check-libiberty
+check-libiberty: libiberty.stmp
+	cd libiberty/testsuite/ && $(MAKE) check
+
+
 .PHONY: install
 install: all
 	$(mkinstalldirs) $(DESTDIR)$(bindir)

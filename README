@@ -12,6 +12,15 @@ Additionally, the following symlinks are installed:
   * nvptx-none-ranlib: link to the GNU/Linux host system's ranlib.
 
 
+Testsuite
+---------
+
+    $ make check
+
+This currently only runs the testsuite of the included libiberty support
+library ('check-libiberty').
+
+
 DejaGnu Board File
 ------------------
 

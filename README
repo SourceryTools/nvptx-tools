@@ -11,6 +11,10 @@ Additionally, the following symlinks are installed:
   * nvptx-none-ar: link to the GNU/Linux host system's ar.
   * nvptx-none-ranlib: link to the GNU/Linux host system's ranlib.
 
+
+DejaGnu Board File
+------------------
+
 There is a DejaGnu board file included, nvptx-none-run.exp, which can be used
 as follows with the GCC testsuite:
 
@@ -20,4 +24,8 @@ By default, this will use nvptx-none-run found in $PATH, but that can be
 overridden by setting the NVPTX_NONE_RUN environment variable, for example to
 [...]/nvptx-none-run-single.
 
-Report bugs to <https://github.com/MentorEmbedded/nvptx-tools/issues>.
+
+Report Issues
+-------------
+
+Report issues to <https://github.com/MentorEmbedded/nvptx-tools/issues>.

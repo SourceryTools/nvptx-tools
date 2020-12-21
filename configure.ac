@@ -90,4 +90,14 @@ AC_CHECK_DECLS(getopt)
 
 AC_CONFIG_SUBDIRS([libiberty])
 AC_CONFIG_FILES([Makefile dejagnu.exp])
+
+
+# Testsuite
+
+# As of 2020-12-18, there is no standard way to invoke lit; see 'test/README'.
+AC_CHECK_PROGS([LIT], [lit] [lit.py] [llvm-lit])
+
+AC_CONFIG_FILES([test/lit.site.cfg.py])
+
+
 AC_OUTPUT

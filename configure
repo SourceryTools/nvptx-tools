@@ -592,6 +592,7 @@ ac_includes_default="\
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+LIT
 subdirs
 NVPTX_RUN
 EGREP
@@ -4041,6 +4042,58 @@ subdirs="$subdirs libiberty"
 
 ac_config_files="$ac_config_files Makefile dejagnu.exp"
 
+
+
+# Testsuite
+
+# As of 2020-12-18, there is no one standard way; see 'test/README'.
+for ac_prog in lit lit.py llvm-lit
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_prog_LIT+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$LIT"; then
+  ac_cv_prog_LIT="$LIT" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_prog_LIT="$ac_prog"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+LIT=$ac_cv_prog_LIT
+if test -n "$LIT"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $LIT" >&5
+$as_echo "$LIT" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$LIT" && break
+done
+
+
+ac_config_files="$ac_config_files test/lit.site.cfg.py"
+
+
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -4737,6 +4790,7 @@ do
   case $ac_config_target in
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "dejagnu.exp") CONFIG_FILES="$CONFIG_FILES dejagnu.exp" ;;
+    "test/lit.site.cfg.py") CONFIG_FILES="$CONFIG_FILES test/lit.site.cfg.py" ;;
 
   *) as_fn_error "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

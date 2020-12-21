@@ -1,0 +1,63 @@
+The nvptx-tools package uses lit as its primary testing framework.
+
+Despite being developed as part of LLVM:
+<http://blog.llvm.org/2009/12/lit-it.html>,
+<https://github.com/llvm/llvm-project/tree/main/llvm/utils/lit>,
+<https://llvm.org/docs/CommandGuide/lit.html>,
+<http://llvm.org/docs/TestingGuide.html>, etc., and despite being primarily
+used in LLVM contexts, "lit - LLVM Integrated Tester [...] is a portable tool
+for executing LLVM and Clang style test suites, [...]" (notice "portable", and
+"[...] style"), it's likewise feasible for use "out of tree":
+<https://medium.com/@mshockwave/using-llvm-lit-out-of-tree-5cddada85a78>,
+<https://wiki.dlang.org/LDC_Lit-based_testsuite>, etc.
+
+
+lit Installation
+----------------
+
+There don't universally seem to be distribution packages available for lit, so
+you may have to set it up manually.  Instead of having to rely on an LLVM
+build, it may be installed via <https://pypi.org/project/lit/>:
+
+    $ # tested 2020-12-18, Ubuntu 18.04, x86_64 GNU/Linux
+    $ sudo apt-get install python3-pip
+    $ pip3 install --user lit
+
+... which includes a '~/.local/bin/lit' wrapper/executable:
+
+    $ ~/.local/bin/lit --version
+    lit 0.11.0.post1
+
+Per (years-old) <https://bugs.llvm.org/show_bug.cgi?id=8496> "Install lit with
+LLVM", this seems to be the preferred way.
+
+What also works (tested 2020-12-18, Ubuntu 18.04, x86_64 GNU/Linux), is
+manually downloading 'lit-0.11.0.post1.tar.gz' from
+<https://pypi.org/project/lit/#files>, unpacking that, and setting up the
+'PATH' environment variable to include the '[...]/lit-0.11.0.post1' directory,
+and the nvptx-tools 'configure' script will pick up 'lit.py' from there.
+
+What also works (tested 2020-12-18, Ubuntu 18.04, x86_64 GNU/Linux), is
+installing the 'llvm-9-tools' package, and setting up the 'PATH' environment
+variable to include the '/usr/lib/llvm-9/build/utils/lit' directory, and the
+nvptx-tools 'configure' script will pick up 'lit.py' from there.
+
+What also works (tested 2020-12-18, Ubuntu 14.04, x86_64 GNU/Linux), is setting
+up the 'PATH' environment variable to include a LLVM build's '[...]/bin'
+directory, and the nvptx-tools 'configure' script will pick up 'llvm-lit' from
+there.
+
+Generally, if lit isn't found via the 'PATH' environment variable, you may
+'configure' nvptx-tools with 'LIT="$HOME"/.local/bin/lit' (or similar for the
+other installation variants), or put that assignment onto the 'make check'
+invocation.
+
+
+Testsuite Invocation
+--------------------
+
+    $ make [-jN] check
+
+Additional flags may be passed to lit, for example:
+
+    $ make [-jN] check LITFLAGS='--echo-all-commands --output test/log.json'

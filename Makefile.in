@@ -15,6 +15,9 @@ CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED = @CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UND
 AR = @AR@
 RANLIB = @RANLIB@
 
+LIT = @LIT@
+LITFLAGS =
+
 LN_S = @LN_S@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -66,6 +69,24 @@ check: check-libiberty
 .PHONY: check-libiberty
 check-libiberty: libiberty.stmp
 	cd libiberty/testsuite/ && $(MAKE) check
+
+# lit
+
+# Unless 'make' has been invoked in parallel mode ('-jN'), don't run lit in
+# parallel mode (stable output).  In parallel mode, don't pass a '-j' option to
+# lit, instead let it figure out the number of tests to run in parallel; we
+# don't know the 'N' parameter of the 'make' '-jN' option.
+LITFLAGS_J = $(if $(filter -j%,$(MFLAGS)),,-j 1)
+
+check: check-lit
+.PHONY: check-lit
+check-lit: all
+ifeq ($(LIT),)
+	@echo >&2 Need lit to run the testsuite, see \'$(srcdir)/test/README\'
+	@exit 1
+else
+	$(LIT) $(LITFLAGS_J) $(LITFLAGS) test
+endif
 
 
 .PHONY: install

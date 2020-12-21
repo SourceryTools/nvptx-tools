@@ -1,0 +1,17 @@
+# lit site configuration
+
+# This primarily captures build-tree configuration details, and then invokes
+# the actual test framework.
+
+import os
+
+
+# It's easier to use absolute paths.
+abs_srcdir = r'@abs_srcdir@'
+abs_builddir = r'@abs_builddir@'
+
+
+config.test_exec_root = abs_builddir
+
+
+lit_config.load_config(config, os.path.join(abs_srcdir, 'lit.cfg.py'))

@@ -17,8 +17,9 @@ Testsuite
 
     $ make check
 
-This currently only runs the testsuite of the included libiberty support
-library ('check-libiberty').
+In addition to the testsuite of the included libiberty support library
+('check-libiberty'), this tests the nvptx-tools using a lit-based testsuite
+('check-lit'); see 'test/README'.
 
 
 DejaGnu Board File

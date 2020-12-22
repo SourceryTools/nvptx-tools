@@ -1,0 +1,51 @@
+Test when 'ptxas' doesn't get invoked, and when it does, and how.
+
+
+'--help'
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd --help
+RUN: ! test -f %t.dummy_ptxas_log
+
+
+'--version'
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd --version
+RUN: ! test -f %t.dummy_ptxas_log
+
+
+No output file
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd %S/../bare-1.s
+RUN: ! test -f %t.dummy_ptxas_log
+
+
+'--no-verify'
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd --no-verify -o /dev/null %S/../bare-1.s
+RUN: ! test -f %t.dummy_ptxas_log
+
+
+'--verify'
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd --verify -o /dev/null %S/../bare-1.s
+RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
+
+
+Implicit '--verify'
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -o /dev/null %S/../bare-1.s
+RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
+
+
+Implicit '--verify', '-m sm_2020'
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -o /dev/null %S/../bare-1.s -m sm_2020
+RUN: sed -e 's|sm_30|sm_2020|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log

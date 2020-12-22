@@ -17,6 +17,8 @@ config.substitutions.append(('%target_ar_cmd', config.target_ar))
 
 config.substitutions.append(('%target_as_cmd', config.target_as))
 
+config.substitutions.append(('%dummy_ptxas_path', 'PATH=' + config.test_source_root + '/as/ptxas:$PATH'))
+
 
 config.substitutions.append(('%target_ld_cmd', config.target_ld))
 

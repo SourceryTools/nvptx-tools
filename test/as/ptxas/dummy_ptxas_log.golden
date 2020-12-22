@@ -1,0 +1,8 @@
+dummy ptxas
+  arg: -c
+  arg: -o
+  arg: /dev/null
+  arg: /dev/null
+  arg: --gpu-name
+  arg: sm_30
+  arg: -O0

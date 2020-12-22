@@ -10,3 +10,10 @@ Fixed in commit 87635a5e7b8d2c7afbeba90227fbf7c13e10d884 "nvptx-none-run: Pass o
 RUN: ( cd %S && %target_run_tiny_cmd print-argv-1.nvptx a B cc > %t.stdout 2> %t.stderr )
 RUN: cmp %S/print-argv-1-2.stdout.golden %t.stdout
 RUN: ! test -s %t.stderr
+
+
+Fixed in #25 commit 7a523d43cee9adbd60736a24738390604a8fd167 "[nvptx-run] Fix greedy option parsing":
+
+RUN: ( cd %S && %target_run_tiny_cmd print-argv-1.nvptx --help a --iNvALiD B '' cc -- eNd > %t.stdout 2> %t.stderr )
+RUN: cmp %S/print-argv-1-3.stdout.golden %t.stdout
+RUN: ! test -s %t.stderr

@@ -1,0 +1,4 @@
+RUN: %target_ranlib_cmd --help > %t.stdout 2> %t.stderr
+RUN_TODO('help-1-xfail-1.test'): < %t.stdout head -n 1 | grep -qe '^Usage: nvptx-none-ranlib '
+  RUN: test -s %t.stdout
+RUN: ! test -s %t.stderr

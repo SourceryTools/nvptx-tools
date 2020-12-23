@@ -15,12 +15,18 @@ abs_top_builddir = r'@abs_top_builddir@'
 config.test_exec_root = abs_builddir
 
 
+config.target_ar = r'@AR@'
+
+
 config.target_as = 'nvptx-none-as'
 config.target_as = os.path.join(abs_top_builddir, config.target_as)
 
 
 config.target_ld = 'nvptx-none-ld'
 config.target_ld = os.path.join(abs_top_builddir, config.target_ld)
+
+
+config.target_ranlib = r'@RANLIB@'
 
 
 config.target_run = r'@NVPTX_RUN@'

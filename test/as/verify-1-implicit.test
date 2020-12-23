@@ -1,0 +1,39 @@
+Aspects of implicit '--verify'.
+
+XFAIL: ptxas && !ptxas_sm_30
+
+
+'bare-1.s'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd %S/bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'garbage-1.s'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd %S/garbage-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+
+'empty.s'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd %S/empty.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+
+'/dev/null'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd /dev/null -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'

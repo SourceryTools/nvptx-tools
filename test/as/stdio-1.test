@@ -1,0 +1,133 @@
+Functionality implemented in commit 08b0896a71925d4e033be40abdd23cf08a41a5da "restore ability to use stdin/stdout".
+
+See 'stdio-1-verify.test' for '--verify' variants.
+Some such variants may remain in here: verification isn't done if we don't write output to a file.
+
+XFAIL: ptxas && !ptxas_sm_30
+
+
+'bare-1.s'
+
+'stdin'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd < %S/bare-1.s -o %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify < %S/bare-1.s -o %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+'stdout'
+
+RUN: %target_as_cmd --verify %S/bare-1.s > %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+RUN: %target_as_cmd %S/bare-1.s > %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+RUN: %target_as_cmd --no-verify %S/bare-1.s > %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+'stdin', 'stdout'
+
+RUN: %target_as_cmd --verify < %S/bare-1.s > %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+RUN: %target_as_cmd < %S/bare-1.s > %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+RUN: %target_as_cmd --no-verify < %S/bare-1.s > %t.o
+RUN: cmp %S/bare-1.s %t.o
+
+
+'garbage-1.s'
+
+'stdin'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd < %S/garbage-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify < %S/garbage-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'stdout'
+
+RUN: %target_as_cmd --verify %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd --no-verify %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+'stdin', 'stdout'
+
+RUN: %target_as_cmd --verify < %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd < %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd --no-verify < %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+
+'/dev/null'
+
+'stdin'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd < /dev/null -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify < /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'stdout'
+
+RUN: %target_as_cmd --verify /dev/null > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd /dev/null > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd --no-verify /dev/null > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+'stdin', 'stdout'
+
+RUN: %target_as_cmd --verify < /dev/null > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd < /dev/null > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd --no-verify < /dev/null > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr

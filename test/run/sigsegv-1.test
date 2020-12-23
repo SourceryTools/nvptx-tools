@@ -1,0 +1,5 @@
+RUN: %target_run_tiny_cmd %S/sigsegv-1.nvptx > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x127 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^nvptx-run: error getting kernel result: .* (.*, [0-9]\+)$'
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout

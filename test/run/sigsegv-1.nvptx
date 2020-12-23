@@ -1,0 +1,19 @@
+//     $ [nvptx-none-gcc] sigsegv-1.c -o sigsegv-1.nvptx -O3
+// ..., and then manually simplify.
+
+.version 3.1
+.target sm_30
+.address_size 64
+.visible .entry __main (.param .u64 %in_ar0, .param .u32 %in_ar1, .param .u64 %in_ar2)
+{
+.reg .u64 %ar0;
+ld.param.u64 %ar0,[%in_ar0];
+.reg .u64 %ar2;
+ld.param.u64 %ar2,[%in_ar2];
+.reg .u64 %r28;
+.reg .u32 %r29;
+ld.u64 %r28,[%ar2+8];
+ld.s8 %r29,[%r28];
+st.u32 [%ar0],%r29;
+ret;
+}

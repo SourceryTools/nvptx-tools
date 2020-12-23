@@ -28,3 +28,7 @@ if config.target_run:
     config.available_features.add('target_run')
 
     config.substitutions.append(('%target_run_cmd', config.target_run))
+
+    # If running the testsuite in parallel mode, we'll easily run out of device stack/heap memory.
+    # Our usual testcases don't need much, so be arbitrarily conservative.
+    config.substitutions.append(('%target_run_tiny_cmd', config.target_run + ' --stack-size 1024 --heap-size 1048576'))

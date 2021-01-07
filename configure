@@ -594,10 +594,10 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 LIT
 subdirs
-NVPTX_RUN
 EGREP
 GREP
 CPP
+NVPTX_RUN
 CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED
 CUDA_DRIVER_LDFLAGS
 CUDA_DRIVER_CPPFLAGS
@@ -3584,6 +3584,34 @@ cat >>confdefs.h <<_ACEOF
 #define HAVE_DECL_CUGETERRORSTRING $ac_have_decl
 _ACEOF
 
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for extra programs to build requiring -lcuda" >&5
+$as_echo_n "checking for extra programs to build requiring -lcuda... " >&6; }
+NVPTX_RUN=
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <cuda.h>
+int
+main ()
+{
+cuInit (0);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  NVPTX_RUN=nvptx-none-run
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $NVPTX_RUN" >&5
+$as_echo "$NVPTX_RUN" >&6; }
+
+
+CPPFLAGS=$save_CPPFLAGS
+LDFLAGS=$save_LDFLAGS
+LIBS=$save_LIBS
+
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -3995,34 +4023,6 @@ _ACEOF
 fi
 
 done
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for extra programs to build requiring -lcuda" >&5
-$as_echo_n "checking for extra programs to build requiring -lcuda... " >&6; }
-NVPTX_RUN=
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <cuda.h>
-int
-main ()
-{
-cuInit (0);
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  NVPTX_RUN=nvptx-none-run
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $NVPTX_RUN" >&5
-$as_echo "$NVPTX_RUN" >&6; }
-
-
-CPPFLAGS=$save_CPPFLAGS
-LDFLAGS=$save_LDFLAGS
-LIBS=$save_LIBS
 
 ac_fn_c_check_decl "$LINENO" "getopt" "ac_cv_have_decl_getopt" "$ac_includes_default"
 if test "x$ac_cv_have_decl_getopt" = x""yes; then :

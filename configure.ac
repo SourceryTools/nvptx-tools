@@ -71,7 +71,6 @@ LIBS="$LIBS -lcuda $CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED"
 AC_CHECK_FUNCS([[cuGetErrorName] [cuGetErrorString]])
 AC_CHECK_DECLS([[cuGetErrorName], [cuGetErrorString]],
   [], [], [[#include <cuda.h>]])
-AC_CHECK_HEADERS(unistd.h sys/stat.h)
 
 AC_MSG_CHECKING([for extra programs to build requiring -lcuda])
 NVPTX_RUN=
@@ -86,6 +85,7 @@ CPPFLAGS=$save_CPPFLAGS
 LDFLAGS=$save_LDFLAGS
 LIBS=$save_LIBS
 
+AC_CHECK_HEADERS(unistd.h sys/stat.h)
 AC_CHECK_DECLS(getopt)
 
 AC_CONFIG_SUBDIRS([libiberty])

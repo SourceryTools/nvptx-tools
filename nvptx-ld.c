@@ -390,7 +390,7 @@ Report bugs to %s.\n",
 	  exit (0);
 	case 'V':
 	  printf ("\
-nvtpx-none-ld %s%s\n\
+nvptx-none-ld %s%s\n\
 Copyright %s Mentor Graphics\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\

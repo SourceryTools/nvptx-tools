@@ -864,17 +864,22 @@ traverse (void **slot, void *data)
 }
 
 static void
-process (FILE *in, FILE *out, int verify, const char *outname)
+process (FILE *in, FILE *out, int *verify, const char *outname)
 {
   symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
                               NULL);
 
   const char *input = read_file (in);
+  if (*input == '\0')
+    {
+      *verify = 0;
+      return;
+    }
   Token *tok = tokenize (input);
 
   /* By default, when ptxas is not in PATH, do minimalistic verification,
      just require that the first non-comment directive is .version.  */
-  if (verify < 0)
+  if (*verify < 0)
     {
       size_t i;
       for (i = 0; tok[i].kind == K_comment; i++)
@@ -1126,7 +1131,7 @@ This program has absolutely no warranty.\n",
     if (program_available ("ptxas"))
       verify = 1;
 
-  process (in, out, verify, outname);
+  process (in, out, &verify, outname);
   if (outname)
     fclose (out);
 

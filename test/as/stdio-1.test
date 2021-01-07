@@ -2,6 +2,7 @@ Functionality implemented in commit 08b0896a71925d4e033be40abdd23cf08a41a5da "re
 
 See 'stdio-1-verify.test' for '--verify' variants.
 Some such variants may remain in here: verification isn't done if we don't write output to a file.
+Per #26 commit ea21ab573245b0ce8d9e9da53f18d37b9d671a18 "[nvptx-as] Allow empty input file", verification also isn't done if the input file is empty.
 
 XFAIL: ptxas && !ptxas_sm_30
 
@@ -87,15 +88,69 @@ RUN: ! test -s %t.o
 RUN: ! test -s %t.stderr
 
 
+'whitespace-1.s'
+
+'stdin'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd < %S/whitespace-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify < %S/whitespace-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'stdout'
+
+RUN: %target_as_cmd --verify %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd --no-verify %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+'stdin', 'stdout'
+
+RUN: %target_as_cmd --verify < %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd < %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+RUN: %target_as_cmd --no-verify < %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stderr
+
+
 '/dev/null'
 
 'stdin'
 
 RUN: rm -f %t*
-RUN: %target_as_cmd < /dev/null -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
-RUN: ! test -f %t.o
+RUN: %target_as_cmd --verify < /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
 RUN: ! test -s %t.stdout
-RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+RUN: ! test -s %t.stderr
+
+RUN: rm -f %t*
+RUN: %target_as_cmd < /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
 
 RUN: rm -f %t*
 RUN: %target_as_cmd --no-verify < /dev/null -o %t.o > %t.stdout 2> %t.stderr

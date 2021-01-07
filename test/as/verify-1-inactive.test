@@ -20,20 +20,10 @@ RUN: ! test -s %t.stdout
 RUN: ! test -s %t.stderr
 
 
-'empty.s'
+'whitespace-1.s'
 
 RUN: rm -f %t*
-RUN: %target_as_cmd --no-verify %S/empty.s -o %t.o > %t.stdout 2> %t.stderr
-RUN: test -f %t.o
-RUN: ! test -s %t.o
-RUN: ! test -s %t.stdout
-RUN: ! test -s %t.stderr
-
-
-'/dev/null'
-
-RUN: rm -f %t*
-RUN: %target_as_cmd --no-verify /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: %target_as_cmd --no-verify %S/whitespace-1.s -o %t.o > %t.stdout 2> %t.stderr
 RUN: test -f %t.o
 RUN: ! test -s %t.o
 RUN: ! test -s %t.stdout

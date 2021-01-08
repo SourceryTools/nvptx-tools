@@ -40,8 +40,8 @@ config.substitutions.append(('%target_as_cmd', config.target_as))
 
 config.substitutions.append(('%dummy_ptxas_path', 'PATH=' + config.test_source_root + '/as/ptxas:$PATH'))
 
-# Aside from different capitalization, the same error diagnostic is emitted by 'ptxas' vs. 'nvptx-none-as' internal checking (if 'ptxas' is not available).
-config.substitutions.append(('%r_target_as_missing_version_directive', '[mM]issing \.version directive at start of file'))
+# Error diagnostic as emitted by the 'nvptx-none-as' minimalistic verification.
+config.substitutions.append(('%r_target_as_missing_version_directive', '^nvptx-as: missing \.version directive at start of file'))
 
 if config.ptxas:
     config.available_features.add('ptxas')

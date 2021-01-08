@@ -1,8 +1,5 @@
 Aspects of minimalistic verification.
 
-Minimalistic verification isn't done if 'ptxas' is available.
-UNSUPPORTED: ptxas
-
 
 'garbage-1.s', file
 

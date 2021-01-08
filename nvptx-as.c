@@ -885,9 +885,10 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
 
   Token *tok = tokenize (input);
 
-  /* By default, when ptxas is not in PATH, do minimalistic verification,
-     just require that the first non-comment directive is .version.  */
-  if (*verify < 0)
+  /* Do minimalistic verification, so that we reliably reject (certain classes
+     of) invalid input.  (If available and applicable, 'ptxas' is later used to
+     verify the whole output file.)  */
+  if (*verify != 0)
     {
       size_t i;
       for (i = 0; tok[i].kind == K_comment; i++)

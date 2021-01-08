@@ -1,0 +1,15 @@
+Functionality implemented in commit 08b0896a71925d4e033be40abdd23cf08a41a5da "restore ability to use stdin/stdout".
+
+See 'stdio-1.test'; these here are the 'ptxas' verification variants.
+
+REQUIRES: ptxas
+XFAIL: !ptxas_sm_30
+
+
+'bare-1.s'
+
+'stdin'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --verify < %S/bare-1.s -o %t.o
+RUN: cmp %S/bare-1.s %t.o

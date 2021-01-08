@@ -867,11 +867,20 @@ static void
 process (FILE *in, FILE *out, int *verify, const char *outname)
 {
   const char *input = read_file (in);
+
+  /* As expected by GCC, handle an empty input file specially.  See
+     <https://github.com/MentorEmbedded/nvptx-tools/pull/26> "[nvptx-as] Allow
+     empty input file" for reference.  */
   if (*input == '\0')
     {
+      /* Produce an empty output file.  */
+
+      /* An empty file isn't a valid PTX file.  */
       *verify = 0;
+
       return;
     }
+
   Token *tok = tokenize (input);
 
   /* By default, when ptxas is not in PATH, do minimalistic verification,

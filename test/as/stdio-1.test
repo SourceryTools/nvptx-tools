@@ -67,13 +67,13 @@ RUN: ! test -s %t.stderr
 
 'stdout'
 
-RUN: %target_as_cmd --verify %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd --verify %S/garbage-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
-RUN: %target_as_cmd %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd %S/garbage-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
 RUN: %target_as_cmd --no-verify %S/garbage-1.s > %t.o 2> %t.stderr
 RUN: ! test -s %t.o
@@ -81,13 +81,13 @@ RUN: ! test -s %t.stderr
 
 'stdin', 'stdout'
 
-RUN: %target_as_cmd --verify < %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd --verify < %S/garbage-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
-RUN: %target_as_cmd < %S/garbage-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd < %S/garbage-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
 RUN: %target_as_cmd --no-verify < %S/garbage-1.s > %t.o 2> %t.stderr
 RUN: ! test -s %t.o
@@ -119,13 +119,13 @@ RUN: ! test -s %t.stderr
 
 'stdout'
 
-RUN: %target_as_cmd --verify %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd --verify %S/whitespace-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
-RUN: %target_as_cmd %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd %S/whitespace-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
 RUN: %target_as_cmd --no-verify %S/whitespace-1.s > %t.o 2> %t.stderr
 RUN: ! test -s %t.o
@@ -133,13 +133,13 @@ RUN: ! test -s %t.stderr
 
 'stdin', 'stdout'
 
-RUN: %target_as_cmd --verify < %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd --verify < %S/whitespace-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
-RUN: %target_as_cmd < %S/whitespace-1.s > %t.o 2> %t.stderr
+RUN: %target_as_cmd < %S/whitespace-1.s > %t.o 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: ! test -s %t.stderr
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
 RUN: %target_as_cmd --no-verify < %S/whitespace-1.s > %t.o 2> %t.stderr
 RUN: ! test -s %t.o

@@ -1143,15 +1143,17 @@ This program has absolutely no warranty.\n",
   if (!in)
     fatal_error ("cannot open input ptx file");
 
+  process (in, out, &verify, inname);
+
+  if (outname)
+    fclose (out);
+
   if (outname == NULL)
+    /* We don't have a PTX file for 'ptxas' to read in; skip verification.  */
     verify = 0;
   else if (verify == -1)
     if (program_available ("ptxas"))
       verify = 1;
-
-  process (in, out, &verify, inname);
-  if (outname)
-    fclose (out);
 
   if (verify > 0)
     {

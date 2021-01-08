@@ -866,9 +866,6 @@ traverse (void **slot, void *data)
 static void
 process (FILE *in, FILE *out, int *verify, const char *outname)
 {
-  symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
-                              NULL);
-
   const char *input = read_file (in);
   if (*input == '\0')
     {
@@ -888,6 +885,8 @@ process (FILE *in, FILE *out, int *verify, const char *outname)
 	fatal_error ("missing .version directive at start of file '%s'",
 		     outname);
     }
+
+  symbol_table = htab_create (500, hash_string_hash, hash_string_eq, NULL);
 
   do
     tok = parse_file (tok);

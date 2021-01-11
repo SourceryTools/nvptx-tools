@@ -1,0 +1,22 @@
+Aspects of minimalistic verification.
+
+Minimalistic verification isn't done if 'ptxas' is available.
+UNSUPPORTED: ptxas
+
+
+'garbage-1.s', file
+
+RUN: rm -f %t*
+RUN: %target_as_cmd %S/garbage-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive '\''.*/garbage-1\.s'\'\$
+
+
+'garbage-1.s', 'stdin'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd < %S/garbage-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive '\''{standard input}'\'\$

@@ -864,7 +864,7 @@ traverse (void **slot, void *data)
 }
 
 static void
-process (FILE *in, FILE *out, int *verify, const char *outname)
+process (FILE *in, FILE *out, int *verify, const char *inname)
 {
   const char *input = read_file (in);
 
@@ -892,7 +892,7 @@ process (FILE *in, FILE *out, int *verify, const char *outname)
 	;
       if (tok[i].kind != K_dotted || !is_keyword (&tok[i], "version"))
 	fatal_error ("missing .version directive at start of file '%s'",
-		     outname);
+		     inname);
     }
 
   symbol_table = htab_create (500, hash_string_hash, hash_string_eq, NULL);
@@ -1057,6 +1057,7 @@ int
 main (int argc, char **argv)
 {
   FILE *in = stdin;
+  const char *inname = "{standard input}";
   FILE *out = stdout;
   bool verbose __attribute__((unused)) = false;
   int verify = -1;
@@ -1129,7 +1130,10 @@ This program has absolutely no warranty.\n",
     fatal_error ("cannot open '%s'", outname);
 
   if (argc > optind)
-    in = fopen (argv[optind], "r");
+    {
+      inname = argv[optind];
+      in = fopen (inname, "r");
+    }
   if (!in)
     fatal_error ("cannot open input ptx file");
 
@@ -1139,7 +1143,7 @@ This program has absolutely no warranty.\n",
     if (program_available ("ptxas"))
       verify = 1;
 
-  process (in, out, &verify, outname);
+  process (in, out, &verify, inname);
   if (outname)
     fclose (out);
 

@@ -77,6 +77,8 @@
 
 #define DIR_UP ".."
 
+#define SMVER_DEFAULT "sm_30"
+
 static const char *outname = NULL;
 
 static void __attribute__ ((format (printf, 1, 2)))
@@ -1052,7 +1054,7 @@ main (int argc, char **argv)
   FILE *out = stdout;
   bool verbose __attribute__((unused)) = false;
   int verify = -1;
-  const char *smver = "sm_30";
+  const char *smver = SMVER_DEFAULT;
 
   int o;
   int option_index = 0;
@@ -1087,6 +1089,8 @@ main (int argc, char **argv)
 	  printf ("\
 Usage: nvptx-none-as [option...] [asmfile]\n\
 Options:\n\
+  -m TARGET             Override %s target architecture used for ptxas\n\
+                        verification\n\
   -o FILE               Write output to FILE\n\
   -v                    Be verbose\n\
   --verify              Do verify output is acceptable to ptxas\n\
@@ -1095,6 +1099,7 @@ Options:\n\
   --version             Print version number and exit\n\
 \n\
 Report bugs to %s.\n",
+		  SMVER_DEFAULT,
 		  REPORT_BUGS_TO);
 	  exit (0);
 	case 'V':

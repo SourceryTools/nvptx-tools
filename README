@@ -41,14 +41,6 @@ Nvidia CUDA/PTX Dependency
 The nvptx-tools are used for interfacing nvptx-none GCC toolchains with Nvidia
 tools and GPUs via Nvidia CUDA/PTX.
 
-The baseline dependency is sm_30 functionality (or higher).
-
-Support for sm_30 has been introduced with PTX ISA 3.0, CUDA 4.2, driver r295,
-has been deprecated in CUDA 10.2 (see
-<https://docs.nvidia.com/cuda/archive/10.2/cuda-toolkit-release-notes/#deprecated-features>),
-and has been removed (at least in 'ptxas') in CUDA 11.0 (see
-<https://docs.nvidia.com/cuda/archive/11.0/cuda-toolkit-release-notes/#deprecated-features>).
-
 Individual nvptx-tools depend on CUDA/PTX as follows:
 
   * nvptx-none-as
@@ -58,28 +50,40 @@ Individual nvptx-tools depend on CUDA/PTX as follows:
     isn't available in the standard search path, this verification step is
     skipped (output file assumed compliant).
 
-    Unless overridden with the '-m' option, '--gpu-name sm_30' is passed to
-    'ptxas'.  This means that if you're using CUDA 11.0+, you have to override
-    the default sm_30 with '-m sm_35', for example.
-
-      * Testsuite
-
-        Testcases depending on 'ptxas' are UNSUPPORTED if 'ptxas' isn't
-        available.
-
-        There are several sm_30 testcases.  These are XFAILed if 'ptxas'
-        doesn't support sm_30.
+    Unless overridden with the '-m' option, the target architecture used for
+    'ptxas' verification ('--gpu-name' option to 'ptxas') is deduced from the
+    '.target' directive in the input's preamble.  This means that it's the
+    responsibility of the producer (nvptx-none GCC toolchain) that the PTX code
+    works with the CUDA version used.
 
   * nvptx-none-run
 
     Uses the CUDA Driver library ('cuda.h', 'libcuda') to run PTX binaries.  If
     (at configure time) that library isn't available, this tool isn't built.
 
-      * Testsuite
 
-        All execution testcases are UNSUPPORTED if this tool isn't available.
+For the testsuite (only), the baseline dependency is sm_30 functionality (or
+higher).
 
-        There are several sm_30 testcases.
+Support for sm_30 has been introduced with PTX ISA 3.0, CUDA 4.2, driver r295,
+has been deprecated in CUDA 10.2 (see
+<https://docs.nvidia.com/cuda/archive/10.2/cuda-toolkit-release-notes/#deprecated-features>),
+and has been removed (at least in 'ptxas') in CUDA 11.0 (see
+<https://docs.nvidia.com/cuda/archive/11.0/cuda-toolkit-release-notes/#deprecated-features>).
+
+Testcases for the nvptx-tools depend on CUDA/PTX as follows:
+
+  * nvptx-none-as
+
+    Testcases depending on 'ptxas' are UNSUPPORTED if 'ptxas' isn't available.
+
+    The sm_30 testcases are XFAILed if 'ptxas' doesn't support sm_30.
+
+  * nvptx-none-run
+
+    All execution testcases are UNSUPPORTED if this tool isn't available,
+    because the CUDA Driver library isn't available.
+
 
 With reduced functionality as indicated, it's possible to build, test, and use
 the nvptx-tools without a CUDA installation.

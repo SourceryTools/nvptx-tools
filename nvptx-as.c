@@ -34,6 +34,8 @@
 #include <sys/stat.h>
 #endif
 #include <errno.h>
+#include <assert.h>
+
 #define obstack_chunk_alloc malloc
 #define obstack_chunk_free free
 #include <obstack.h>
@@ -76,8 +78,6 @@
 #endif
 
 #define DIR_UP ".."
-
-#define SMVER_DEFAULT "sm_30"
 
 static const char *outname = NULL;
 
@@ -178,6 +178,9 @@ typedef struct Token
   /* Token itself */
   char const *ptr;
 } Token;
+
+/* Token of the preamble '.target' directive's argument.  */
+static Token *tok_preamble_target_arg;
 
 /* statement info */
 typedef enum Vis
@@ -918,7 +921,10 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
       while (tok[i].kind == K_comment)
 	i++;
       if (tok[i].kind == K_symbol)
-	i++;
+	{
+	  tok_preamble_target_arg = &tok[i];
+	  i++;
+	}
       else
 	fatal_error ("malformed .target directive at start of file '%s'",
 		     inname);
@@ -1095,7 +1101,7 @@ main (int argc, char **argv)
   FILE *out = stdout;
   bool verbose __attribute__((unused)) = false;
   int verify = -1;
-  const char *smver = SMVER_DEFAULT;
+  const char *target_arg_force = NULL;
 
   int o;
   int option_index = 0;
@@ -1121,7 +1127,7 @@ main (int argc, char **argv)
 	  outname = optarg;
 	  break;
 	case 'm':
-	  smver = optarg;
+	  target_arg_force = optarg;
 	  break;
 	case 'I':
 	  /* Ignore include paths.  */
@@ -1130,8 +1136,8 @@ main (int argc, char **argv)
 	  printf ("\
 Usage: nvptx-none-as [option...] [asmfile]\n\
 Options:\n\
-  -m TARGET             Override %s target architecture used for ptxas\n\
-                        verification\n\
+  -m TARGET             Override target architecture used for ptxas\n\
+                        verification (default: deduce from input's preamble)\n\
   -o FILE               Write output to FILE\n\
   -v                    Be verbose\n\
   --verify              Do verify output is acceptable to ptxas\n\
@@ -1140,7 +1146,6 @@ Options:\n\
   --version             Print version number and exit\n\
 \n\
 Report bugs to %s.\n",
-		  SMVER_DEFAULT,
 		  REPORT_BUGS_TO);
 	  exit (0);
 	case 'V':
@@ -1188,6 +1193,20 @@ This program has absolutely no warranty.\n",
 
   if (verify > 0)
     {
+      /* We override the default '--gpu-name' of 'ptxas': its default may not
+	 be sufficient for what is requested in the '.target' directive in the
+	 input's preamble ("SM version specified by .target is higher than
+	 default SM version assumed").  */
+      const char *target_arg;
+      if (target_arg_force)
+	target_arg = target_arg_force;
+      else
+	{
+	  assert (tok_preamble_target_arg);
+	  target_arg = strndup (tok_preamble_target_arg->ptr,
+				tok_preamble_target_arg->len);
+	}
+
       struct obstack argv_obstack;
       obstack_init (&argv_obstack);
       obstack_ptr_grow (&argv_obstack, "ptxas");
@@ -1196,7 +1215,7 @@ This program has absolutely no warranty.\n",
       obstack_ptr_grow (&argv_obstack, "/dev/null");
       obstack_ptr_grow (&argv_obstack, outname);
       obstack_ptr_grow (&argv_obstack, "--gpu-name");
-      obstack_ptr_grow (&argv_obstack, smver);
+      obstack_ptr_grow (&argv_obstack, target_arg);
       obstack_ptr_grow (&argv_obstack, "-O0");
       obstack_ptr_grow (&argv_obstack, NULL);
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);

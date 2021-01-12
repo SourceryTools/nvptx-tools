@@ -1,7 +1,5 @@
 Aspects of implicit '--verify'.
 
-XFAIL: ptxas && !ptxas_sm_30
-
 
 'bare-1.s'
 

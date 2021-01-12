@@ -2,7 +2,7 @@
 // ..., and then manually simplify.
 
 .version 3.1
-.target sm_30
+.target sm_35
 .address_size 64
 .extern .func (.param .u32 %value_out) vprintf (.param .u64 %in_ar0, .param .u64 %in_ar1);
 .const .align 1 .u8 $LC0[8] =

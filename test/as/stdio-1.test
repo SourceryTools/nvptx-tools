@@ -4,8 +4,6 @@ See 'stdio-1-ptxas.test' for 'ptxas' verification variants.
 Some '--verify' variants may remain in here: if the 'nvptx-none-as' minimalistic verification reports an error already, or if we don't write output to a file (and thus 'ptxas' verification isn't done).
 Per #26 commit ea21ab573245b0ce8d9e9da53f18d37b9d671a18 "[nvptx-as] Allow empty input file", verification also isn't done if the input file is empty.
 
-XFAIL: ptxas && !ptxas_sm_30
-
 
 'bare-1.s'
 

@@ -2,7 +2,7 @@
 // ..., and then manually simplify.
 
 .version 3.1
-.target sm_30
+.target sm_35
 .address_size 64
 .visible .entry __main (.param .u64 %in_ar0, .param .u32 %in_ar1, .param .u64 %in_ar2)
 {

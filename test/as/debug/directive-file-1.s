@@ -4,7 +4,7 @@
 
 // BEGIN PREAMBLE
 	.version	3.1
-	.target	sm_30
+	.target	sm_35
 	.address_size 64
 // END PREAMBLE
 

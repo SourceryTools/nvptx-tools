@@ -50,14 +50,6 @@ config.substitutions.append(('%r_target_as_unsupported_list_in_target_directive'
 if config.ptxas:
     config.available_features.add('ptxas')
 
-    # Does 'ptxas' know about 'sm_30'?
-    # CUDA 11+ doesn't anymore: "ptxas fatal   : Value 'sm_30' is not defined for option 'gpu-name'".
-    # 'ptxas --version' output is preserved intentionally.
-    if subprocess.call(args = [config.ptxas, '--gpu-name', 'sm_30', '--version']) == 0:
-        config.available_features.add('ptxas_sm_30')
-    else:
-        subprocess.check_call(args = [config.ptxas, '--version'])
-
 
 config.substitutions.append(('%target_ld_cmd', config.target_ld))
 

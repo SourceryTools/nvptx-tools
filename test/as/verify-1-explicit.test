@@ -1,7 +1,6 @@
 Aspects of explicit '--verify'.
 
 REQUIRES: ptxas
-XFAIL: !ptxas_sm_30
 
 
 'bare-1.s'

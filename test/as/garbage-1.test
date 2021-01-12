@@ -2,8 +2,6 @@
 
 Document current buggy behavior.
 
-XFAIL: ptxas && !ptxas_sm_30
-
 
 'bare-1.s', 'garbage-1.s'
 

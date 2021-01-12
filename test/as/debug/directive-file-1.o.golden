@@ -2,7 +2,7 @@
 //     $ [nvptx-none-as] directive-file-1.s -o directive-file-1.o.golden
 // BEGIN PREAMBLE
 .version 3.1
-.target sm_30
+.target sm_35
 .address_size 64
 // END PREAMBLE
 // BEGIN GLOBAL FUNCTION DECL: f

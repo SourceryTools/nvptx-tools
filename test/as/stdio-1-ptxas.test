@@ -3,7 +3,6 @@ Functionality implemented in commit 08b0896a71925d4e033be40abdd23cf08a41a5da "re
 See 'stdio-1.test'; these here are the 'ptxas' verification variants.
 
 REQUIRES: ptxas
-XFAIL: !ptxas_sm_30
 
 
 'bare-1.s'

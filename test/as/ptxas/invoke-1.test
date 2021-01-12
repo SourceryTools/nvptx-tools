@@ -47,5 +47,5 @@ Implicit '--verify', '-m sm_2020'
 
 RUN: rm -f %t*
 RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -o /dev/null %S/../bare-1.s -m sm_2020
-RUN: sed -e 's|sm_30|sm_2020|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: sed -e 's|sm_35|sm_2020|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log

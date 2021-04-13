@@ -703,6 +703,7 @@ static Token *
 parse_file (Token *tok)
 {
   Stmt *comment = 0;
+  unsigned has_map = 0;
 
   if (tok->kind == K_comment)
     {
@@ -711,9 +712,15 @@ parse_file (Token *tok)
       while (tok->kind == K_comment)
 	{
 	  if (strncmp (tok->ptr, ":VAR_MAP ", 9) == 0)
-	    record_id (tok->ptr + 9, &vars_tail);
+	    {
+	      record_id (tok->ptr + 9, &vars_tail);
+	      has_map = 1;
+	    }
 	  if (strncmp (tok->ptr, ":FUNC_MAP ", 10) == 0)
-	    record_id (tok->ptr + 10, &funcs_tail);
+	    {
+	      record_id (tok->ptr + 10, &funcs_tail);
+	      has_map = 1;
+	    }
 	  tok++;
 	}
       comment = alloc_comment (start, tok);
@@ -735,7 +742,7 @@ parse_file (Token *tok)
 	{
 	  unsigned vis = 0;
 	  symbol *def = 0;
-	  unsigned is_decl = 0;
+	  unsigned is_decl = has_map;
 	  Token *start, *def_token = 0;
 
 	  for (start = tok;

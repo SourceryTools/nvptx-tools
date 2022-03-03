@@ -79,7 +79,27 @@
 
 #define DIR_UP ".."
 
+/* The following ptx message is no error, unless --verify has been specified.
+   To be used when a sm_ has been specified which the installed ptxas does
+   not support.  */
+#define PTXAS_IGNORE_ERR_1 "is not defined for option 'gpu-name'"
+#define PTXAS_IGNORE_MSG_1 "specified .target not supported by ptxas"
+#define PTXAS_IGNORE_ERR_2 "Unsupported .version"
+#define PTXAS_IGNORE_MSG_2 "specified PTX ISA .version not supported by ptxas"
+
 static const char *outname = NULL;
+
+static void __attribute__ ((format (printf, 1, 2)))
+stderr_msg (const char * cmsgid, ...)
+{
+  va_list ap;
+
+  va_start (ap, cmsgid);
+  fprintf (stderr, "nvptx-as: ");
+  vfprintf (stderr, cmsgid, ap);
+  fprintf (stderr, "\n");
+  va_end (ap);
+}
 
 static void __attribute__ ((format (printf, 1, 2)))
 fatal_error (const char * cmsgid, ...)
@@ -947,12 +967,37 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
 /* Wait for a process to finish, and exit if a nonzero status is found.  */
 
 int
-collect_wait (const char *prog, struct pex_obj *pex)
+collect_wait (const char *prog, struct pex_obj *pex, bool force, bool verbose)
 {
   int status;
 
   if (!pex_get_status (pex, 1, &status))
     fatal_error ("can't get program status: %m");
+  if (!force)
+    {
+      FILE *in = pex_read_err (pex, 0);
+      char buffer[1024];
+      size_t n = fread(buffer, sizeof(char), 1024, in);
+      if (n && memmem (buffer, n, PTXAS_IGNORE_ERR_1,
+		       strlen (PTXAS_IGNORE_ERR_1)))
+	{
+	  if (verbose)
+	    stderr_msg ("not verifying: %s", PTXAS_IGNORE_MSG_1);
+	  return 0;
+	}
+      if (n && memmem (buffer, n, PTXAS_IGNORE_ERR_2,
+		       strlen (PTXAS_IGNORE_ERR_2)))
+	{
+	  if (verbose)
+	    stderr_msg ("not verifying: %s", PTXAS_IGNORE_MSG_2);
+	  return 0;
+	}
+      while (n)
+	{
+	  fwrite(buffer, sizeof(char), n, stderr);
+	  n = fread(buffer, sizeof(char), 1024, in);
+	}
+    }
   pex_free (pex);
 
   if (status)
@@ -972,9 +1017,9 @@ collect_wait (const char *prog, struct pex_obj *pex)
 }
 
 static void
-do_wait (const char *prog, struct pex_obj *pex)
+do_wait (const char *prog, struct pex_obj *pex, bool force, bool verbose)
 {
-  int ret = collect_wait (prog, pex);
+  int ret = collect_wait (prog, pex, force, verbose);
   if (ret != 0)
     {
       fatal_error ("%s returned %d exit status", prog, ret);
@@ -984,7 +1029,7 @@ do_wait (const char *prog, struct pex_obj *pex)
 
 /* Execute a program, and wait for the reply.  */
 static void
-fork_execute (const char *prog, char *const *argv)
+fork_execute (const char *prog, char *const *argv, bool force, bool verbose)
 {
   struct pex_obj *pex = pex_init (0, "nvptx-as", NULL);
   if (pex == NULL)
@@ -992,8 +1037,10 @@ fork_execute (const char *prog, char *const *argv)
 
   int err;
   const char *errmsg;
-
-  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH, argv[0], argv, NULL,
+  int flags = PEX_LAST | PEX_SEARCH;
+  if (!force)
+    flags |= PEX_STDERR_TO_PIPE;
+  errmsg = pex_run (pex, flags, argv[0], argv, NULL,
 		    NULL, &err);
   if (errmsg != NULL)
     {
@@ -1005,7 +1052,7 @@ fork_execute (const char *prog, char *const *argv)
       else
 	fatal_error ("%s", errmsg);
     }
-  do_wait (prog, pex);
+  do_wait (prog, pex, force, verbose);
 }
 
 /* Determine if progname is available in PATH.  */
@@ -1097,7 +1144,7 @@ main (int argc, char **argv)
   FILE *in = stdin;
   const char *inname = "{standard input}";
   FILE *out = stdout;
-  bool verbose __attribute__((unused)) = false;
+  bool verbose = false;
   int verify = -1;
   const char *target_arg_force = NULL;
 
@@ -1186,10 +1233,10 @@ This program has absolutely no warranty.\n",
     /* We don't have a PTX file for 'ptxas' to read in; skip verification.  */
     verify = 0;
   else if (verify == -1)
-    if (program_available ("ptxas"))
-      verify = 1;
+    if (!program_available ("ptxas"))
+      verify = 0;
 
-  if (verify > 0)
+  if (verify != 0)
     {
       /* We override the default '--gpu-name' of 'ptxas': its default may not
 	 be sufficient for what is requested in the '.target' directive in the
@@ -1217,7 +1264,7 @@ This program has absolutely no warranty.\n",
       obstack_ptr_grow (&argv_obstack, "-O0");
       obstack_ptr_grow (&argv_obstack, NULL);
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
-      fork_execute (new_argv[0], new_argv);
+      fork_execute (new_argv[0], new_argv, verify > 0, verbose);
     }
   return 0;
 }

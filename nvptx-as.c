@@ -1191,18 +1191,44 @@ This program has absolutely no warranty.\n",
 
   if (verify > 0)
     {
-      /* We override the default '--gpu-name' of 'ptxas': its default may not
-	 be sufficient for what is requested in the '.target' directive in the
-	 input's preamble ("SM version specified by .target is higher than
-	 default SM version assumed").  */
       const char *target_arg;
       if (target_arg_force)
 	target_arg = target_arg_force;
       else
 	{
 	  assert (tok_preamble_target_arg);
-	  target_arg = strndup (tok_preamble_target_arg->ptr,
-				tok_preamble_target_arg->len);
+
+	  /* Override the default '--gpu-name' of 'ptxas': its default may not
+	     be sufficient for what is requested in the '.target' directive in
+	     the input's preamble:
+
+	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
+
+	     In this case, use the '.target' we found in the preamble.  */
+	  target_arg = xstrndup (tok_preamble_target_arg->ptr,
+				 tok_preamble_target_arg->len);
+
+	  if ((strcmp ("sm_30", target_arg) == 0)
+	      || (strcmp ("sm_32", target_arg) == 0))
+	    {
+	      /* Starting with CUDA 11.0, "Support for Kepler 'sm_30' and
+		 'sm_32' architecture based products is dropped", and these may
+		 no longer be specified in '--gpu-name' of 'ptxas':
+
+		     ptxas fatal   : Value 'sm_30' is not defined for option 'gpu-name'
+
+		     ptxas fatal   : Value 'sm_32' is not defined for option 'gpu-name'
+
+		 ..., but we need to continue supporting GCC emitting
+		 '.target sm_30' code, for example.
+
+		 Detecting the CUDA/'ptxas' version and the supported
+		 '--gpu-name' options is clumsy, so in this case, just use
+		 'sm_35', which is the baseline supported by all current CUDA
+		 versions down to CUDA 6.5, at least.  */
+	      free ((void *) target_arg);
+	      target_arg = "sm_35";
+	    }
 	}
 
       struct obstack argv_obstack;

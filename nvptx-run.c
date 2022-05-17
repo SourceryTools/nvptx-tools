@@ -20,19 +20,33 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <cuda.h>
-
-#include "version.h"
+#if 1
+# include <cuda.h>
 
 /* On systems where installed NVIDIA driver is newer than CUDA Toolkit,
    libcuda.so may have these functions even though <cuda.h> does not.  */
 
-#if defined HAVE_CUGETERRORNAME && !HAVE_DECL_CUGETERRORNAME
 extern "C" CUresult cuGetErrorName (CUresult, const char **);
-#endif
-#if defined HAVE_CUGETERRORSTRING && !HAVE_DECL_CUGETERRORSTRING
 extern "C" CUresult cuGetErrorString (CUresult, const char **);
 #endif
+
+#include "version.h"
+
+#define DO_PRAGMA(x) _Pragma (#x)
+
+#if 1
+# define CUDA_ONE_CALL_MAYBE_NULL(call) DO_PRAGMA (weak call)
+# include "nvptx-run-cuda-lib.def"
+# undef CUDA_ONE_CALL_MAYBE_NULL
+
+# define CUDA_CALL_PREFIX
+#endif
+
+#define CUDA_CALL_NOCHECK(FN, ...)		\
+  CUDA_CALL_PREFIX FN (__VA_ARGS__)
+
+#define CUDA_CALL_EXISTS(FN)			\
+  CUDA_CALL_PREFIX FN
 
 
 static void __attribute__ ((format (printf, 1, 2)))
@@ -56,13 +70,11 @@ fatal_unless_success (CUresult r, const char *err)
     return;
 
   const char *s = "[unknown]";
+  if (CUDA_CALL_EXISTS (cuGetErrorString))
+    CUDA_CALL_NOCHECK (cuGetErrorString, r, &s);
   const char *n = "[unknown]";
-#if defined HAVE_CUGETERRORSTRING
-  cuGetErrorString (r, &s);
-#endif
-#if defined HAVE_CUGETERRORNAME
-  cuGetErrorName (r, &n);
-#endif
+  if (CUDA_CALL_EXISTS (cuGetErrorName))
+    CUDA_CALL_NOCHECK (cuGetErrorName, r, &n);
   fatal_error ("%s: %s (%s, %d)", err, s, n, (int) r);
 }
 

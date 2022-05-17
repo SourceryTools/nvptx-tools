@@ -1,0 +1,2 @@
+CUDA_ONE_CALL_MAYBE_NULL (cuGetErrorName)
+CUDA_ONE_CALL_MAYBE_NULL (cuGetErrorString)

@@ -68,10 +68,6 @@ AC_CHECK_LIB([cuda], [cuInit],
   [CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=-Wl,--allow-shlib-undefined])
 LIBS="$LIBS -lcuda $CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED"
 
-AC_CHECK_FUNCS([[cuGetErrorName] [cuGetErrorString]])
-AC_CHECK_DECLS([[cuGetErrorName], [cuGetErrorString]],
-  [], [], [[#include <cuda.h>]])
-
 AC_MSG_CHECKING([for extra programs to build requiring -lcuda])
 NVPTX_RUN=
 AC_LINK_IFELSE([AC_LANG_PROGRAM(

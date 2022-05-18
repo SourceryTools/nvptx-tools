@@ -33,7 +33,8 @@ RUN: < %t.stderr grep -qe '^nvptx-as: .*ptxas'
 RUN: rm -f %t*
 RUN: %target_as_cmd --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
-RUN: < %t.stdout grep -qe '^ ptxas '
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '^ ptxas '
 RUN: < %t.stderr grep -qe '^nvptx-as: .*ptxas'
 
 
@@ -50,6 +51,6 @@ RUN: ! test -s %t.stderr
 RUN: rm -f %t*
 RUN: %target_as_cmd -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
 RUN: cmp %S/../bare-1.s %t.o
-RUN: echo "'ptxas' not available." > %t.stdout.golden
-RUN: cmp %t.stdout.golden %t.stdout
-RUN: ! test -s %t.stderr
+RUN: ! test -s %t.stdout
+RUN: echo "'ptxas' not available." > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr

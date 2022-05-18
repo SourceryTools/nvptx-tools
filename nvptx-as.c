@@ -79,6 +79,8 @@
 
 #define DIR_UP ".."
 
+static bool verbose = false;
+
 static const char *outname = NULL;
 
 static void __attribute__ ((format (printf, 1, 2)))
@@ -986,6 +988,18 @@ do_wait (const char *prog, struct pex_obj *pex)
 static void
 fork_execute (const char *prog, char *const *argv)
 {
+  if (verbose)
+    {
+      for (char *const *arg = argv; *arg; ++arg)
+	{
+	  if (**arg == '\0')
+	    printf (" ''");
+	  else
+	    printf (" %s", *arg);
+	}
+      printf ("\n");
+    }
+
   struct pex_obj *pex = pex_init (0, "nvptx-as", NULL);
   if (pex == NULL)
     fatal_error ("pex_init failed: %m");
@@ -1097,7 +1111,6 @@ main (int argc, char **argv)
   FILE *in = stdin;
   const char *inname = "{standard input}";
   FILE *out = stdout;
-  bool verbose __attribute__((unused)) = false;
   int verify = -1;
   const char *target_arg_force = NULL;
 
@@ -1226,8 +1239,12 @@ This program has absolutely no warranty.\n",
 		 '--gpu-name' options is clumsy, so in this case, just use
 		 'sm_35', which is the baseline supported by all current CUDA
 		 versions down to CUDA 6.5, at least.  */
+	      if (verbose)
+		printf ("Verifying %s code", target_arg);
 	      free ((void *) target_arg);
 	      target_arg = "sm_35";
+	      if (verbose)
+		printf (" with %s code generation.\n", target_arg);
 	    }
 	}
 
@@ -1245,5 +1262,11 @@ This program has absolutely no warranty.\n",
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
       fork_execute (new_argv[0], new_argv);
     }
+  else if (verify < 0)
+    {
+      if (verbose)
+	printf ("'ptxas' not available.\n");
+    }
+
   return 0;
 }

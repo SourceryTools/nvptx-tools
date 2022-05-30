@@ -1,0 +1,1 @@
+ ptxas -c -o /dev/null /dev/null --gpu-name sm_35 -O0

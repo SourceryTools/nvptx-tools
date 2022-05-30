@@ -457,7 +457,7 @@ This program has absolutely no warranty.\n",
       process_refs_defs (NULL, buf);
       free (buf);
       if (verbose)
-	cout << "Linking " << name << " as " << idx++ << "\n";
+	cerr << "Linking " << name << " as " << idx++ << "\n";
       fputc ('\0', outfile);
     }
   for (list<string>::const_iterator iterator = libraries.begin(), end = libraries.end();
@@ -466,7 +466,7 @@ This program has absolutely no warranty.\n",
     {
       const string &name = "lib" + *iterator + ".a";
       if (verbose)
-	cout << "trying lib " << name << "\n";
+	cerr << "trying lib " << name << "\n";
       FILE *f = path_open (name.c_str (), libpaths);
       if (f == NULL)
 	{
@@ -506,7 +506,7 @@ This program has absolutely no warranty.\n",
 	      goto error_out;
 	    }
 	  if (verbose)
-	    cout << "Resolving " << e->key << "\n";
+	    cerr << "Resolving " << e->key << "\n";
 	  if (!f->pprev)
 	    {
 	      f->pprev = &to_add;
@@ -523,7 +523,7 @@ This program has absolutely no warranty.\n",
 	{
 	  f->pprev = NULL;
 	  if (verbose)
-	    cout << "Linking " << f->arname << "::" << f->name << " as " << idx++ << "\n";
+	    cerr << "Linking " << f->arname << "::" << f->name << " as " << idx++ << "\n";
 	  if (fwrite (f->data, 1, f->len, outfile) != f->len)
 	    {
 	      cerr << "error writing to output file\n";

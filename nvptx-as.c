@@ -993,11 +993,11 @@ fork_execute (const char *prog, char *const *argv)
       for (char *const *arg = argv; *arg; ++arg)
 	{
 	  if (**arg == '\0')
-	    printf (" ''");
+	    fprintf (stderr, " ''");
 	  else
-	    printf (" %s", *arg);
+	    fprintf (stderr, " %s", *arg);
 	}
-      printf ("\n");
+      fprintf (stderr, "\n");
     }
 
   struct pex_obj *pex = pex_init (0, "nvptx-as", NULL);
@@ -1240,11 +1240,11 @@ This program has absolutely no warranty.\n",
 		 'sm_35', which is the baseline supported by all current CUDA
 		 versions down to CUDA 6.5, at least.  */
 	      if (verbose)
-		printf ("Verifying %s code", target_arg);
+		fprintf (stderr, "Verifying %s code", target_arg);
 	      free ((void *) target_arg);
 	      target_arg = "sm_35";
 	      if (verbose)
-		printf (" with %s code generation.\n", target_arg);
+		fprintf (stderr, " with %s code generation.\n", target_arg);
 	    }
 	}
 
@@ -1265,7 +1265,7 @@ This program has absolutely no warranty.\n",
   else if (verify < 0)
     {
       if (verbose)
-	printf ("'ptxas' not available.\n");
+	fprintf (stderr, "'ptxas' not available.\n");
     }
 
   return 0;

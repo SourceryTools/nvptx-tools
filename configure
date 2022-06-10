@@ -594,13 +594,11 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 LIT
 subdirs
+NVPTX_RUN
+DL_LIBS
 EGREP
 GREP
 CPP
-NVPTX_RUN
-CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED
-CUDA_DRIVER_LDFLAGS
-CUDA_DRIVER_CPPFLAGS
 AR
 RANLIB
 INSTALL_DATA
@@ -663,9 +661,6 @@ ac_user_opts='
 enable_option_checking
 with_pkgversion
 with_bugurl
-with_cuda_driver
-with_cuda_driver_include
-with_cuda_driver_lib
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1289,16 +1284,6 @@ Optional Packages:
   --with-pkgversion=PKG   Use PKG in the version string in place of
                           "nvptx-tools"
   --with-bugurl=URL       Direct users to URL to report a bug
-  --with-cuda-driver=PATH specify prefix directory for installed CUDA driver
-                          package. Equivalent to
-                          --with-cuda-driver-include=PATH/include plus
-                          --with-cuda-driver-lib=PATH/lib
-  --with-cuda-driver-include=PATH
-                          specify directory for installed CUDA driver include
-                          files
-  --with-cuda-driver-lib=PATH
-                          specify directory for the installed CUDA driver
-                          library
 
 Some influential environment variables:
   CC          C compiler command
@@ -1467,158 +1452,6 @@ fi
   return $ac_retval
 
 } # ac_fn_cxx_try_compile
-
-# ac_fn_c_try_link LINENO
-# -----------------------
-# Try to link conftest.$ac_ext, and return whether this succeeded.
-ac_fn_c_try_link ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  rm -f conftest.$ac_objext conftest$ac_exeext
-  if { { ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
-$as_echo "$ac_try_echo"; } >&5
-  (eval "$ac_link") 2>conftest.err
-  ac_status=$?
-  if test -s conftest.err; then
-    grep -v '^ *+' conftest.err >conftest.er1
-    cat conftest.er1 >&5
-    mv -f conftest.er1 conftest.err
-  fi
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext && {
-	 test "$cross_compiling" = yes ||
-	 $as_test_x conftest$ac_exeext
-       }; then :
-  ac_retval=0
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_retval=1
-fi
-  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
-  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
-  # interfere with the next link command; also delete a directory that is
-  # left behind by Apple's compiler.  We do this before executing the actions.
-  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
-  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
-  return $ac_retval
-
-} # ac_fn_c_try_link
-
-# ac_fn_c_check_func LINENO FUNC VAR
-# ----------------------------------
-# Tests whether FUNC exists, setting the cache variable VAR accordingly
-ac_fn_c_check_func ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
-$as_echo_n "checking for $2... " >&6; }
-if { as_var=$3; eval "test \"\${$as_var+set}\" = set"; }; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-/* Define $2 to an innocuous variant, in case <limits.h> declares $2.
-   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
-#define $2 innocuous_$2
-
-/* System header to define __stub macros and hopefully few prototypes,
-    which can conflict with char $2 (); below.
-    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
-    <limits.h> exists even on freestanding compilers.  */
-
-#ifdef __STDC__
-# include <limits.h>
-#else
-# include <assert.h>
-#endif
-
-#undef $2
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char $2 ();
-/* The GNU C library defines this for functions which it implements
-    to always fail with ENOSYS.  Some functions are actually named
-    something starting with __ and the normal name is an alias.  */
-#if defined __stub_$2 || defined __stub___$2
-choke me
-#endif
-
-int
-main ()
-{
-return $2 ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  eval "$3=yes"
-else
-  eval "$3=no"
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-fi
-eval ac_res=\$$3
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
-
-} # ac_fn_c_check_func
-
-# ac_fn_c_check_decl LINENO SYMBOL VAR
-# ------------------------------------
-# Tests whether SYMBOL is declared, setting cache variable VAR accordingly.
-ac_fn_c_check_decl ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $2 is declared" >&5
-$as_echo_n "checking whether $2 is declared... " >&6; }
-if { as_var=$3; eval "test \"\${$as_var+set}\" = set"; }; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-$4
-int
-main ()
-{
-#ifndef $2
-  (void) $2;
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  eval "$3=yes"
-else
-  eval "$3=no"
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-eval ac_res=\$$3
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
-
-} # ac_fn_c_check_decl
 
 # ac_fn_c_try_cpp LINENO
 # ----------------------
@@ -1816,6 +1649,91 @@ $as_echo "$ac_res" >&6; }
   eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
 
 } # ac_fn_c_check_header_compile
+
+# ac_fn_c_check_decl LINENO SYMBOL VAR
+# ------------------------------------
+# Tests whether SYMBOL is declared, setting cache variable VAR accordingly.
+ac_fn_c_check_decl ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $2 is declared" >&5
+$as_echo_n "checking whether $2 is declared... " >&6; }
+if { as_var=$3; eval "test \"\${$as_var+set}\" = set"; }; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+#ifndef $2
+  (void) $2;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  eval "$3=yes"
+else
+  eval "$3=no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
+
+} # ac_fn_c_check_decl
+
+# ac_fn_c_try_link LINENO
+# -----------------------
+# Try to link conftest.$ac_ext, and return whether this succeeded.
+ac_fn_c_try_link ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  rm -f conftest.$ac_objext conftest$ac_exeext
+  if { { ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
+$as_echo "$ac_try_echo"; } >&5
+  (eval "$ac_link") 2>conftest.err
+  ac_status=$?
+  if test -s conftest.err; then
+    grep -v '^ *+' conftest.err >conftest.er1
+    cat conftest.er1 >&5
+    mv -f conftest.er1 conftest.err
+  fi
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then :
+  ac_retval=0
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_retval=1
+fi
+  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
+  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
+  # interfere with the next link command; also delete a directory that is
+  # left behind by Apple's compiler.  We do this before executing the actions.
+  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
+  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
+  return $ac_retval
+
+} # ac_fn_c_try_link
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -3447,170 +3365,6 @@ fi
 
 
 
-# Look for the CUDA driver package.
-CUDA_DRIVER_CPPFLAGS=
-
-CUDA_DRIVER_LDFLAGS=
-
-
-# Check whether --with-cuda-driver was given.
-if test "${with_cuda_driver+set}" = set; then :
-  withval=$with_cuda_driver;
-fi
-
-
-# Check whether --with-cuda-driver-include was given.
-if test "${with_cuda_driver_include+set}" = set; then :
-  withval=$with_cuda_driver_include;
-fi
-
-
-# Check whether --with-cuda-driver-lib was given.
-if test "${with_cuda_driver_lib+set}" = set; then :
-  withval=$with_cuda_driver_lib;
-fi
-
-if test "x$with_cuda_driver" != x; then
-  CUDA_DRIVER_CPPFLAGS=-I$with_cuda_driver/include
-  CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver/lib"
-fi
-if test "x$with_cuda_driver_include" != x; then
-  CUDA_DRIVER_CPPFLAGS=-I$with_cuda_driver_include
-fi
-if test "x$with_cuda_driver_lib" != x; then
-  CUDA_DRIVER_LDFLAGS="-L$with_cuda_driver_lib"
-fi
-
-save_CPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CUDA_DRIVER_CPPFLAGS $CPPFLAGS"
-save_LDFLAGS=$LDFLAGS
-LDFLAGS="$CUDA_DRIVER_LDFLAGS $LDFLAGS"
-save_LIBS=$LIBS
-
-# With certain (distribution?) variants of CUDA installations in combination
-# with certain linker configurations, "gcc -lcuda" might fail:
-#
-#     [...]/ld: warning: libnvidia-fatbinaryloader.so.375.66, needed by [...]/libcuda.so, not found (try using -rpath or -rpath-link)
-#     [...]/libcuda.so: undefined reference to `elfLink_Start'
-#     [...]/libcuda.so: undefined reference to `fatBinaryCtl_Compile'
-#     [...]
-#     [...]/libcuda.so: undefined reference to `gpucompRestoreLogLine'
-#     collect2: error: ld returned 1 exit status
-#
-# This is because of "libnvidia-fatbinaryloader.so*" residing in some
-# non-standard directory that the run-time "ld.so" might look into, but the
-# compile-time "ld" doesn't.  In this case, try linking with
-# "--allow-shlib-undefined".
-CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for cuInit in -lcuda" >&5
-$as_echo_n "checking for cuInit in -lcuda... " >&6; }
-if test "${ac_cv_lib_cuda_cuInit+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcuda  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char cuInit ();
-int
-main ()
-{
-return cuInit ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_cuda_cuInit=yes
-else
-  ac_cv_lib_cuda_cuInit=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cuda_cuInit" >&5
-$as_echo "$ac_cv_lib_cuda_cuInit" >&6; }
-if test "x$ac_cv_lib_cuda_cuInit" = x""yes; then :
-  :
-else
-  CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED=-Wl,--allow-shlib-undefined
-fi
-
-LIBS="$LIBS -lcuda $CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED"
-
-for ac_func in cuGetErrorName cuGetErrorString
-do :
-  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
-ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
-eval as_val=\$$as_ac_var
-   if test "x$as_val" = x""yes; then :
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
-_ACEOF
-
-fi
-done
-
-ac_fn_c_check_decl "$LINENO" "cuGetErrorName" "ac_cv_have_decl_cuGetErrorName" "#include <cuda.h>
-"
-if test "x$ac_cv_have_decl_cuGetErrorName" = x""yes; then :
-  ac_have_decl=1
-else
-  ac_have_decl=0
-fi
-
-cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_CUGETERRORNAME $ac_have_decl
-_ACEOF
-ac_fn_c_check_decl "$LINENO" "cuGetErrorString" "ac_cv_have_decl_cuGetErrorString" "#include <cuda.h>
-"
-if test "x$ac_cv_have_decl_cuGetErrorString" = x""yes; then :
-  ac_have_decl=1
-else
-  ac_have_decl=0
-fi
-
-cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_CUGETERRORSTRING $ac_have_decl
-_ACEOF
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for extra programs to build requiring -lcuda" >&5
-$as_echo_n "checking for extra programs to build requiring -lcuda... " >&6; }
-NVPTX_RUN=
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <cuda.h>
-int
-main ()
-{
-cuInit (0);
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  NVPTX_RUN=nvptx-none-run
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $NVPTX_RUN" >&5
-$as_echo "$NVPTX_RUN" >&6; }
-
-
-CPPFLAGS=$save_CPPFLAGS
-LDFLAGS=$save_LDFLAGS
-LIBS=$save_LIBS
 
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -4035,6 +3789,57 @@ cat >>confdefs.h <<_ACEOF
 #define HAVE_DECL_GETOPT $ac_have_decl
 _ACEOF
 
+
+DL_LIBS=
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlsym in -ldl" >&5
+$as_echo_n "checking for dlsym in -ldl... " >&6; }
+if test "${ac_cv_lib_dl_dlsym+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dlsym ();
+int
+main ()
+{
+return dlsym ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_dl_dlsym=yes
+else
+  ac_cv_lib_dl_dlsym=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dl_dlsym" >&5
+$as_echo "$ac_cv_lib_dl_dlsym" >&6; }
+if test "x$ac_cv_lib_dl_dlsym" = x""yes; then :
+  DL_LIBS=-ldl
+fi
+
+
+NVPTX_RUN=nvptx-none-run
+
+if test x"$DL_LIBS" = x; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: not able to build $NVPTX_RUN" >&5
+$as_echo "$as_me: not able to build $NVPTX_RUN" >&6;}
+  NVPTX_RUN=
+fi
 
 
 

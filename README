@@ -58,8 +58,7 @@ Individual nvptx-tools depend on CUDA/PTX as follows:
 
   * nvptx-none-run
 
-    Uses the CUDA Driver library ('cuda.h', 'libcuda') to run PTX binaries.  If
-    (at configure time) that library isn't available, this tool isn't built.
+    Uses the CUDA Driver library ('libcuda') to run PTX binaries.
 
 
 For the testsuite (only), the baseline dependency is sm_35 functionality (or
@@ -70,7 +69,7 @@ has been deprecated in CUDA 10.2 (see
 <https://docs.nvidia.com/cuda/archive/10.2/cuda-toolkit-release-notes/#deprecated-features>),
 but has not yet been removed.
 
-Testcases for the nvptx-tools depend on CUDA/PTX as follows:
+Certain testcases for the nvptx-tools have dependencies as follows:
 
   * nvptx-none-as
 
@@ -78,8 +77,9 @@ Testcases for the nvptx-tools depend on CUDA/PTX as follows:
 
   * nvptx-none-run
 
-    All execution testcases are UNSUPPORTED if this tool isn't available,
-    because the CUDA Driver library isn't available.
+    Testcases depending on this tool are UNSUPPORTED if it isn't available.
+    Otherwise, if no suitable CUDA Driver library or Nvidia GPU are available
+    (at run time), certain testcases FAIL.
 
 
 With reduced functionality as indicated, it's possible to build, test, and use

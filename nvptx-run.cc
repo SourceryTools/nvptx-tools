@@ -371,8 +371,12 @@ This program has absolutely no warranty.\n",
 			     dev);
       fatal_unless_success (r, "could not get max threads per SM count");
       size_t mem;
-      r = CUDA_CALL_NOCHECK (cuDeviceTotalMem, &mem, dev);
-      fatal_unless_success (r, "could not get available memory");
+      {
+	size_t mem_free, mem_total;
+	r = CUDA_CALL_NOCHECK (cuMemGetInfo, &mem_free, &mem_total);
+	fatal_unless_success (r, "could not get free and total memory");
+	mem = mem_free;
+      }
       /* Subtract heap size and a 128 MiB extra.  */
       mem -= heap_size + 128 * 1024 * 1024;
       mem /= sm_count * thread_max;

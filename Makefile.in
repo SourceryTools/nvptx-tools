@@ -56,17 +56,17 @@ libiberty.stmp:
 	cd libiberty/ && $(MAKE)
 	: > $@
 
-nvptx-none-as: $(srcdir)/nvptx-as.c libiberty.stmp $(srcdir)/version.h
+nvptx-none-as: $(srcdir)/nvptx-as.cc libiberty.stmp $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-ld: $(srcdir)/nvptx-ld.c libiberty.stmp $(srcdir)/version.h
+nvptx-none-ld: $(srcdir)/nvptx-ld.cc libiberty.stmp $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-run: $(srcdir)/nvptx-run.c libiberty.stmp $(srcdir)/version.h
+nvptx-none-run: $(srcdir)/nvptx-run.cc libiberty.stmp $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS) \

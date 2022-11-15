@@ -552,7 +552,7 @@ PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
 ac_unique_file="nvptx-tools"
-ac_unique_file="nvptx-as.c"
+ac_unique_file="nvptx-as.cc"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>

@@ -54,6 +54,12 @@ if config.ptxas:
 config.substitutions.append(('%target_ld_cmd', config.target_ld))
 
 
+config.substitutions.append(('%target_nm_cmd', config.target_nm))
+
+# Run with 'LC_COLLATE=C' to get deterministic output order.
+config.substitutions.append(('%env_LC_COLLATE=C_target_nm_cmd', 'env LC_COLLATE=C ' + config.target_nm))
+
+
 config.substitutions.append(('%target_ranlib_cmd', config.target_ranlib))
 
 

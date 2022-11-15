@@ -48,7 +48,7 @@ srcdir = @srcdir@
 
 mkinstalldirs = $(SHELL) $(srcdir)/mkinstalldirs
 
-PROGRAMS = nvptx-none-as nvptx-none-ld $(NVPTX_RUN)
+PROGRAMS = nvptx-none-as nvptx-none-ld nvptx-none-nm $(NVPTX_RUN)
 
 all: $(PROGRAMS)
 
@@ -62,6 +62,11 @@ nvptx-none-as: $(srcdir)/nvptx-as.cc libiberty.stmp $(srcdir)/version.h
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx-none-ld: $(srcdir)/nvptx-ld.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+		$< -o $@ \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
+
+nvptx-none-nm: $(srcdir)/nvptx-nm.cc libiberty.stmp $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
@@ -119,7 +124,7 @@ install: all
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
 	rel=$$(perl -MFile::Spec -e 'print File::Spec->abs2rel(@ARGV)' \
 	  $(DESTDIR)$(bindir) $(DESTDIR)$(prefix)/nvptx-none/bin) && \
-	for p in ar as ld ranlib; do \
+	for p in ar as ld nm ranlib; do \
 	  rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p" && \
 	  $(LN_S) "$$rel"/nvptx-none-"$$p" $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p"; \
 	done

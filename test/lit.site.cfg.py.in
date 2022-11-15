@@ -26,6 +26,10 @@ config.target_ld = 'nvptx-none-ld'
 config.target_ld = os.path.join(abs_top_builddir, config.target_ld)
 
 
+config.target_nm = 'nvptx-none-nm'
+config.target_nm = os.path.join(abs_top_builddir, config.target_nm)
+
+
 config.target_ranlib = r'@RANLIB@'
 
 

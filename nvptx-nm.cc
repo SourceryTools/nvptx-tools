@@ -203,6 +203,7 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
 	}
       ptx++;
     }
+  /* Callers may use this return value to detect NUL-separated parts.  */
   return ptx + 1;
 }
 

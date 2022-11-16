@@ -296,7 +296,7 @@ define_intrinsics (htab_t symbol_table)
     }
 }
 
-static void
+static const char *
 process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
 {
   while (*ptx != '\0')
@@ -359,6 +359,8 @@ process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
 	}
       ptx++;
     }
+  /* Callers may use this return value to detect NUL-separated parts.  */
+  return ptx + 1;
 }
 
 ATTRIBUTE_NORETURN static void
@@ -492,7 +494,8 @@ This program has absolutely no warranty.\n",
 	  cerr << "error writing to output file\n";
 	  goto error_out;
 	}
-      process_refs_defs (symbol_table, NULL, buf);
+      const char *buf_ = process_refs_defs (symbol_table, NULL, buf);
+      assert (buf_ == &buf[len + 1]);
       delete[] buf;
       if (verbose)
 	cerr << "Linking " << name << " as " << idx++ << "\n";
@@ -534,7 +537,8 @@ This program has absolutely no warranty.\n",
 
 	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
 	  f_to_clean_up.push_front (f);
-	  process_refs_defs (symbol_table, f, p);
+	  const char *p_ = process_refs_defs (symbol_table, f, p);
+	  assert (p_ == &p[len + 1]);
 	}
       fclose (f);
     }
@@ -576,7 +580,8 @@ This program has absolutely no warranty.\n",
 	      goto error_out;
 	    }
 	  fputc ('\0', outfile);
-	  process_refs_defs (symbol_table, NULL, f->data);
+	  const char *f_data_ = process_refs_defs (symbol_table, NULL, f->data);
+	  assert (f_data_ == &f->data[f->len + 1]);
 	}
     }
 

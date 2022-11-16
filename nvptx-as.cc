@@ -1095,6 +1095,26 @@ program_available (const char *progname)
   return false;
 }
 
+ATTRIBUTE_NORETURN static void
+usage (FILE *stream, int status)
+{
+  fprintf (stream, "\
+Usage: nvptx-none-as [option...] [asmfile]\n\
+Options:\n\
+  -m TARGET             Override target architecture used for ptxas\n\
+                        verification (default: deduce from input's preamble)\n\
+  -o FILE               Write output to FILE\n\
+  -v                    Be verbose\n\
+  --verify              Do verify output is acceptable to ptxas\n\
+  --no-verify           Do not verify output is acceptable to ptxas\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+	   REPORT_BUGS_TO);
+  exit (status);
+}
+
 static struct option long_options[] = {
   {"traditional-format",     no_argument, 0,  0 },
   {"save-temps",  no_argument,       0,  0 },
@@ -1144,21 +1164,8 @@ main (int argc, char **argv)
 	  /* Ignore include paths.  */
 	  break;
 	case 'h':
-	  printf ("\
-Usage: nvptx-none-as [option...] [asmfile]\n\
-Options:\n\
-  -m TARGET             Override target architecture used for ptxas\n\
-                        verification (default: deduce from input's preamble)\n\
-  -o FILE               Write output to FILE\n\
-  -v                    Be verbose\n\
-  --verify              Do verify output is acceptable to ptxas\n\
-  --no-verify           Do not verify output is acceptable to ptxas\n\
-  --help                Print this help and exit\n\
-  --version             Print version number and exit\n\
-\n\
-Report bugs to %s.\n",
-		  REPORT_BUGS_TO);
-	  exit (0);
+	  usage (stdout, 0);
+	  break;
 	case 'V':
 	  printf ("\
 nvptx-none-as %s%s\n\
@@ -1170,6 +1177,7 @@ This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
 	default:
+	  usage (stderr, 1);
 	  break;
 	}
     }

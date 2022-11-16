@@ -1,0 +1,46 @@
+Improper use of command-line options.
+
+
+    invalid option -- '/'
+
+RUN: %target_run_cmd -/ > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-run '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    option requires an argument -- 'o'
+
+RUN: %target_run_cmd -o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-run '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    unrecognized option '--holp'
+
+RUN: %target_run_cmd --holp > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-run '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    option '--help' doesn't allow an argument
+
+RUN: %target_run_cmd --help=abc > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-run '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    option '--stack-size' requires an argument
+
+RUN: %target_run_cmd --stack-size > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-run '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout

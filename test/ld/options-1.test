@@ -1,0 +1,37 @@
+Improper use of command-line options.
+
+
+    invalid option -- '/'
+
+RUN: %target_ld_cmd -/ > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-ld '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    option requires an argument -- 'o'
+
+RUN: %target_ld_cmd -o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-ld '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    unrecognized option '--holp'
+
+RUN: %target_ld_cmd --holp > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-ld '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+    option '--help' doesn't allow an argument
+
+RUN: %target_ld_cmd --help=abc > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-ld '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout

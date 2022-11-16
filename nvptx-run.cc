@@ -32,6 +32,9 @@ extern "C" CUresult cuGetErrorName (CUresult, const char **);
 extern "C" CUresult cuGetErrorString (CUresult, const char **);
 #endif
 
+#define HAVE_DECL_BASENAME 1
+#include "libiberty.h"
+
 #include "version.h"
 
 #define DO_PRAGMA(x) _Pragma (#x)
@@ -205,6 +208,26 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
   fatal_unless_success (r, "could not find kernel __main");
 }
 
+ATTRIBUTE_NORETURN static void
+usage (FILE *stream, int status)
+{
+  fprintf (stream, "\
+Usage: nvptx-none-run [option...] program [argument...]\n\
+Options:\n\
+  -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
+  -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
+  -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
+  -O, --optlevel N      Pass PTX JIT option to set optimization level N\n\
+  -g, --lineinfo        Pass PTX JIT option to generate line information\n\
+  -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+	   REPORT_BUGS_TO);
+  exit (status);
+}
+
 static const struct option long_options[] =
   {
     { "stack-size", required_argument, 0, 'S' },
@@ -254,21 +277,8 @@ main (int argc, char **argv)
 	  jitopt_debuginfo = 1;
 	  break;
 	case 'h':
-	  printf ("\
-Usage: nvptx-none-run [option...] program [argument...]\n\
-Options:\n\
-  -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
-  -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
-  -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
-  -O, --optlevel N      Pass PTX JIT option to set optimization level N\n\
-  -g, --lineinfo        Pass PTX JIT option to generate line information\n\
-  -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
-  --help                Print this help and exit\n\
-  --version             Print version number and exit\n\
-\n\
-Report bugs to %s.\n",
-		  REPORT_BUGS_TO);
-	  exit (0);
+	  usage (stdout, 0);
+	  break;
 	case 'V':
 	  printf ("\
 nvptx-none-run %s%s\n\
@@ -280,6 +290,7 @@ This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
 	default:
+	  usage (stderr, 1);
 	  break;
 	}
     }

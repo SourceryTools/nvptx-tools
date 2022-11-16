@@ -337,6 +337,24 @@ process_refs_defs (file *f, const char *ptx)
     }
 }
 
+ATTRIBUTE_NORETURN static void
+usage (FILE *stream, int status)
+{
+  fprintf (stream, "\
+Usage: nvptx-none-ld [option...] [files]\n\
+Options:\n\
+  -o FILE               Write output to FILE\n\
+  -v                    Be verbose\n\
+  -l LIBRARY            Link with LIBRARY\n\
+  -L DIR                Search for libraries in DIR\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+	  REPORT_BUGS_TO);
+  exit (status);
+}
+
 static const struct option long_options[] = {
   {"help", no_argument, 0, 'h' },
   {"version", no_argument, 0, 'V' },
@@ -375,19 +393,8 @@ main (int argc, char **argv)
 	  libpaths.push_back (optarg);
 	  break;
 	case 'h':
-	  printf ("\
-Usage: nvptx-none-ld [option...] [files]\n\
-Options:\n\
-  -o FILE               Write output to FILE\n\
-  -v                    Be verbose\n\
-  -l LIBRARY            Link with LIBRARY\n\
-  -L DIR                Search for libraries in DIR\n\
-  --help                Print this help and exit\n\
-  --version             Print version number and exit\n\
-\n\
-Report bugs to %s.\n",
-		  REPORT_BUGS_TO);
-	  exit (0);
+	  usage (stdout, 0);
+	  break;
 	case 'V':
 	  printf ("\
 nvptx-none-ld %s%s\n\
@@ -399,6 +406,7 @@ This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
 	default:
+	  usage (stderr, 1);
 	  break;
 	}
     }

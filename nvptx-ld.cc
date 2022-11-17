@@ -214,12 +214,6 @@ class archive
 FILE *
 path_open (const char *filename, list<string> &paths)
 {
-  FILE *f = fopen (filename, "r");
-  if (f)
-    return f;
-  if (strchr (filename, '/') != NULL)
-    return NULL;
-
   for (list<string>::const_iterator iterator = paths.begin(), end = paths.end();
        iterator != end;
        ++iterator)

@@ -70,13 +70,12 @@ RUN: ! test -s %t.stdout
 RUN: echo 'error opening libGLOBAL_FUNCTION_f.a' > %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 
-TODO The following one unexpectedly works:
-
 RUN: rm -f %t.nvptx
-RUN: ( cd %t/a/ && %target_ld_cmd -o %t.nvptx %t/o/GLOBAL_FUNCTION_DECL_f.o -lGLOBAL_FUNCTION_f > %t.stdout 2> %t.stderr )
-RUN: cmp %t.nvptx.golden %t.nvptx
+RUN: ( cd %t/a/ && %target_ld_cmd -o %t.nvptx %t/o/GLOBAL_FUNCTION_DECL_f.o -lGLOBAL_FUNCTION_f > %t.stdout 2> %t.stderr ); [ x"$r" = x1 ]
+RUN: ! test -f %t.nvptx
 RUN: ! test -s %t.stdout
-RUN: ! test -s %t.stderr
+RUN: echo 'error opening libGLOBAL_FUNCTION_f.a' > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
 
 RUN: rm -f %t.nvptx
 RUN: ( cd %t/a/ && %target_ld_cmd -o %t.nvptx %t/o/GLOBAL_FUNCTION_DECL_f.o -L. -lGLOBAL_FUNCTION_f > %t.stdout 2> %t.stderr )

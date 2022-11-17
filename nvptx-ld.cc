@@ -439,7 +439,7 @@ This program has absolutely no warranty.\n",
        ++iterator)
     {
       const string &name = *iterator;
-      FILE *f = path_open (name.c_str (), libpaths);
+      FILE *f = fopen (name.c_str (), "r");
       if (f == NULL)
 	{
 	  cerr << "error opening " << name << "\n";

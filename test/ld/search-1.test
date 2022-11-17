@@ -44,13 +44,12 @@ RUN: ! test -s %t.stdout
 RUN: echo 'error opening ./GLOBAL_FUNCTION_DECL_f.o' > %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 
-TODO The following one unexpectedly works:
-
 RUN: rm -f %t.nvptx
-RUN: %target_ld_cmd -o %t.nvptx -L%t/o GLOBAL_FUNCTION_DECL_f.o GLOBAL_FUNCTION_DEF_f.o > %t.stdout 2> %t.stderr
-RUN: cmp %t.nvptx.golden %t.nvptx
+RUN: %target_ld_cmd -o %t.nvptx -L%t/o GLOBAL_FUNCTION_DECL_f.o GLOBAL_FUNCTION_DEF_f.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.nvptx
 RUN: ! test -s %t.stdout
-RUN: ! test -s %t.stderr
+RUN: echo 'error opening GLOBAL_FUNCTION_DECL_f.o' > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
 
 RUN: rm -f %t.nvptx
 RUN: ( cd %t/o/ && %target_ld_cmd -o %t.nvptx GLOBAL_FUNCTION_DECL_f.o GLOBAL_FUNCTION_DEF_f.o > %t.stdout 2> %t.stderr )

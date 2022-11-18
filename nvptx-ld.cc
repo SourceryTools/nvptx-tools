@@ -448,8 +448,11 @@ This program has absolutely no warranty.\n",
       if (read_len != len || ferror (f))
 	{
 	  cerr << "error reading " << name << "\n";
+	  fclose (f);
 	  goto error_out;
 	}
+      fclose (f);
+      f = NULL;
       size_t out = fwrite (buf, 1, len, outfile);
       if (out != len)
 	{
@@ -479,6 +482,7 @@ This program has absolutely no warranty.\n",
       if (!ar.init (f))
 	{
 	  cerr << name << " is not a valid archive\n";
+	  fclose (f);
 	  goto error_out;
 	}
       while (!ar.at_end ())
@@ -486,6 +490,7 @@ This program has absolutely no warranty.\n",
 	  if (!ar.next_file ())
 	    {
 	      cerr << "error reading from archive " << name << "\n";
+	      fclose (f);
 	      goto error_out;
 	    }
 	  const char *p = xstrdup (ar.get_contents ());
@@ -493,6 +498,7 @@ This program has absolutely no warranty.\n",
 	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
 	  process_refs_defs (symbol_table, f, p);
 	}
+      fclose (f);
     }
 
   while (unresolved)
@@ -535,10 +541,14 @@ This program has absolutely no warranty.\n",
 	  process_refs_defs (symbol_table, NULL, f->data);
 	}
     }
+
+  fclose (outfile);
+
   return 0;
 
  error_out:
   fclose (outfile);
   unlink (outname);
+
   return 1;
 }

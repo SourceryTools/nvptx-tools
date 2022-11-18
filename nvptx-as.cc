@@ -116,6 +116,14 @@ class symbol
   bool emitted;
 };
 
+static void
+symbol_hash_free (void *elt)
+{
+  symbol *e = (symbol *) elt;
+  free ((void *) e->key);
+  delete e;
+}
+
 /* Hash and comparison functions for these hash tables.  */
 
 static int hash_string_eq (const void *, const void *);
@@ -136,19 +144,26 @@ hash_string_hash (const void *e_p)
   return (*htab_hash_string) (s_p->key);
 }
 
-/* Look up an entry in the symbol hash table.  */
+/* Look up an entry in the symbol hash table.
+
+   Takes ownership of STRING.  */
 
 static symbol *
-symbol_hash_lookup (htab_t symbol_table, const char *string)
+symbol_hash_lookup (htab_t symbol_table, char *string)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
                                 (*htab_hash_string) (string),
                                 INSERT);
   if (e == NULL)
-    return NULL;
+    {
+      free (string);
+      return NULL;
+    }
   if (*e == NULL)
     *e = new symbol (string);
+  else
+    free (string);
 
   return (symbol *) *e;
 }
@@ -936,7 +951,7 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
     }
 
   htab_t symbol_table
-    = htab_create (500, hash_string_hash, hash_string_eq, NULL);
+    = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
 
   do
     tok = parse_file (symbol_table, tok);
@@ -945,6 +960,8 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
   write_stmts (out, rev_stmts (decls));
   htab_traverse (symbol_table, traverse, (void *)out);
   write_stmts (out, rev_stmts (fns));
+
+  htab_delete (symbol_table);
 }
 
 /* Wait for a process to finish, and exit if a nonzero status is found.  */

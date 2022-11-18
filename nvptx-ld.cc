@@ -97,6 +97,8 @@ symbol_hash_lookup (htab_t symbol_table, const char *string, int create)
   return (struct symbol_hash_entry *) *e;
 }
 
+/* Takes ownership of DATA.  */
+
 static struct file_hash_entry *
 file_hash_new (const char *data, size_t len, const char *arname, const char *name)
 {
@@ -106,6 +108,15 @@ file_hash_new (const char *data, size_t len, const char *arname, const char *nam
   v->name = xstrdup (name);
   v->arname = xstrdup (arname);
   return v;
+}
+
+static void
+file_hash_free (struct file_hash_entry *v)
+{
+  free ((void *) v->data);
+  free ((void *) v->name);
+  free ((void *) v->arname);
+  free (v);
 }
 
 using namespace std;
@@ -414,6 +425,9 @@ This program has absolutely no warranty.\n",
 
   htab_t symbol_table
     = htab_create (500, hash_string_hash, hash_string_eq, NULL);
+  /* List of 'file_hash_entry' instances to clean up when we're done with the
+     'symbol_table'.  */
+  list<file_hash_entry *> f_to_clean_up;
 
   define_intrinsics (symbol_table);
   
@@ -496,6 +510,7 @@ This program has absolutely no warranty.\n",
 	  const char *p = xstrdup (ar.get_contents ());
 	  size_t len = ar.get_len ();
 	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
+	  f_to_clean_up.push_front (f);
 	  process_refs_defs (symbol_table, f, p);
 	}
       fclose (f);
@@ -542,11 +557,25 @@ This program has absolutely no warranty.\n",
 	}
     }
 
+  while (!f_to_clean_up.empty())
+    {
+      struct file_hash_entry *f = f_to_clean_up.front ();
+      file_hash_free (f);
+      f_to_clean_up.pop_front ();
+    }
+
   fclose (outfile);
 
   return 0;
 
  error_out:
+  while (!f_to_clean_up.empty())
+    {
+      struct file_hash_entry *f = f_to_clean_up.front ();
+      file_hash_free (f);
+      f_to_clean_up.pop_front ();
+    }
+
   fclose (outfile);
   unlink (outname);
 

@@ -63,18 +63,18 @@ static int hash_string_eq (const void *, const void *);
 static hashval_t hash_string_hash (const void *);
 
 static int
-hash_string_eq (const void *s1_p, const void *s2_p)
+hash_string_eq (const void *e1_p, const void *s2_p)
 {
-  const char *const *s1 = (const char *const *) s1_p;
+  const symbol_hash_entry *she1_p = (const symbol_hash_entry *) e1_p;
   const char *s2 = (const char *) s2_p;
-  return strcmp (*s1, s2) == 0;
+  return strcmp (she1_p->key, s2) == 0;
 }
 
 static hashval_t
-hash_string_hash (const void *s_p)
+hash_string_hash (const void *e_p)
 {
-  const char *const *s = (const char *const *) s_p;
-  return (*htab_hash_string) (*s);
+  const symbol_hash_entry *she_p = (const symbol_hash_entry *) e_p;
+  return (*htab_hash_string) (she_p->key);
 }
 
 static htab_t symbol_table;

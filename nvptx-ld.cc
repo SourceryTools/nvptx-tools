@@ -457,7 +457,7 @@ This program has absolutely no warranty.\n",
 	  goto error_out;
 	}
       process_refs_defs (NULL, buf);
-      free (buf);
+      delete[] buf;
       if (verbose)
 	cerr << "Linking " << name << " as " << idx++ << "\n";
       fputc ('\0', outfile);

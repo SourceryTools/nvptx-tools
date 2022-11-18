@@ -1222,6 +1222,7 @@ This program has absolutely no warranty.\n",
   if (verify > 0)
     {
       const char *target_arg;
+      char *target_arg_to_free = NULL;
       if (target_arg_force)
 	target_arg = target_arg_force;
       else
@@ -1235,8 +1236,9 @@ This program has absolutely no warranty.\n",
 	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
 
 	     In this case, use the '.target' we found in the preamble.  */
-	  target_arg = xstrndup (tok_preamble_target_arg->ptr,
-				 tok_preamble_target_arg->len);
+	  target_arg = target_arg_to_free
+	    = xstrndup (tok_preamble_target_arg->ptr,
+			tok_preamble_target_arg->len);
 
 	  if ((strcmp ("sm_30", target_arg) == 0)
 	      || (strcmp ("sm_32", target_arg) == 0))
@@ -1258,7 +1260,6 @@ This program has absolutely no warranty.\n",
 		 versions down to CUDA 6.5, at least.  */
 	      if (verbose)
 		fprintf (stderr, "Verifying %s code", target_arg);
-	      free ((void *) target_arg);
 	      target_arg = "sm_35";
 	      if (verbose)
 		fprintf (stderr, " with %s code generation.\n", target_arg);
@@ -1279,6 +1280,7 @@ This program has absolutely no warranty.\n",
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
       fork_execute (new_argv[0], new_argv);
       obstack_free (&argv_obstack, NULL);
+      free (target_arg_to_free);
     }
   else if (verify < 0)
     {

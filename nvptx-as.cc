@@ -1201,8 +1201,16 @@ This program has absolutely no warranty.\n",
 
   process (in, out, &verify, inname);
 
-  if (outname)
-    fclose (out);
+  if (in != stdin)
+    {
+      fclose (in);
+      in = NULL;
+    }
+  if (out != stdout)
+    {
+      fclose (out);
+      out = NULL;
+    }
 
   if (outname == NULL)
     /* We don't have a PTX file for 'ptxas' to read in; skip verification.  */

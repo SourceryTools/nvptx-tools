@@ -77,12 +77,10 @@ hash_string_hash (const void *e_p)
   return (*htab_hash_string) (she_p->key);
 }
 
-static htab_t symbol_table;
-
 /* Look up an entry in the symbol hash table.  */
 
 static struct symbol_hash_entry *
-symbol_hash_lookup (const char *string, int create)
+symbol_hash_lookup (htab_t symbol_table, const char *string, int create)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
@@ -254,7 +252,7 @@ dequeue_unresolved (struct symbol_hash_entry *e)
 }
 
 static void
-define_intrinsics ()
+define_intrinsics (htab_t symbol_table)
 {
   static const char *const intrins[] =
     {"vprintf", "malloc", "free", NULL};
@@ -262,13 +260,14 @@ define_intrinsics ()
 
   for (ix = 0; intrins[ix]; ix++)
     {
-      struct symbol_hash_entry *e = symbol_hash_lookup (intrins[ix], 1);
+      struct symbol_hash_entry *e
+	= symbol_hash_lookup (symbol_table, intrins[ix], 1);
       e->included = true;
     }
 }
 
 static void
-process_refs_defs (file *f, const char *ptx)
+process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
 {
   while (*ptx != '\0')
     {
@@ -303,7 +302,8 @@ process_refs_defs (file *f, const char *ptx)
 	    end = ptx + strlen (ptx);
 
 	  const char *sym = xstrndup (ptx, end - ptx);
-	  struct symbol_hash_entry *e = symbol_hash_lookup (sym, 1);
+	  struct symbol_hash_entry *e
+	    = symbol_hash_lookup (symbol_table, sym, 1);
 
 	  if (!e->included)
 	    {
@@ -412,10 +412,10 @@ This program has absolutely no warranty.\n",
   if (outname == NULL)
     outname = "a.out";
 
-  symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
-                              NULL);
+  htab_t symbol_table
+    = htab_create (500, hash_string_hash, hash_string_eq, NULL);
 
-  define_intrinsics ();
+  define_intrinsics (symbol_table);
   
   FILE *outfile = fopen (outname, "w");
   if (outfile == NULL)
@@ -456,7 +456,7 @@ This program has absolutely no warranty.\n",
 	  cerr << "error writing to output file\n";
 	  goto error_out;
 	}
-      process_refs_defs (NULL, buf);
+      process_refs_defs (symbol_table, NULL, buf);
       delete[] buf;
       if (verbose)
 	cerr << "Linking " << name << " as " << idx++ << "\n";
@@ -491,7 +491,7 @@ This program has absolutely no warranty.\n",
 	  const char *p = xstrdup (ar.get_contents ());
 	  size_t len = ar.get_len ();
 	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
-	  process_refs_defs (f, p);
+	  process_refs_defs (symbol_table, f, p);
 	}
     }
 
@@ -532,7 +532,7 @@ This program has absolutely no warranty.\n",
 	      goto error_out;
 	    }
 	  fputc ('\0', outfile);
-	  process_refs_defs (NULL, f->data);
+	  process_refs_defs (symbol_table, NULL, f->data);
 	}
     }
   return 0;

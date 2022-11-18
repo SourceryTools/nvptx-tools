@@ -136,12 +136,10 @@ hash_string_hash (const void *e_p)
   return (*htab_hash_string) (s_p->key);
 }
 
-static htab_t symbol_table;
-
 /* Look up an entry in the symbol hash table.  */
 
 static symbol *
-symbol_hash_lookup (const char *string)
+symbol_hash_lookup (htab_t symbol_table, const char *string)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
@@ -657,7 +655,7 @@ parse_insn (Token *tok)
 }
 
 static Token *
-parse_init (Token *tok, symbol *sym)
+parse_init (htab_t symbol_table, Token *tok, symbol *sym)
 {
   for (;;)
     {
@@ -682,7 +680,8 @@ parse_init (Token *tok, symbol *sym)
 	if (tok->kind == K_symbol || tok->kind == K_ident)
 	  def_tok = tok;
       if (def_tok)
-	sym->deps.push_back (symbol_hash_lookup (xstrndup (def_tok->ptr,
+	sym->deps.push_back (symbol_hash_lookup (symbol_table,
+						 xstrndup (def_tok->ptr,
 							   def_tok->len)));
       tok[1].space = 0;
       int end = tok++->kind == ';';
@@ -702,7 +701,7 @@ parse_init (Token *tok, symbol *sym)
 }
 
 static Token *
-parse_file (Token *tok)
+parse_file (htab_t symbol_table, Token *tok)
 {
   Stmt *comment = 0;
 
@@ -768,7 +767,8 @@ parse_file (Token *tok)
 		def_token = tok;
 	    }
 	  if (def_token)
-	    def = symbol_hash_lookup (xstrndup (def_token->ptr, def_token->len));
+	    def = symbol_hash_lookup (symbol_table,
+				      xstrndup (def_token->ptr, def_token->len));
 
 	  if (!tok->kind)
 	    {
@@ -814,7 +814,7 @@ parse_file (Token *tok)
 		    }
 		  append_stmt (&def->stmts, stmt);
 		  if (assign)
-		    tok = parse_init (tok, def);
+		    tok = parse_init (symbol_table, tok, def);
 		}
 	      else
 		{
@@ -935,10 +935,11 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
 		     inname);
     }
 
-  symbol_table = htab_create (500, hash_string_hash, hash_string_eq, NULL);
+  htab_t symbol_table
+    = htab_create (500, hash_string_hash, hash_string_eq, NULL);
 
   do
-    tok = parse_file (tok);
+    tok = parse_file (symbol_table, tok);
   while (tok->kind);
 
   write_stmts (out, rev_stmts (decls));

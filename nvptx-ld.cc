@@ -48,6 +48,14 @@ typedef struct symbol_hash_entry
   int referenced;
 } symbol;
 
+static void
+symbol_hash_free (void *elt)
+{
+  symbol_hash_entry *e = (symbol_hash_entry *) elt;
+  free ((void *) e->key);
+  free (e);
+}
+
 typedef struct file_hash_entry
 {
   struct file_hash_entry **pprev, *next;
@@ -77,23 +85,30 @@ hash_string_hash (const void *e_p)
   return (*htab_hash_string) (she_p->key);
 }
 
-/* Look up an entry in the symbol hash table.  */
+/* Look up an entry in the symbol hash table.
+
+   Takes ownership of STRING.  */
 
 static struct symbol_hash_entry *
-symbol_hash_lookup (htab_t symbol_table, const char *string, int create)
+symbol_hash_lookup (htab_t symbol_table, char *string, int create)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
                                 (*htab_hash_string) (string),
                                 create ? INSERT : NO_INSERT);
   if (e == NULL)
-    return NULL;
+    {
+      free (string);
+      return NULL;
+    }
   if (*e == NULL)
     {
       struct symbol_hash_entry *v;
       *e = v = XCNEW (struct symbol_hash_entry);
       v->key = string;
     }
+  else
+    free (string);
   return (struct symbol_hash_entry *) *e;
 }
 
@@ -272,7 +287,7 @@ define_intrinsics (htab_t symbol_table)
   for (ix = 0; intrins[ix]; ix++)
     {
       struct symbol_hash_entry *e
-	= symbol_hash_lookup (symbol_table, intrins[ix], 1);
+	= symbol_hash_lookup (symbol_table, xstrdup (intrins[ix]), 1);
       e->included = true;
     }
 }
@@ -312,7 +327,7 @@ process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
 	  if (end == 0)
 	    end = ptx + strlen (ptx);
 
-	  const char *sym = xstrndup (ptx, end - ptx);
+	  char *sym = xstrndup (ptx, end - ptx);
 	  struct symbol_hash_entry *e
 	    = symbol_hash_lookup (symbol_table, sym, 1);
 
@@ -424,7 +439,7 @@ This program has absolutely no warranty.\n",
     outname = "a.out";
 
   htab_t symbol_table
-    = htab_create (500, hash_string_hash, hash_string_eq, NULL);
+    = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
   /* List of 'file_hash_entry' instances to clean up when we're done with the
      'symbol_table'.  */
   list<file_hash_entry *> f_to_clean_up;
@@ -557,6 +572,7 @@ This program has absolutely no warranty.\n",
 	}
     }
 
+  htab_delete (symbol_table);
   while (!f_to_clean_up.empty())
     {
       struct file_hash_entry *f = f_to_clean_up.front ();
@@ -569,6 +585,7 @@ This program has absolutely no warranty.\n",
   return 0;
 
  error_out:
+  htab_delete (symbol_table);
   while (!f_to_clean_up.empty())
     {
       struct file_hash_entry *f = f_to_clean_up.front ();

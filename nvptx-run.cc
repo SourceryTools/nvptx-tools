@@ -391,6 +391,9 @@ This program has absolutely no warranty.\n",
   CUfunction hKernel = 0;
   compile_file (f, &hModule, &hKernel);
 
+  fclose (f);
+  f = NULL;
+
   void *args[] = { &d_retval, &d_argc, &d_argv };
     
   r = CUDA_CALL_NOCHECK (cuLaunchKernel,

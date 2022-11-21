@@ -116,41 +116,54 @@ class symbol
   bool emitted;
 };
 
+static void
+symbol_hash_free (void *elt)
+{
+  symbol *e = (symbol *) elt;
+  free ((void *) e->key);
+  delete e;
+}
+
 /* Hash and comparison functions for these hash tables.  */
 
 static int hash_string_eq (const void *, const void *);
 static hashval_t hash_string_hash (const void *);
 
 static int
-hash_string_eq (const void *s1_p, const void *s2_p)
+hash_string_eq (const void *e1_p, const void *s2_p)
 {
-  const char *const *s1 = (const char *const *) s1_p;
+  const symbol *s1_p = (const symbol *) e1_p;
   const char *s2 = (const char *) s2_p;
-  return strcmp (*s1, s2) == 0;
+  return strcmp (s1_p->key, s2) == 0;
 }
 
 static hashval_t
-hash_string_hash (const void *s_p)
+hash_string_hash (const void *e_p)
 {
-  const char *const *s = (const char *const *) s_p;
-  return (*htab_hash_string) (*s);
+  const symbol *s_p = (const symbol *) e_p;
+  return (*htab_hash_string) (s_p->key);
 }
 
-static htab_t symbol_table;
+/* Look up an entry in the symbol hash table.
 
-/* Look up an entry in the symbol hash table.  */
+   Takes ownership of STRING.  */
 
 static symbol *
-symbol_hash_lookup (const char *string)
+symbol_hash_lookup (htab_t symbol_table, char *string)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
                                 (*htab_hash_string) (string),
                                 INSERT);
   if (e == NULL)
-    return NULL;
+    {
+      free (string);
+      return NULL;
+    }
   if (*e == NULL)
     *e = new symbol (string);
+  else
+    free (string);
 
   return (symbol *) *e;
 }
@@ -657,7 +670,7 @@ parse_insn (Token *tok)
 }
 
 static Token *
-parse_init (Token *tok, symbol *sym)
+parse_init (htab_t symbol_table, Token *tok, symbol *sym)
 {
   for (;;)
     {
@@ -682,7 +695,8 @@ parse_init (Token *tok, symbol *sym)
 	if (tok->kind == K_symbol || tok->kind == K_ident)
 	  def_tok = tok;
       if (def_tok)
-	sym->deps.push_back (symbol_hash_lookup (xstrndup (def_tok->ptr,
+	sym->deps.push_back (symbol_hash_lookup (symbol_table,
+						 xstrndup (def_tok->ptr,
 							   def_tok->len)));
       tok[1].space = 0;
       int end = tok++->kind == ';';
@@ -702,7 +716,7 @@ parse_init (Token *tok, symbol *sym)
 }
 
 static Token *
-parse_file (Token *tok)
+parse_file (htab_t symbol_table, Token *tok)
 {
   Stmt *comment = 0;
 
@@ -768,7 +782,8 @@ parse_file (Token *tok)
 		def_token = tok;
 	    }
 	  if (def_token)
-	    def = symbol_hash_lookup (xstrndup (def_token->ptr, def_token->len));
+	    def = symbol_hash_lookup (symbol_table,
+				      xstrndup (def_token->ptr, def_token->len));
 
 	  if (!tok->kind)
 	    {
@@ -814,7 +829,7 @@ parse_file (Token *tok)
 		    }
 		  append_stmt (&def->stmts, stmt);
 		  if (assign)
-		    tok = parse_init (tok, def);
+		    tok = parse_init (symbol_table, tok, def);
 		}
 	      else
 		{
@@ -935,15 +950,18 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
 		     inname);
     }
 
-  symbol_table = htab_create (500, hash_string_hash, hash_string_eq, NULL);
+  htab_t symbol_table
+    = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
 
   do
-    tok = parse_file (tok);
+    tok = parse_file (symbol_table, tok);
   while (tok->kind);
 
   write_stmts (out, rev_stmts (decls));
   htab_traverse (symbol_table, traverse, (void *)out);
   write_stmts (out, rev_stmts (fns));
+
+  htab_delete (symbol_table);
 }
 
 /* Wait for a process to finish, and exit if a nonzero status is found.  */
@@ -1200,8 +1218,16 @@ This program has absolutely no warranty.\n",
 
   process (in, out, &verify, inname);
 
-  if (outname)
-    fclose (out);
+  if (in != stdin)
+    {
+      fclose (in);
+      in = NULL;
+    }
+  if (out != stdout)
+    {
+      fclose (out);
+      out = NULL;
+    }
 
   if (outname == NULL)
     /* We don't have a PTX file for 'ptxas' to read in; skip verification.  */
@@ -1213,6 +1239,7 @@ This program has absolutely no warranty.\n",
   if (verify > 0)
     {
       const char *target_arg;
+      char *target_arg_to_free = NULL;
       if (target_arg_force)
 	target_arg = target_arg_force;
       else
@@ -1226,8 +1253,9 @@ This program has absolutely no warranty.\n",
 	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
 
 	     In this case, use the '.target' we found in the preamble.  */
-	  target_arg = xstrndup (tok_preamble_target_arg->ptr,
-				 tok_preamble_target_arg->len);
+	  target_arg = target_arg_to_free
+	    = xstrndup (tok_preamble_target_arg->ptr,
+			tok_preamble_target_arg->len);
 
 	  if ((strcmp ("sm_30", target_arg) == 0)
 	      || (strcmp ("sm_32", target_arg) == 0))
@@ -1249,7 +1277,6 @@ This program has absolutely no warranty.\n",
 		 versions down to CUDA 6.5, at least.  */
 	      if (verbose)
 		fprintf (stderr, "Verifying %s code", target_arg);
-	      free ((void *) target_arg);
 	      target_arg = "sm_35";
 	      if (verbose)
 		fprintf (stderr, " with %s code generation.\n", target_arg);
@@ -1269,6 +1296,8 @@ This program has absolutely no warranty.\n",
       obstack_ptr_grow (&argv_obstack, NULL);
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
       fork_execute (new_argv[0], new_argv);
+      obstack_free (&argv_obstack, NULL);
+      free (target_arg_to_free);
     }
   else if (verify < 0)
     {

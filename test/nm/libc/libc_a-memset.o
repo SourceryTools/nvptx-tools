@@ -1,0 +1,12 @@
+// BEGIN PREAMBLE
+.version 3.1
+.target sm_35
+.address_size 64
+// END PREAMBLE
+// BEGIN GLOBAL FUNCTION DECL: memset
+.visible .func (.param .u64 %value_out) memset (.param .u64 %in_ar0, .param .u32 %in_ar1, .param .u64 %in_ar2);
+// BEGIN GLOBAL FUNCTION DEF: memset
+.visible .func (.param .u64 %value_out) memset (.param .u64 %in_ar0, .param .u32 %in_ar1, .param .u64 %in_ar2)
+{
+[...]
+}

@@ -1,0 +1,31 @@
+Improper use of '--format' option.
+
+
+RUN: %target_nm_cmd --format= > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr head -n 1 | grep -qe '^: invalid output format$'
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-nm '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+RUN: %target_nm_cmd -f '' > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr head -n 1 | grep -qe '^: invalid output format$'
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-nm '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+RUN: %target_nm_cmd --format=123 > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr head -n 1 | grep -qe '^123: invalid output format$'
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-nm '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+RUN: %target_nm_cmd -f 123 > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr head -n 1 | grep -qe '^123: invalid output format$'
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-nm '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout

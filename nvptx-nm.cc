@@ -29,6 +29,12 @@
    simplify future maintenance and porting of additional features.  This file
    therefore is a somewhat chaotic mix of different programming styles.  */
 
+/* Define this so that inttypes.h defines the PRI?64 macros even
+   when compiling with a C++ compiler.  Define it here so in the
+   event inttypes.h gets pulled in by another header it is already
+   defined.  */
+#define __STDC_FORMAT_MACROS
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>

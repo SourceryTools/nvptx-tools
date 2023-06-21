@@ -186,6 +186,10 @@ class archive
     fseek (f, SARMAG, SEEK_SET);
     off = SARMAG;
 
+    if (at_end ())
+      /* Empty archive; valid.  */
+      return true;
+
     struct ar_hdr hdr;
     if (fread (&hdr, sizeof hdr, 1, f) != 1)
       return false;

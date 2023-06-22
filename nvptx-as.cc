@@ -902,6 +902,7 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
     }
 
   Token *tok = tokenize (input);
+  Token *tok_to_free = tok;
 
   /* Do minimalistic verification, so that we reliably reject (certain classes
      of) invalid input.  (If available and applicable, 'ptxas' is later used to
@@ -963,6 +964,8 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
   write_stmts (out, rev_stmts (fns));
 
   htab_delete (symbol_table);
+
+  XDELETEVEC (tok_to_free);
 }
 
 /* Wait for a process to finish, and exit if a nonzero status is found.  */

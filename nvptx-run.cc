@@ -178,7 +178,7 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
       sprintf (namebuf, "input file %d at offset %d", count++, off);
       r = CUDA_CALL_NOCHECK (cuLinkAddData, linkstate,
 			     CU_JIT_INPUT_PTX, program + off, l + 1,
-			     strdup (namebuf), 0, 0, 0);
+			     namebuf, 0, 0, 0);
       if (r != CUDA_SUCCESS)
 	{
 #if 0
@@ -193,6 +193,9 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 	off++;
     }
 
+  delete[] program;
+  program = NULL;
+
   void *linkout;
   r = CUDA_CALL_NOCHECK (cuLinkComplete, linkstate, &linkout, NULL);
   if (r != CUDA_SUCCESS)
@@ -203,6 +206,9 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 
   r = CUDA_CALL_NOCHECK (cuModuleLoadData, phModule, linkout);
   fatal_unless_success (r, "cuModuleLoadData failed");
+
+  r = CUDA_CALL_NOCHECK (cuLinkDestroy, linkstate);
+  fatal_unless_success (r, "cuLinkDestroy failed");
 
   r = CUDA_CALL_NOCHECK (cuModuleGetFunction, phKernel, *phModule, "__main");
   fatal_unless_success (r, "could not find kernel __main");

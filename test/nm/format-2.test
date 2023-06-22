@@ -1,0 +1,16 @@
+Only '--format=bsd'/'-f bsd' is supported.
+
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd --format=bsd %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -f bsd %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+..., and is the default anyway:
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr

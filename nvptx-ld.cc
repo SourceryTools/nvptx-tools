@@ -48,6 +48,14 @@ typedef struct symbol_hash_entry
   int referenced;
 } symbol;
 
+static void
+symbol_hash_free (void *elt)
+{
+  symbol_hash_entry *e = (symbol_hash_entry *) elt;
+  free ((void *) e->key);
+  free (e);
+}
+
 typedef struct file_hash_entry
 {
   struct file_hash_entry **pprev, *next;
@@ -63,41 +71,48 @@ static int hash_string_eq (const void *, const void *);
 static hashval_t hash_string_hash (const void *);
 
 static int
-hash_string_eq (const void *s1_p, const void *s2_p)
+hash_string_eq (const void *e1_p, const void *s2_p)
 {
-  const char *const *s1 = (const char *const *) s1_p;
+  const symbol_hash_entry *she1_p = (const symbol_hash_entry *) e1_p;
   const char *s2 = (const char *) s2_p;
-  return strcmp (*s1, s2) == 0;
+  return strcmp (she1_p->key, s2) == 0;
 }
 
 static hashval_t
-hash_string_hash (const void *s_p)
+hash_string_hash (const void *e_p)
 {
-  const char *const *s = (const char *const *) s_p;
-  return (*htab_hash_string) (*s);
+  const symbol_hash_entry *she_p = (const symbol_hash_entry *) e_p;
+  return (*htab_hash_string) (she_p->key);
 }
 
-static htab_t symbol_table;
+/* Look up an entry in the symbol hash table.
 
-/* Look up an entry in the symbol hash table.  */
+   Takes ownership of STRING.  */
 
 static struct symbol_hash_entry *
-symbol_hash_lookup (const char *string, int create)
+symbol_hash_lookup (htab_t symbol_table, char *string, int create)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
                                 (*htab_hash_string) (string),
                                 create ? INSERT : NO_INSERT);
   if (e == NULL)
-    return NULL;
+    {
+      free (string);
+      return NULL;
+    }
   if (*e == NULL)
     {
       struct symbol_hash_entry *v;
       *e = v = XCNEW (struct symbol_hash_entry);
       v->key = string;
     }
+  else
+    free (string);
   return (struct symbol_hash_entry *) *e;
 }
+
+/* Takes ownership of DATA.  */
 
 static struct file_hash_entry *
 file_hash_new (const char *data, size_t len, const char *arname, const char *name)
@@ -108,6 +123,15 @@ file_hash_new (const char *data, size_t len, const char *arname, const char *nam
   v->name = xstrdup (name);
   v->arname = xstrdup (arname);
   return v;
+}
+
+static void
+file_hash_free (struct file_hash_entry *v)
+{
+  free ((void *) v->data);
+  free ((void *) v->name);
+  free ((void *) v->arname);
+  free (v);
 }
 
 using namespace std;
@@ -254,7 +278,7 @@ dequeue_unresolved (struct symbol_hash_entry *e)
 }
 
 static void
-define_intrinsics ()
+define_intrinsics (htab_t symbol_table)
 {
   static const char *const intrins[] =
     {"vprintf", "malloc", "free", NULL};
@@ -262,13 +286,14 @@ define_intrinsics ()
 
   for (ix = 0; intrins[ix]; ix++)
     {
-      struct symbol_hash_entry *e = symbol_hash_lookup (intrins[ix], 1);
+      struct symbol_hash_entry *e
+	= symbol_hash_lookup (symbol_table, xstrdup (intrins[ix]), 1);
       e->included = true;
     }
 }
 
 static void
-process_refs_defs (file *f, const char *ptx)
+process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
 {
   while (*ptx != '\0')
     {
@@ -302,8 +327,9 @@ process_refs_defs (file *f, const char *ptx)
 	  if (end == 0)
 	    end = ptx + strlen (ptx);
 
-	  const char *sym = xstrndup (ptx, end - ptx);
-	  struct symbol_hash_entry *e = symbol_hash_lookup (sym, 1);
+	  char *sym = xstrndup (ptx, end - ptx);
+	  struct symbol_hash_entry *e
+	    = symbol_hash_lookup (symbol_table, sym, 1);
 
 	  if (!e->included)
 	    {
@@ -412,10 +438,13 @@ This program has absolutely no warranty.\n",
   if (outname == NULL)
     outname = "a.out";
 
-  symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
-                              NULL);
+  htab_t symbol_table
+    = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
+  /* List of 'file_hash_entry' instances to clean up when we're done with the
+     'symbol_table'.  */
+  list<file_hash_entry *> f_to_clean_up;
 
-  define_intrinsics ();
+  define_intrinsics (symbol_table);
   
   FILE *outfile = fopen (outname, "w");
   if (outfile == NULL)
@@ -448,16 +477,19 @@ This program has absolutely no warranty.\n",
       if (read_len != len || ferror (f))
 	{
 	  cerr << "error reading " << name << "\n";
+	  fclose (f);
 	  goto error_out;
 	}
+      fclose (f);
+      f = NULL;
       size_t out = fwrite (buf, 1, len, outfile);
       if (out != len)
 	{
 	  cerr << "error writing to output file\n";
 	  goto error_out;
 	}
-      process_refs_defs (NULL, buf);
-      free (buf);
+      process_refs_defs (symbol_table, NULL, buf);
+      delete[] buf;
       if (verbose)
 	cerr << "Linking " << name << " as " << idx++ << "\n";
       fputc ('\0', outfile);
@@ -479,6 +511,7 @@ This program has absolutely no warranty.\n",
       if (!ar.init (f))
 	{
 	  cerr << name << " is not a valid archive\n";
+	  fclose (f);
 	  goto error_out;
 	}
       while (!ar.at_end ())
@@ -486,13 +519,16 @@ This program has absolutely no warranty.\n",
 	  if (!ar.next_file ())
 	    {
 	      cerr << "error reading from archive " << name << "\n";
+	      fclose (f);
 	      goto error_out;
 	    }
 	  const char *p = xstrdup (ar.get_contents ());
 	  size_t len = ar.get_len ();
 	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
-	  process_refs_defs (f, p);
+	  f_to_clean_up.push_front (f);
+	  process_refs_defs (symbol_table, f, p);
 	}
+      fclose (f);
     }
 
   while (unresolved)
@@ -532,13 +568,33 @@ This program has absolutely no warranty.\n",
 	      goto error_out;
 	    }
 	  fputc ('\0', outfile);
-	  process_refs_defs (NULL, f->data);
+	  process_refs_defs (symbol_table, NULL, f->data);
 	}
     }
+
+  htab_delete (symbol_table);
+  while (!f_to_clean_up.empty())
+    {
+      struct file_hash_entry *f = f_to_clean_up.front ();
+      file_hash_free (f);
+      f_to_clean_up.pop_front ();
+    }
+
+  fclose (outfile);
+
   return 0;
 
  error_out:
+  htab_delete (symbol_table);
+  while (!f_to_clean_up.empty())
+    {
+      struct file_hash_entry *f = f_to_clean_up.front ();
+      file_hash_free (f);
+      f_to_clean_up.pop_front ();
+    }
+
   fclose (outfile);
   unlink (outname);
+
   return 1;
 }

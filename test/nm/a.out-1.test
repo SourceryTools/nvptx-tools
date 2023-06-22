@@ -1,0 +1,19 @@
+'a.out' default.
+
+
+RUN: rm -rf %t
+RUN: mkdir -p %t
+
+
+RUN: ( cd %t/ && %target_nm_cmd > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ] )
+RUN: ! test -s %t.stdout
+RUN: echo 'error opening a.out' > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Copy a random valid file to 'a.out':
+RUN: cp %S/libc/libc_a-dtoa.o %t/a.out
+
+RUN: ( cd %t/ && %env_LC_COLLATE=C_target_nm_cmd > %t.stdout 2> %t.stderr )
+RUN: cmp %S/libc/libc_a-dtoa.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr

@@ -526,8 +526,12 @@ This program has absolutely no warranty.\n",
 	      fclose (f);
 	      goto error_out;
 	    }
-	  const char *p = xstrdup (ar.get_contents ());
+
 	  size_t len = ar.get_len ();
+	  char *p = XNEWVEC (char, len + 1);
+	  memcpy (p, ar.get_contents (), len);
+	  p[len] = '\0';
+
 	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
 	  f_to_clean_up.push_front (f);
 	  process_refs_defs (symbol_table, f, p);

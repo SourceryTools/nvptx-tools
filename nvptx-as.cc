@@ -898,6 +898,8 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
       /* An empty file isn't a valid PTX file.  */
       *verify = 0;
 
+      XDELETEVEC (input);
+
       return;
     }
 
@@ -966,6 +968,8 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
   htab_delete (symbol_table);
 
   XDELETEVEC (tok_to_free);
+
+  XDELETEVEC (input);
 }
 
 /* Wait for a process to finish, and exit if a nonzero status is found.  */

@@ -137,7 +137,7 @@ fatal_unless_success (CUresult r, const char *err)
 static size_t jitopt_lineinfo, jitopt_debuginfo, jitopt_optimize = 4;
 
 static void
-compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
+compile_file (FILE *f, CUmodule *phModule)
 {
   CUresult r;
    
@@ -209,9 +209,6 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 
   r = CUDA_CALL_NOCHECK (cuLinkDestroy, linkstate);
   fatal_unless_success (r, "cuLinkDestroy failed");
-
-  r = CUDA_CALL_NOCHECK (cuModuleGetFunction, phKernel, *phModule, "__main");
-  fatal_unless_success (r, "could not find kernel __main");
 }
 
 ATTRIBUTE_NORETURN static void
@@ -398,11 +395,14 @@ This program has absolutely no warranty.\n",
   fatal_unless_success (r, "could not set heap limit");
 
   CUmodule hModule = 0;
-  CUfunction hKernel = 0;
-  compile_file (f, &hModule, &hKernel);
+  compile_file (f, &hModule);
 
   fclose (f);
   f = NULL;
+
+  CUfunction hKernel = 0;
+  r = CUDA_CALL_NOCHECK (cuModuleGetFunction, &hKernel, hModule, "__main");
+  fatal_unless_success (r, "could not find kernel __main");
 
   void *args[] = { &d_retval, &d_argc, &d_argv };
     

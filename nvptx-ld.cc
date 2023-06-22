@@ -218,6 +218,10 @@ class archive
     long l = atol (hdr.ar_size);
     if (l <= 0 || l > flen)
       return false;
+    /* <https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ar.html>:
+       "Objects in the archive are always an even number of bytes long; files
+       that are an odd number of bytes long are padded with a <newline>,
+       although the size in the header does not reflect this."  */
     size_t read_len = l + (l & 1);
     len = l;
     contents = new char[read_len];

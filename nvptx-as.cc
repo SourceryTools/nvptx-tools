@@ -507,6 +507,8 @@ write_token (FILE *out, Token const *tok)
     fputs ("\n", out);
 }
 
+static std::list<void *> heaps;
+
 static Stmt *
 alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
 {
@@ -517,6 +519,7 @@ alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
     {
       alloc = 1000;
       heap = XNEWVEC (Stmt, alloc);
+      heaps.push_back (heap);
     }
 
   Stmt *stmt = heap++;
@@ -966,6 +969,13 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
   write_stmts (out, rev_stmts (fns));
 
   htab_delete (symbol_table);
+
+  while (!heaps.empty ())
+    {
+      void *heap = heaps.front ();
+      XDELETEVEC (heap);
+      heaps.pop_front ();
+    }
 
   XDELETEVEC (tok_to_free);
 

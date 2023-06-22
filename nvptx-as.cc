@@ -192,8 +192,8 @@ typedef struct Token
   char const *ptr;
 } Token;
 
-/* Token of the preamble '.target' directive's argument.  */
-static Token *tok_preamble_target_arg;
+/* The preamble '.target' directive's argument.  */
+static char *preamble_target_arg;
 
 /* statement info */
 typedef enum Vis
@@ -937,7 +937,8 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
 	i++;
       if (tok[i].kind == K_symbol)
 	{
-	  tok_preamble_target_arg = &tok[i];
+	  assert (!preamble_target_arg);
+	  preamble_target_arg = xstrndup (tok[i].ptr, tok[i].len);
 	  i++;
 	}
       else
@@ -1239,12 +1240,11 @@ This program has absolutely no warranty.\n",
   if (verify > 0)
     {
       const char *target_arg;
-      char *target_arg_to_free = NULL;
       if (target_arg_force)
 	target_arg = target_arg_force;
       else
 	{
-	  assert (tok_preamble_target_arg);
+	  assert (preamble_target_arg);
 
 	  /* Override the default '--gpu-name' of 'ptxas': its default may not
 	     be sufficient for what is requested in the '.target' directive in
@@ -1253,9 +1253,7 @@ This program has absolutely no warranty.\n",
 	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
 
 	     In this case, use the '.target' we found in the preamble.  */
-	  target_arg = target_arg_to_free
-	    = xstrndup (tok_preamble_target_arg->ptr,
-			tok_preamble_target_arg->len);
+	  target_arg = preamble_target_arg;
 
 	  if ((strcmp ("sm_30", target_arg) == 0)
 	      || (strcmp ("sm_32", target_arg) == 0))
@@ -1297,13 +1295,14 @@ This program has absolutely no warranty.\n",
       char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
       fork_execute (new_argv[0], new_argv);
       obstack_free (&argv_obstack, NULL);
-      free (target_arg_to_free);
     }
   else if (verify < 0)
     {
       if (verbose)
 	fprintf (stderr, "'ptxas' not available.\n");
     }
+
+  free (preamble_target_arg);
 
   return 0;
 }

@@ -173,13 +173,22 @@ class archive
       delete[] contents;
     contents = NULL;
   }
-  bool init (FILE *file)
+
+  static bool is_archive (FILE *file)
   {
     char magic[SARMAG];
     if (fread (magic, 1, SARMAG, file) != SARMAG)
       return false;
     if (memcmp (magic, ARMAG, SARMAG) != 0)
       return false;
+    return true;
+  }
+
+  bool init (FILE *file)
+  {
+    if (!is_archive (file))
+      return false;
+
     f = file;
     fseek (f, 0, SEEK_END);
     flen = ftell (f);
@@ -492,6 +501,20 @@ This program has absolutely no warranty.\n",
 	  cerr << "error opening " << name << "\n";
 	  goto error_out;
 	}
+
+      /* Archives appearing here are not resolved via 'libpaths'.  */
+      if (archive::is_archive (f))
+	{
+	  /* (Pre-existing problem of) non-standard Unix 'ld' semantics; see
+	     <https://github.com/MentorEmbedded/nvptx-tools/issues/41>
+	     "ld: non-standard handling of options which refer to files".  */
+	  libraries.push_back (name);
+
+	  fclose (f);
+	  f = NULL;
+	  continue;
+	}
+
       fseek (f, 0, SEEK_END);
       off_t len = ftell (f);
       fseek (f, 0, SEEK_SET);

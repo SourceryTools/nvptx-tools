@@ -42,3 +42,15 @@ RUN: %target_ld_cmd -o %t.nvptx %t/o/GLOBAL_FUNCTION_DECL_f.o -L%t/a -lempty -lG
 RUN: cmp %t.nvptx.golden %t.nvptx
 RUN: ! test -s %t.stdout
 RUN: ! test -s %t.stderr
+
+RUN: rm -f %t.nvptx
+RUN: %target_ld_cmd -o %t.nvptx %t/o/GLOBAL_FUNCTION_DECL_f.o -L%t/a %t/a/libempty.a -lGLOBAL_FUNCTION_f %t/a/libempty.a > %t.stdout 2> %t.stderr
+RUN: cmp %t.nvptx.golden %t.nvptx
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: rm -f %t.nvptx
+RUN: %target_ld_cmd -o %t.nvptx %t/o/GLOBAL_FUNCTION_DECL_f.o -L%t/a -lempty -lGLOBAL_FUNCTION_f %t/a/libempty.a > %t.stdout 2> %t.stderr
+RUN: cmp %t.nvptx.golden %t.nvptx
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr

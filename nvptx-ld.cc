@@ -239,8 +239,8 @@ class archive
   size_t get_len () { return len; }
 };
 
-FILE *
-path_open (const char *filename, list<string> &paths)
+static string
+path_resolve (const string &filename, const list<string> &paths)
 {
   for (list<string>::const_iterator iterator = paths.begin(), end = paths.end();
        iterator != end;
@@ -249,11 +249,10 @@ path_open (const char *filename, list<string> &paths)
       string tmp = *iterator;
       tmp += '/';
       tmp += filename;
-      FILE *f = fopen (tmp.c_str (), "r");
-      if (f)
-	return f;
+      if (access (tmp.c_str (), F_OK) == 0)
+	return tmp;
     }
-  return NULL;
+  return "";
 }
 
 static struct symbol_hash_entry *unresolved;
@@ -437,8 +436,6 @@ This program has absolutely no warranty.\n",
 	}
     }
 
-  libraries.sort ();
-  libraries.unique ();
   libpaths.unique ();
 
   if (outname == NULL)
@@ -463,6 +460,23 @@ This program has absolutely no warranty.\n",
     inputfiles.push_back (argv[optind++]);
 
   int idx = 0;
+
+  for (list<string>::iterator iterator = libraries.begin(), end = libraries.end();
+       iterator != end;
+       ++iterator)
+    {
+      const string &name = "lib" + *iterator + ".a";
+      if (verbose)
+	cerr << "resolving lib " << name << "\n";
+      const string &name_resolved = path_resolve (name, libpaths);
+      if (name_resolved.empty ())
+	{
+	  cerr << "error resolving " << name << "\n";
+	  goto error_out;
+	}
+      *iterator = name_resolved;
+    }
+
   for (list<string>::const_iterator iterator = inputfiles.begin(), end = inputfiles.end();
        iterator != end;
        ++iterator)
@@ -501,14 +515,19 @@ This program has absolutely no warranty.\n",
 	cerr << "Linking " << name << " as " << idx++ << "\n";
       fputc ('\0', outfile);
     }
+
+  /* This de-duplication is best-effort only; it doesn't consider that the same
+     file may be found via different paths.  */
+  libraries.sort ();
+  libraries.unique ();
   for (list<string>::const_iterator iterator = libraries.begin(), end = libraries.end();
        iterator != end;
        ++iterator)
     {
-      const string &name = "lib" + *iterator + ".a";
+      const string &name = *iterator;
       if (verbose)
 	cerr << "trying lib " << name << "\n";
-      FILE *f = path_open (name.c_str (), libpaths);
+      FILE *f = fopen (name.c_str (), "r");
       if (f == NULL)
 	{
 	  cerr << "error opening " << name << "\n";

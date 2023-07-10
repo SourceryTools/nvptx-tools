@@ -68,12 +68,12 @@ static int filename_per_file = 0;	/* Once per file, on its own line.  */
 static int print_width = 0;
 static int print_radix = 16;
 
-typedef struct symbol_hash_entry
+struct symbol_hash_entry
 {
   /* The name of the symbol.  */
   const char *key;
   char type;
-} symbol;
+};
 
 static void
 symbol_hash_free (void *elt)

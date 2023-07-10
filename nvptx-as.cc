@@ -168,7 +168,7 @@ symbol_hash_lookup (htab_t symbol_table, char *string)
   return (symbol *) *e;
 }
 
-typedef enum Kind
+enum Kind
 {
   /* 0-ff used for single char tokens */
   K_symbol = 0x100, /* a symbol */
@@ -178,9 +178,9 @@ typedef enum Kind
   K_number,
   K_string,
   K_comment
-} Kind;
+};
 
-typedef struct Token
+struct Token
 {
   unsigned short kind : 12;
   unsigned short space : 1; /* preceded by space */
@@ -190,13 +190,13 @@ typedef struct Token
 
   /* Token itself */
   char const *ptr;
-} Token;
+};
 
 /* The preamble '.target' directive's argument.  */
 static char *preamble_target_arg;
 
 /* statement info */
-typedef enum Vis
+enum Vis
 {
   V_dot = 0,  /* random pseudo */
   V_var = 1,  /* var decl/defn */
@@ -210,16 +210,16 @@ typedef enum Vis
   V_weak = 0x10,   /* weakly globalize */
   V_no_eol = 0x20, /* no end of line */
   V_prefix_comment = 0x40 /* prefixed comment */
-} Vis;
+};
 
-typedef struct Stmt
+struct Stmt
 {
   struct Stmt *next;
   Token *tokens;
   Token *tokens_end;
   symbol *sym;
   unsigned char vis;
-} Stmt;
+};
 
 #define append_stmt(V, S) ((S)->next = *(V), *(V) = (S))
 

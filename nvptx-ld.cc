@@ -40,7 +40,7 @@ static bool verbose = false;
 
 struct file_hash_entry;
 
-typedef struct symbol_hash_entry
+struct symbol_hash_entry
 {
   /* The name of the symbol.  */
   const char *key;
@@ -50,7 +50,7 @@ typedef struct symbol_hash_entry
   struct file_hash_entry *def;
   int included;
   int referenced;
-} symbol;
+};
 
 static void
 symbol_hash_free (void *elt)
@@ -60,14 +60,14 @@ symbol_hash_free (void *elt)
   free (e);
 }
 
-typedef struct file_hash_entry
+struct file_hash_entry
 {
   struct file_hash_entry **pprev, *next;
   const char *name;
   const char *arname;
   const char *data;
   size_t len;
-} file;
+};
 
 /* Hash and comparison functions for these hash tables.  */
 
@@ -512,7 +512,7 @@ define_intrinsics (htab_t symbol_table)
 }
 
 static const char *
-process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
+process_refs_defs (htab_t symbol_table, file_hash_entry *f, const char *ptx)
 {
   while (*ptx != '\0')
     {
@@ -797,7 +797,7 @@ This program has absolutely no warranty.\n",
 	  memcpy (p, ar.get_contents (), len);
 	  p[len] = '\0';
 
-	  file *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
+	  file_hash_entry *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
 	  f_to_clean_up.push_front (f);
 	  const char *p_ = process_refs_defs (symbol_table, f, p);
 	  assert (p_ == &p[len + 1]);

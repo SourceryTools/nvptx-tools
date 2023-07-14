@@ -103,8 +103,10 @@ struct Stmt;
 class symbol
 {
  public:
+  /* Takes ownership of K.  */
   symbol (const char *k) : key (k), stmts (0), pending (0), emitted (0)
     { }
+  ~symbol () { free ((void *) key); }
 
   /* The name of the symbol.  */
   const char *key;
@@ -120,7 +122,6 @@ static void
 symbol_hash_free (void *elt)
 {
   symbol *e = (symbol *) elt;
-  free ((void *) e->key);
   delete e;
 }
 

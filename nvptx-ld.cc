@@ -134,8 +134,6 @@ file_hash_free (struct file_hash_entry *v)
   free (v);
 }
 
-using namespace std;
-
 #define ARMAG  "!<arch>\012"    /* For COFF and a.out archives.  */
 #define SARMAG 8
 #define ARFMAG "`\012"
@@ -252,14 +250,14 @@ class archive
   size_t get_len () { return len; }
 };
 
-static string
-path_resolve (const string &filename, const list<string> &paths)
+static std::string
+path_resolve (const std::string &filename, const std::list<std::string> &paths)
 {
-  for (list<string>::const_iterator iterator = paths.begin(), end = paths.end();
+  for (std::list<std::string>::const_iterator iterator = paths.begin(), end = paths.end();
        iterator != end;
        ++iterator)
     {
-      string tmp = *iterator;
+      std::string tmp = *iterator;
       tmp += '/';
       tmp += filename;
       if (access (tmp.c_str (), F_OK) == 0)
@@ -403,8 +401,8 @@ int
 main (int argc, char **argv)
 {
   const char *outname = NULL;
-  list<string> libraries;
-  list<string> libpaths;
+  std::list<std::string> libraries;
+  std::list<std::string> libpaths;
   bool verbose = false;
 
   int o;
@@ -419,7 +417,7 @@ main (int argc, char **argv)
 	case 'o':
 	  if (outname != NULL)
 	    {
-	      cerr << "multiple output files specified\n";
+	      std::cerr << "multiple output files specified\n";
 	      exit (1);
 	    }
 	  outname = optarg;
@@ -458,47 +456,47 @@ This program has absolutely no warranty.\n",
     = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
   /* List of 'file_hash_entry' instances to clean up when we're done with the
      'symbol_table'.  */
-  list<file_hash_entry *> f_to_clean_up;
+  std::list<file_hash_entry *> f_to_clean_up;
 
   define_intrinsics (symbol_table);
   
   FILE *outfile = fopen (outname, "w");
   if (outfile == NULL)
     {
-      cerr << "error opening output file\n";
+      std::cerr << "error opening output file\n";
       exit (1);
     }
-  list<string> inputfiles;
+  std::list<std::string> inputfiles;
   while (optind < argc)
     inputfiles.push_back (argv[optind++]);
 
   int idx = 0;
 
-  for (list<string>::iterator iterator = libraries.begin(), end = libraries.end();
+  for (std::list<std::string>::iterator iterator = libraries.begin(), end = libraries.end();
        iterator != end;
        ++iterator)
     {
-      const string &name = "lib" + *iterator + ".a";
+      const std::string &name = "lib" + *iterator + ".a";
       if (verbose)
-	cerr << "resolving lib " << name << "\n";
-      const string &name_resolved = path_resolve (name, libpaths);
+	std::cerr << "resolving lib " << name << "\n";
+      const std::string &name_resolved = path_resolve (name, libpaths);
       if (name_resolved.empty ())
 	{
-	  cerr << "error resolving " << name << "\n";
+	  std::cerr << "error resolving " << name << "\n";
 	  goto error_out;
 	}
       *iterator = name_resolved;
     }
 
-  for (list<string>::const_iterator iterator = inputfiles.begin(), end = inputfiles.end();
+  for (std::list<std::string>::const_iterator iterator = inputfiles.begin(), end = inputfiles.end();
        iterator != end;
        ++iterator)
     {
-      const string &name = *iterator;
+      const std::string &name = *iterator;
       FILE *f = fopen (name.c_str (), "r");
       if (f == NULL)
 	{
-	  cerr << "error opening " << name << "\n";
+	  std::cerr << "error opening " << name << "\n";
 	  goto error_out;
 	}
 
@@ -523,7 +521,7 @@ This program has absolutely no warranty.\n",
       buf[len] = '\0';
       if (read_len != len || ferror (f))
 	{
-	  cerr << "error reading " << name << "\n";
+	  std::cerr << "error reading " << name << "\n";
 	  fclose (f);
 	  goto error_out;
 	}
@@ -532,14 +530,14 @@ This program has absolutely no warranty.\n",
       size_t out = fwrite (buf, 1, len, outfile);
       if (out != len)
 	{
-	  cerr << "error writing to output file\n";
+	  std::cerr << "error writing to output file\n";
 	  goto error_out;
 	}
       const char *buf_ = process_refs_defs (symbol_table, NULL, buf);
       assert (buf_ == &buf[len + 1]);
       delete[] buf;
       if (verbose)
-	cerr << "Linking " << name << " as " << idx++ << "\n";
+	std::cerr << "Linking " << name << " as " << idx++ << "\n";
       fputc ('\0', outfile);
     }
 
@@ -547,23 +545,23 @@ This program has absolutely no warranty.\n",
      file may be found via different paths.  */
   libraries.sort ();
   libraries.unique ();
-  for (list<string>::const_iterator iterator = libraries.begin(), end = libraries.end();
+  for (std::list<std::string>::const_iterator iterator = libraries.begin(), end = libraries.end();
        iterator != end;
        ++iterator)
     {
-      const string &name = *iterator;
+      const std::string &name = *iterator;
       if (verbose)
-	cerr << "trying lib " << name << "\n";
+	std::cerr << "trying lib " << name << "\n";
       FILE *f = fopen (name.c_str (), "r");
       if (f == NULL)
 	{
-	  cerr << "error opening " << name << "\n";
+	  std::cerr << "error opening " << name << "\n";
 	  goto error_out;
 	}
       archive ar;
       if (!ar.init (f))
 	{
-	  cerr << name << " is not a valid archive\n";
+	  std::cerr << name << " is not a valid archive\n";
 	  fclose (f);
 	  goto error_out;
 	}
@@ -571,7 +569,7 @@ This program has absolutely no warranty.\n",
 	{
 	  if (!ar.next_file ())
 	    {
-	      cerr << "error reading from archive " << name << "\n";
+	      std::cerr << "error reading from archive " << name << "\n";
 	      fclose (f);
 	      goto error_out;
 	    }
@@ -598,11 +596,11 @@ This program has absolutely no warranty.\n",
 	  struct file_hash_entry *f = e->def;
 	  if (!f)
 	    {
-	      cerr << "unresolved symbol " << e->key << "\n";
+	      std::cerr << "unresolved symbol " << e->key << "\n";
 	      goto error_out;
 	    }
 	  if (verbose)
-	    cerr << "Resolving " << e->key << "\n";
+	    std::cerr << "Resolving " << e->key << "\n";
 	  if (!f->pprev)
 	    {
 	      f->pprev = &to_add;
@@ -619,10 +617,10 @@ This program has absolutely no warranty.\n",
 	{
 	  f->pprev = NULL;
 	  if (verbose)
-	    cerr << "Linking " << f->arname << "::" << f->name << " as " << idx++ << "\n";
+	    std::cerr << "Linking " << f->arname << "::" << f->name << " as " << idx++ << "\n";
 	  if (fwrite (f->data, 1, f->len, outfile) != f->len)
 	    {
-	      cerr << "error writing to output file\n";
+	      std::cerr << "error writing to output file\n";
 	      goto error_out;
 	    }
 	  fputc ('\0', outfile);

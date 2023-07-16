@@ -130,8 +130,6 @@ symbol_hash_lookup (htab_t symbol_table, char *string, int create)
   return (struct symbol_hash_entry *) *e;
 }
 
-using namespace std;
-
 static const char *
 process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const char *ptx)
 {
@@ -231,7 +229,7 @@ set_output_format (const char *f)
       /* No-op.  */
       break;
     default:
-      cerr << f << ": invalid output format\n";
+      std::cerr << f << ": invalid output format\n";
       usage (stderr, 1);
     }
 }
@@ -386,10 +384,10 @@ print_symbols (symbol_hash_entry **minisyms,
 }
 
 static void
-display_rel_file (list<htab_t> &symbol_tables, const string &name)
+display_rel_file (std::list<htab_t> &symbol_tables, const std::string &name)
 {
   size_t symcount = 0;
-  for (list<htab_t>::iterator it = symbol_tables.begin ();
+  for (std::list<htab_t>::iterator it = symbol_tables.begin ();
        it != symbol_tables.end();
        ++it)
     symcount += htab_elements (*it);
@@ -405,7 +403,7 @@ display_rel_file (list<htab_t> &symbol_tables, const string &name)
   if (symcount == 0)
     {
       if (!quiet)
-	cerr << name << ": no symbols\n";
+	std::cerr << name << ": no symbols\n";
       return;
     }
 #endif
@@ -413,7 +411,7 @@ display_rel_file (list<htab_t> &symbol_tables, const string &name)
   symbol_hash_entry **minisyms = XNEWVEC (symbol_hash_entry *, symcount);
   {
     symbol_hash_entry **minisym = minisyms;
-    for (list<htab_t>::iterator it = symbol_tables.begin ();
+    for (std::list<htab_t>::iterator it = symbol_tables.begin ();
 	 it != symbol_tables.end();
 	 ++it)
       htab_traverse_noresize (*it, symbol_table_into_array, &minisym);
@@ -568,7 +566,7 @@ This program has absolutely no warranty.\n",
 	}
     }
 
-  list<string> inputfiles;
+  std::list<std::string> inputfiles;
   while (optind < argc)
     inputfiles.push_back (argv[optind++]);
   if (!inputfiles.size ())
@@ -576,15 +574,15 @@ This program has absolutely no warranty.\n",
   if (inputfiles.size () > 1)
     filename_per_file = 1;
 
-  for (list<string>::const_iterator iterator = inputfiles.begin(), end = inputfiles.end();
+  for (std::list<std::string>::const_iterator iterator = inputfiles.begin(), end = inputfiles.end();
        iterator != end;
        ++iterator)
     {
-      const string &name = *iterator;
+      const std::string &name = *iterator;
       FILE *f = fopen (name.c_str (), "r");
       if (f == NULL)
 	{
-	  cerr << "error opening " << name << "\n";
+	  std::cerr << "error opening " << name << "\n";
 	  goto error_out;
 	}
       fseek (f, 0, SEEK_END);
@@ -595,7 +593,7 @@ This program has absolutely no warranty.\n",
       buf[len] = '\0';
       if (read_len != len || ferror (f))
 	{
-	  cerr << "error reading " << name << "\n";
+	  std::cerr << "error reading " << name << "\n";
 	  fclose (f);
 	  goto error_out;
 	}
@@ -605,7 +603,7 @@ This program has absolutely no warranty.\n",
       /* Applies to the whole file.  */
       set_print_width (buf);
 
-      list<htab_t> symbol_tables;
+      std::list<htab_t> symbol_tables;
       htab_t symbol_table_global
 	= htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
       symbol_tables.push_back (symbol_table_global);

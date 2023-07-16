@@ -42,7 +42,7 @@ extern "C" CUresult cuGetErrorString (CUresult, const char **);
 #ifndef NVPTX_RUN_LINK_LIBCUDA
 # include <dlfcn.h>
 
-struct cuda_lib_s {
+static struct cuda_lib_s {
 
 # define CUDA_ONE_CALL(call)			\
   __typeof (::call) *call;

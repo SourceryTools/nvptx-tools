@@ -91,7 +91,9 @@ fatal_error (const char * cmsgid, ...)
   fprintf (stderr, "\n");
   va_end (ap);
 
-  unlink (outname);
+  if (outname)
+    unlink (outname);
+
   exit (1);
 }
 

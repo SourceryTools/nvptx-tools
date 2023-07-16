@@ -24,7 +24,6 @@
 #include <assert.h>
 
 #include "hashtab.h"
-#include "obstack.h"
 #define HAVE_DECL_BASENAME 1
 #include "libiberty.h"
 

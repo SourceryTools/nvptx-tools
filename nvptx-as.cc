@@ -36,9 +36,6 @@
 #include <errno.h>
 #include <assert.h>
 
-#define obstack_chunk_alloc malloc
-#define obstack_chunk_free free
-#include <obstack.h>
 #define HAVE_DECL_BASENAME 1
 #include <libiberty.h>
 #include <hashtab.h>
@@ -1022,11 +1019,11 @@ do_wait (const char *prog, struct pex_obj *pex)
 
 /* Execute a program, and wait for the reply.  */
 static void
-fork_execute (const char *prog, char *const *argv)
+fork_execute (const char *prog, const char *const *argv)
 {
   if (verbose)
     {
-      for (char *const *arg = argv; *arg; ++arg)
+      for (const char *const *arg = argv; *arg; ++arg)
 	{
 	  if (**arg == '\0')
 	    fprintf (stderr, " ''");
@@ -1043,8 +1040,9 @@ fork_execute (const char *prog, char *const *argv)
   int err;
   const char *errmsg;
 
-  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH, argv[0], argv, NULL,
-		    NULL, &err);
+  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH,
+		    argv[0], const_cast<char *const *>(argv),
+		    NULL, NULL, &err);
   if (errmsg != NULL)
     {
       if (err != 0)
@@ -1298,20 +1296,18 @@ This program has absolutely no warranty.\n",
 	    }
 	}
 
-      struct obstack argv_obstack;
-      obstack_init (&argv_obstack);
-      obstack_ptr_grow (&argv_obstack, "ptxas");
-      obstack_ptr_grow (&argv_obstack, "-c");
-      obstack_ptr_grow (&argv_obstack, "-o");
-      obstack_ptr_grow (&argv_obstack, "/dev/null");
-      obstack_ptr_grow (&argv_obstack, outname);
-      obstack_ptr_grow (&argv_obstack, "--gpu-name");
-      obstack_ptr_grow (&argv_obstack, target_arg);
-      obstack_ptr_grow (&argv_obstack, "-O0");
-      obstack_ptr_grow (&argv_obstack, NULL);
-      char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
+      const char *const new_argv[] = {
+	"ptxas",
+	"-c",
+	"-o",
+	"/dev/null",
+	outname,
+	"--gpu-name",
+	target_arg,
+	"-O0",
+	NULL,
+      };
       fork_execute (new_argv[0], new_argv);
-      obstack_free (&argv_obstack, NULL);
     }
   else if (verify < 0)
     {

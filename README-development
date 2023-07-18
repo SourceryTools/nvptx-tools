@@ -1,0 +1,16 @@
+Program Instrumentation: Sanitizers
+-----------------------------------
+
+    $ ./configure CXXFLAGS='-O0 -ggdb -fsanitize=address -fsanitize=undefined'
+
+This compiles the nvptx-tools proper (but not libiberty) with the specified
+sanitizers enabled.
+
+If the 'run' test cases fail due to:
+
+    nvptx-run: cuInit failed: out of memory (CUDA_ERROR_OUT_OF_MEMORY, 2)
+
+..., per <https://github.com/google/sanitizers/issues/629>
+"asan: problem calling NVIDIA CUDA libraries" run with
+'ASAN_OPTIONS=protect_shadow_gap=false', to override the 'true' default;
+<https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags>.

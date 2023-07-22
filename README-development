@@ -14,3 +14,9 @@ If the 'run' test cases fail due to:
 "asan: problem calling NVIDIA CUDA libraries" run with
 'ASAN_OPTIONS=protect_shadow_gap=false', to override the 'true' default;
 <https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags>.
+
+
+Autotools
+---------
+
+Run 'autoreconf' (or, manually, 'aclocal') with '-I config'.

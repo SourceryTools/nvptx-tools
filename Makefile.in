@@ -35,7 +35,6 @@ RANLIB = @RANLIB@
 LIT = @LIT@
 LITFLAGS =
 
-LN_S = @LN_S@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -118,13 +117,13 @@ install: all
 	[ -z "$(NVPTX_RUN)" ] || $(INSTALL_PROGRAM) -m 755 $(srcdir)/nvptx-run-single $(DESTDIR)$(bindir)/nvptx-none-run-single
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
-	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
-	$(LN_S) $(RANLIB) $(DESTDIR)$(bindir)/nvptx-none-ranlib
+	ln -s $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
+	ln -s $(RANLIB) $(DESTDIR)$(bindir)/nvptx-none-ranlib
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
 	rel=$$(perl -MFile::Spec -e 'print File::Spec->abs2rel(@ARGV)' \
 	  $(DESTDIR)$(bindir) $(DESTDIR)$(prefix)/nvptx-none/bin) && \
 	for p in ar as ld nm ranlib; do \
 	  rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p" && \
-	  $(LN_S) "$$rel"/nvptx-none-"$$p" $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p"; \
+	  ln -s "$$rel"/nvptx-none-"$$p" $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p"; \
 	done

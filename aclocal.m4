@@ -12,4 +12,3 @@
 # PARTICULAR PURPOSE.
 
 m4_include([config/acx.m4])
-m4_include([acinclude.m4])

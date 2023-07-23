@@ -1,0 +1,23 @@
+<https://github.com/MentorEmbedded/nvptx-tools/issues/28> "nvptx-as should diagnose unexpected input instead of silently ignoring it"
+
+Document current buggy behavior.
+
+
+'bare-1.s', 'garbage-1.s'
+
+RUN: cat %S/bare-1.s %S/garbage-1.s > %t_bare-1_garbage-1.s
+
+Don't need '--no-verify', as nvptx-as will "reduce" this to 'bare-1.s', which is a valid PTX file.
+
+RUN: rm -f %t.*
+RUN: %target_as_cmd -o %t.o %t_bare-1_garbage-1.s
+RUN: cmp %S/bare-1.s %t.o
+
+
+'garbage-1.s'
+
+Need '--no-verify', as nvptx-as will "reduce" this to an empty file, which isn't a valid PTX file.
+
+RUN: rm -f %t.*
+RUN: %target_as_cmd --no-verify -o %t.o %S/garbage-1.s
+RUN: ! test -s %t.o

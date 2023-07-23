@@ -28,15 +28,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
 #include <errno.h>
-#define obstack_chunk_alloc malloc
-#define obstack_chunk_free free
-#include <obstack.h>
+#include <assert.h>
+
 #define HAVE_DECL_BASENAME 1
 #include <libiberty.h>
 #include <hashtab.h>
@@ -77,6 +76,8 @@
 
 #define DIR_UP ".."
 
+static bool verbose = false;
+
 static const char *outname = NULL;
 
 static void __attribute__ ((format (printf, 1, 2)))
@@ -90,7 +91,9 @@ fatal_error (const char * cmsgid, ...)
   fprintf (stderr, "\n");
   va_end (ap);
 
-  unlink (outname);
+  if (outname)
+    unlink (outname);
+
   exit (1);
 }
 
@@ -112,46 +115,57 @@ class symbol
   bool emitted;
 };
 
+static void
+symbol_hash_free (void *elt)
+{
+  symbol *e = (symbol *) elt;
+  free ((void *) e->key);
+  delete e;
+}
+
 /* Hash and comparison functions for these hash tables.  */
 
 static int hash_string_eq (const void *, const void *);
 static hashval_t hash_string_hash (const void *);
 
 static int
-hash_string_eq (const void *s1_p, const void *s2_p)
+hash_string_eq (const void *e1_p, const void *s2_p)
 {
-  const char *const *s1 = (const char *const *) s1_p;
+  const symbol *s1_p = (const symbol *) e1_p;
   const char *s2 = (const char *) s2_p;
-  return strcmp (*s1, s2) == 0;
+  return strcmp (s1_p->key, s2) == 0;
 }
 
 static hashval_t
-hash_string_hash (const void *s_p)
+hash_string_hash (const void *e_p)
 {
-  const char *const *s = (const char *const *) s_p;
-  return (*htab_hash_string) (*s);
+  const symbol *s_p = (const symbol *) e_p;
+  return (*htab_hash_string) (s_p->key);
 }
 
-static htab_t symbol_table;
+/* Look up an entry in the symbol hash table.
 
-/* Look up an entry in the symbol hash table.  */
+   Takes ownership of STRING.  */
 
 static symbol *
-symbol_hash_lookup (const char *string)
+symbol_hash_lookup (htab_t symbol_table, char *string)
 {
   void **e;
   e = htab_find_slot_with_hash (symbol_table, string,
                                 (*htab_hash_string) (string),
                                 INSERT);
   if (e == NULL)
-    return NULL;
+    {
+      free (string);
+      return NULL;
+    }
   if (*e == NULL)
     *e = new symbol (string);
+  else
+    free (string);
 
   return (symbol *) *e;
 }
-
-#define COMMENT_PREFIX "#"
 
 typedef enum Kind
 {
@@ -176,6 +190,9 @@ typedef struct Token
   /* Token itself */
   char const *ptr;
 } Token;
+
+/* The preamble '.target' directive's argument.  */
+static char *preamble_target_arg;
 
 /* statement info */
 typedef enum Vis
@@ -489,6 +506,8 @@ write_token (FILE *out, Token const *tok)
     fputs ("\n", out);
 }
 
+static std::list<void *> heaps;
+
 static Stmt *
 alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
 {
@@ -499,6 +518,7 @@ alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
     {
       alloc = 1000;
       heap = XNEWVEC (Stmt, alloc);
+      heaps.push_back (heap);
     }
 
   Stmt *stmt = heap++;
@@ -652,7 +672,7 @@ parse_insn (Token *tok)
 }
 
 static Token *
-parse_init (Token *tok, symbol *sym)
+parse_init (htab_t symbol_table, Token *tok, symbol *sym)
 {
   for (;;)
     {
@@ -677,7 +697,8 @@ parse_init (Token *tok, symbol *sym)
 	if (tok->kind == K_symbol || tok->kind == K_ident)
 	  def_tok = tok;
       if (def_tok)
-	sym->deps.push_back (symbol_hash_lookup (xstrndup (def_tok->ptr,
+	sym->deps.push_back (symbol_hash_lookup (symbol_table,
+						 xstrndup (def_tok->ptr,
 							   def_tok->len)));
       tok[1].space = 0;
       int end = tok++->kind == ';';
@@ -697,7 +718,7 @@ parse_init (Token *tok, symbol *sym)
 }
 
 static Token *
-parse_file (Token *tok)
+parse_file (htab_t symbol_table, Token *tok)
 {
   Stmt *comment = 0;
 
@@ -763,7 +784,8 @@ parse_file (Token *tok)
 		def_token = tok;
 	    }
 	  if (def_token)
-	    def = symbol_hash_lookup (xstrndup (def_token->ptr, def_token->len));
+	    def = symbol_hash_lookup (symbol_table,
+				      xstrndup (def_token->ptr, def_token->len));
 
 	  if (!tok->kind)
 	    {
@@ -809,7 +831,7 @@ parse_file (Token *tok)
 		    }
 		  append_stmt (&def->stmts, stmt);
 		  if (assign)
-		    tok = parse_init (tok, def);
+		    tok = parse_init (symbol_table, tok, def);
 		}
 	      else
 		{
@@ -864,38 +886,104 @@ traverse (void **slot, void *data)
 }
 
 static void
-process (FILE *in, FILE *out, int verify, const char *outname)
+process (FILE *in, FILE *out, int *verify, const char *inname)
 {
-  symbol_table = htab_create (500, hash_string_hash, hash_string_eq,
-                              NULL);
-
   const char *input = read_file (in);
-  Token *tok = tokenize (input);
 
-  /* By default, when ptxas is not in PATH, do minimalistic verification,
-     just require that the first non-comment directive is .version.  */
-  if (verify < 0)
+  /* As expected by GCC, handle an empty input file specially.  See
+     <https://github.com/MentorEmbedded/nvptx-tools/pull/26> "[nvptx-as] Allow
+     empty input file" for reference.  */
+  if (*input == '\0')
     {
-      size_t i;
-      for (i = 0; tok[i].kind == K_comment; i++)
-	;
-      if (tok[i].kind != K_dotted || !is_keyword (&tok[i], "version"))
-	fatal_error ("missing .version directive at start of file '%s'",
-		     outname);
+      /* Produce an empty output file.  */
+
+      /* An empty file isn't a valid PTX file.  */
+      *verify = 0;
+
+      XDELETEVEC (input);
+
+      return;
     }
 
+  Token *tok = tokenize (input);
+  Token *tok_to_free = tok;
+
+  /* Do minimalistic verification, so that we reliably reject (certain classes
+     of) invalid input.  (If available and applicable, 'ptxas' is later used to
+     verify the whole output file.)  */
+  if (*verify != 0)
+    {
+      /* Verify the preamble as generated by GCC.  */
+      size_t i = 0;
+      while (tok[i].kind == K_comment)
+	i++;
+      if (tok[i].kind == K_dotted && is_keyword (&tok[i], "version"))
+	i++;
+      else
+	fatal_error ("missing .version directive at start of file '%s'",
+		     inname);
+      /* 'ptxas' doesn't seem to allow comments or line breaks here, but it's
+	 not documented.  */
+      while (tok[i].kind == K_comment)
+	i++;
+      if (tok[i].kind == K_number)
+	i++;
+      else
+	fatal_error ("malformed .version directive at start of file '%s'",
+		     inname);
+      while (tok[i].kind == K_comment)
+	i++;
+      if (tok[i].kind == K_dotted && is_keyword (&tok[i], "target"))
+	i++;
+      else
+	fatal_error ("missing .target directive at start of file '%s'",
+		     inname);
+      while (tok[i].kind == K_comment)
+	i++;
+      if (tok[i].kind == K_symbol)
+	{
+	  assert (!preamble_target_arg);
+	  preamble_target_arg = xstrndup (tok[i].ptr, tok[i].len);
+	  i++;
+	}
+      else
+	fatal_error ("malformed .target directive at start of file '%s'",
+		     inname);
+      /* PTX allows here a "comma separated list of target specifiers", but GCC
+	 doesn't generate that, and we don't support that.  */
+      if (tok[i].kind == ',')
+	fatal_error ("unsupported list in .target directive at start of file '%s'",
+		     inname);
+    }
+
+  htab_t symbol_table
+    = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
+
   do
-    tok = parse_file (tok);
+    tok = parse_file (symbol_table, tok);
   while (tok->kind);
 
   write_stmts (out, rev_stmts (decls));
   htab_traverse (symbol_table, traverse, (void *)out);
   write_stmts (out, rev_stmts (fns));
+
+  htab_delete (symbol_table);
+
+  while (!heaps.empty ())
+    {
+      void *heap = heaps.front ();
+      XDELETEVEC (heap);
+      heaps.pop_front ();
+    }
+
+  XDELETEVEC (tok_to_free);
+
+  XDELETEVEC (input);
 }
 
 /* Wait for a process to finish, and exit if a nonzero status is found.  */
 
-int
+static int
 collect_wait (const char *prog, struct pex_obj *pex)
 {
   int status;
@@ -933,8 +1021,20 @@ do_wait (const char *prog, struct pex_obj *pex)
 
 /* Execute a program, and wait for the reply.  */
 static void
-fork_execute (const char *prog, char *const *argv)
+fork_execute (const char *prog, const char *const *argv)
 {
+  if (verbose)
+    {
+      for (const char *const *arg = argv; *arg; ++arg)
+	{
+	  if (**arg == '\0')
+	    fprintf (stderr, " ''");
+	  else
+	    fprintf (stderr, " %s", *arg);
+	}
+      fprintf (stderr, "\n");
+    }
+
   struct pex_obj *pex = pex_init (0, "nvptx-as", NULL);
   if (pex == NULL)
     fatal_error ("pex_init failed: %m");
@@ -942,8 +1042,9 @@ fork_execute (const char *prog, char *const *argv)
   int err;
   const char *errmsg;
 
-  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH, argv[0], argv, NULL,
-		    NULL, &err);
+  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH,
+		    argv[0], const_cast<char *const *>(argv),
+		    NULL, NULL, &err);
   if (errmsg != NULL)
     {
       if (err != 0)
@@ -1030,6 +1131,26 @@ program_available (const char *progname)
   return false;
 }
 
+ATTRIBUTE_NORETURN static void
+usage (FILE *stream, int status)
+{
+  fprintf (stream, "\
+Usage: nvptx-none-as [option...] [asmfile]\n\
+Options:\n\
+  -m TARGET             Override target architecture used for ptxas\n\
+                        verification (default: deduce from input's preamble)\n\
+  -o FILE               Write output to FILE\n\
+  -v                    Be verbose\n\
+  --verify              Do verify output is acceptable to ptxas\n\
+  --no-verify           Do not verify output is acceptable to ptxas\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+	   REPORT_BUGS_TO);
+  exit (status);
+}
+
 static struct option long_options[] = {
   {"traditional-format",     no_argument, 0,  0 },
   {"save-temps",  no_argument,       0,  0 },
@@ -1044,10 +1165,10 @@ int
 main (int argc, char **argv)
 {
   FILE *in = stdin;
+  const char *inname = "{standard input}";
   FILE *out = stdout;
-  bool verbose __attribute__((unused)) = false;
   int verify = -1;
-  const char *smver = "sm_30";
+  const char *target_arg_force = NULL;
 
   int o;
   int option_index = 0;
@@ -1073,28 +1194,17 @@ main (int argc, char **argv)
 	  outname = optarg;
 	  break;
 	case 'm':
-	  smver = optarg;
+	  target_arg_force = optarg;
 	  break;
 	case 'I':
 	  /* Ignore include paths.  */
 	  break;
 	case 'h':
-	  printf ("\
-Usage: nvptx-none-as [option...] [asmfile]\n\
-Options:\n\
-  -o FILE               Write output to FILE\n\
-  -v                    Be verbose\n\
-  --verify              Do verify output is acceptable to ptxas\n\
-  --no-verify           Do not verify output is acceptable to ptxas\n\
-  --help                Print this help and exit\n\
-  --version             Print version number and exit\n\
-\n\
-Report bugs to %s.\n",
-		  REPORT_BUGS_TO);
-	  exit (0);
+	  usage (stdout, 0);
+	  break;
 	case 'V':
 	  printf ("\
-nvtpx-none-as %s%s\n\
+nvptx-none-as %s%s\n\
 Copyright %s Mentor Graphics\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\
@@ -1103,6 +1213,7 @@ This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
 	default:
+	  usage (stderr, 1);
 	  break;
 	}
     }
@@ -1116,35 +1227,97 @@ This program has absolutely no warranty.\n",
     fatal_error ("cannot open '%s'", outname);
 
   if (argc > optind)
-    in = fopen (argv[optind], "r");
+    {
+      inname = argv[optind];
+      in = fopen (inname, "r");
+    }
   if (!in)
     fatal_error ("cannot open input ptx file");
 
+  process (in, out, &verify, inname);
+
+  if (in != stdin)
+    {
+      fclose (in);
+      in = NULL;
+    }
+  if (out != stdout)
+    {
+      fclose (out);
+      out = NULL;
+    }
+
   if (outname == NULL)
+    /* We don't have a PTX file for 'ptxas' to read in; skip verification.  */
     verify = 0;
   else if (verify == -1)
     if (program_available ("ptxas"))
       verify = 1;
 
-  process (in, out, verify, outname);
-  if (outname)
-    fclose (out);
-
   if (verify > 0)
     {
-      struct obstack argv_obstack;
-      obstack_init (&argv_obstack);
-      obstack_ptr_grow (&argv_obstack, "ptxas");
-      obstack_ptr_grow (&argv_obstack, "-c");
-      obstack_ptr_grow (&argv_obstack, "-o");
-      obstack_ptr_grow (&argv_obstack, "/dev/null");
-      obstack_ptr_grow (&argv_obstack, outname);
-      obstack_ptr_grow (&argv_obstack, "--gpu-name");
-      obstack_ptr_grow (&argv_obstack, smver);
-      obstack_ptr_grow (&argv_obstack, "-O0");
-      obstack_ptr_grow (&argv_obstack, NULL);
-      char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
+      const char *target_arg;
+      if (target_arg_force)
+	target_arg = target_arg_force;
+      else
+	{
+	  assert (preamble_target_arg);
+
+	  /* Override the default '--gpu-name' of 'ptxas': its default may not
+	     be sufficient for what is requested in the '.target' directive in
+	     the input's preamble:
+
+	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
+
+	     In this case, use the '.target' we found in the preamble.  */
+	  target_arg = preamble_target_arg;
+
+	  if ((strcmp ("sm_30", target_arg) == 0)
+	      || (strcmp ("sm_32", target_arg) == 0))
+	    {
+	      /* Starting with CUDA 11.0, "Support for Kepler 'sm_30' and
+		 'sm_32' architecture based products is dropped", and these may
+		 no longer be specified in '--gpu-name' of 'ptxas':
+
+		     ptxas fatal   : Value 'sm_30' is not defined for option 'gpu-name'
+
+		     ptxas fatal   : Value 'sm_32' is not defined for option 'gpu-name'
+
+		 ..., but we need to continue supporting GCC emitting
+		 '.target sm_30' code, for example.
+
+		 Detecting the CUDA/'ptxas' version and the supported
+		 '--gpu-name' options is clumsy, so in this case, just use
+		 'sm_35', which is the baseline supported by all current CUDA
+		 versions down to CUDA 6.5, at least.  */
+	      if (verbose)
+		fprintf (stderr, "Verifying %s code", target_arg);
+	      target_arg = "sm_35";
+	      if (verbose)
+		fprintf (stderr, " with %s code generation.\n", target_arg);
+	    }
+	}
+
+      const char *const new_argv[] = {
+	"ptxas",
+	"-c",
+	"-o",
+	"/dev/null",
+	outname,
+	"--gpu-name",
+	target_arg,
+	"-O0",
+	NULL,
+      };
       fork_execute (new_argv[0], new_argv);
     }
+  else if (verify < 0)
+    {
+      if (verbose)
+	fprintf (stderr, "'ptxas' not available.\n");
+    }
+
+  free (preamble_target_arg);
+
   return 0;
 }

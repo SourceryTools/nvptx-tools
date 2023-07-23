@@ -20,19 +20,89 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <cuda.h>
-
-#include "version.h"
+#ifndef NVPTX_RUN_INCLUDE_SYSTEM_CUDA_H
+# include "cuda/cuda.h"
+#else
+# include <cuda.h>
 
 /* On systems where installed NVIDIA driver is newer than CUDA Toolkit,
    libcuda.so may have these functions even though <cuda.h> does not.  */
 
-#if defined HAVE_CUGETERRORNAME && !HAVE_DECL_CUGETERRORNAME
 extern "C" CUresult cuGetErrorName (CUresult, const char **);
-#endif
-#if defined HAVE_CUGETERRORSTRING && !HAVE_DECL_CUGETERRORSTRING
 extern "C" CUresult cuGetErrorString (CUresult, const char **);
 #endif
+
+#define HAVE_DECL_BASENAME 1
+#include "libiberty.h"
+
+#include "version.h"
+
+#define DO_PRAGMA(x) _Pragma (#x)
+
+#ifndef NVPTX_RUN_LINK_LIBCUDA
+# include <dlfcn.h>
+
+static struct cuda_lib_s {
+
+# define CUDA_ONE_CALL(call)			\
+  __typeof (::call) *call;
+# define CUDA_ONE_CALL_MAYBE_NULL(call)		\
+  CUDA_ONE_CALL (call)
+# include "nvptx-run-cuda-lib.def"
+# undef CUDA_ONE_CALL
+# undef CUDA_ONE_CALL_MAYBE_NULL
+
+} cuda_lib;
+
+/* -1 if init_cuda_lib has not been called yet, false
+   if it has been and failed, true if it has been and succeeded.  */
+static signed char cuda_lib_inited = -1;
+
+/* Dynamically load the CUDA runtime library and initialize function
+   pointers, return false if unsuccessful, true if successful.  */
+static bool
+init_cuda_lib (void)
+{
+  if (cuda_lib_inited != -1)
+    return cuda_lib_inited;
+  const char *cuda_runtime_lib = "libcuda.so.1";
+  void *h = dlopen (cuda_runtime_lib, RTLD_LAZY);
+  cuda_lib_inited = false;
+  if (h == NULL)
+    return false;
+
+# define CUDA_ONE_CALL(call) CUDA_ONE_CALL_1 (call, false)
+# define CUDA_ONE_CALL_MAYBE_NULL(call) CUDA_ONE_CALL_1 (call, true)
+# define CUDA_ONE_CALL_1(call, allow_null)		\
+  cuda_lib.call = (__typeof (call) *) dlsym (h, #call);	\
+  if (!allow_null && cuda_lib.call == NULL)		\
+    return false;
+# include "nvptx-run-cuda-lib.def"
+# undef CUDA_ONE_CALL
+# undef CUDA_ONE_CALL_1
+# undef CUDA_ONE_CALL_MAYBE_NULL
+
+  cuda_lib_inited = true;
+  return true;
+}
+# define CUDA_CALL_PREFIX cuda_lib.
+#else
+
+# define CUDA_ONE_CALL(call)
+# define CUDA_ONE_CALL_MAYBE_NULL(call) DO_PRAGMA (weak call)
+# include "nvptx-run-cuda-lib.def"
+# undef CUDA_ONE_CALL_MAYBE_NULL
+# undef CUDA_ONE_CALL
+
+# define CUDA_CALL_PREFIX
+# define init_cuda_lib() true
+#endif
+
+#define CUDA_CALL_NOCHECK(FN, ...)		\
+  CUDA_CALL_PREFIX FN (__VA_ARGS__)
+
+#define CUDA_CALL_EXISTS(FN)			\
+  CUDA_CALL_PREFIX FN
 
 
 static void __attribute__ ((format (printf, 1, 2)))
@@ -56,20 +126,18 @@ fatal_unless_success (CUresult r, const char *err)
     return;
 
   const char *s = "[unknown]";
+  if (CUDA_CALL_EXISTS (cuGetErrorString))
+    CUDA_CALL_NOCHECK (cuGetErrorString, r, &s);
   const char *n = "[unknown]";
-#if defined HAVE_CUGETERRORSTRING
-  cuGetErrorString (r, &s);
-#endif
-#if defined HAVE_CUGETERRORNAME
-  cuGetErrorName (r, &n);
-#endif
+  if (CUDA_CALL_EXISTS (cuGetErrorName))
+    CUDA_CALL_NOCHECK (cuGetErrorName, r, &n);
   fatal_error ("%s: %s (%s, %d)", err, s, n, (int) r);
 }
 
 static size_t jitopt_lineinfo, jitopt_debuginfo, jitopt_optimize = 4;
 
 static void
-compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
+compile_file (FILE *f, CUmodule *phModule)
 {
   CUresult r;
    
@@ -88,7 +156,9 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
   };
   CUlinkState linkstate;
 
-  r = cuLinkCreate (sizeof opts / sizeof *opts, opts, optvals, &linkstate);
+  r = CUDA_CALL_NOCHECK (cuLinkCreate,
+			 sizeof opts / sizeof *opts, opts, optvals,
+			 &linkstate);
   fatal_unless_success (r, "cuLinkCreate failed");
   
   fseek (f, 0, SEEK_END);
@@ -106,8 +176,9 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
       char namebuf[100];
       int l = strlen (program + off);
       sprintf (namebuf, "input file %d at offset %d", count++, off);
-      r = cuLinkAddData (linkstate, CU_JIT_INPUT_PTX, program + off, l + 1,
-			 strdup (namebuf), 0, 0, 0);
+      r = CUDA_CALL_NOCHECK (cuLinkAddData, linkstate,
+			     CU_JIT_INPUT_PTX, program + off, l + 1,
+			     namebuf, 0, 0, 0);
       if (r != CUDA_SUCCESS)
 	{
 #if 0
@@ -122,19 +193,42 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 	off++;
     }
 
+  delete[] program;
+  program = NULL;
+
   void *linkout;
-  r = cuLinkComplete (linkstate, &linkout, NULL);
+  r = CUDA_CALL_NOCHECK (cuLinkComplete, linkstate, &linkout, NULL);
   if (r != CUDA_SUCCESS)
     {
       fprintf (stderr, "%s\n", elog);
       fatal_unless_success (r, "cuLinkComplete failed");
     }
 
-  r = cuModuleLoadData (phModule, linkout);
+  r = CUDA_CALL_NOCHECK (cuModuleLoadData, phModule, linkout);
   fatal_unless_success (r, "cuModuleLoadData failed");
 
-  r = cuModuleGetFunction (phKernel, *phModule, "__main");
-  fatal_unless_success (r, "could not find kernel __main");
+  r = CUDA_CALL_NOCHECK (cuLinkDestroy, linkstate);
+  fatal_unless_success (r, "cuLinkDestroy failed");
+}
+
+ATTRIBUTE_NORETURN static void
+usage (FILE *stream, int status)
+{
+  fprintf (stream, "\
+Usage: nvptx-none-run [option...] program [argument...]\n\
+Options:\n\
+  -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
+  -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
+  -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
+  -O, --optlevel N      Pass PTX JIT option to set optimization level N\n\
+  -g, --lineinfo        Pass PTX JIT option to generate line information\n\
+  -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
+  --help                Print this help and exit\n\
+  --version             Print version number and exit\n\
+\n\
+Report bugs to %s.\n",
+	   REPORT_BUGS_TO);
+  exit (status);
 }
 
 static const struct option long_options[] =
@@ -155,7 +249,7 @@ main (int argc, char **argv)
 {
   int o;
   long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
-  while ((o = getopt_long (argc, argv, "S:H:L:O:gGhV", long_options, 0)) != -1)
+  while ((o = getopt_long (argc, argv, "+S:H:L:O:gGhV", long_options, 0)) != -1)
     {
       switch (o)
 	{
@@ -186,24 +280,11 @@ main (int argc, char **argv)
 	  jitopt_debuginfo = 1;
 	  break;
 	case 'h':
-	  printf ("\
-Usage: nvptx-none-run [option...] program [argument...]\n\
-Options:\n\
-  -S, --stack-size N    Set per-lane GPU stack size to N (default: auto)\n\
-  -H, --heap-size N     Set GPU heap size to N (default: 256 MiB)\n\
-  -L, --lanes N         Launch N lanes (for testing gcc -muniform-simt)\n\
-  -O, --optlevel N      Pass PTX JIT option to set optimization level N\n\
-  -g, --lineinfo        Pass PTX JIT option to generate line information\n\
-  -G, --debuginfo       Pass PTX JIT option to generate debug information\n\
-  --help                Print this help and exit\n\
-  --version             Print version number and exit\n\
-\n\
-Report bugs to %s.\n",
-		  REPORT_BUGS_TO);
-	  exit (0);
+	  usage (stdout, 0);
+	  break;
 	case 'V':
 	  printf ("\
-nvtpx-none-run %s%s\n\
+nvptx-none-run %s%s\n\
 Copyright %s Mentor Graphics\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\
@@ -212,6 +293,7 @@ This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
 	default:
+	  usage (stderr, 1);
 	  break;
 	}
     }
@@ -224,19 +306,22 @@ This program has absolutely no warranty.\n",
   if (f == NULL)
     fatal_error ("program file not found");
 
+  if (!init_cuda_lib ())
+    fatal_error ("couldn't initialize CUDA Driver");
+
   CUresult r;
-  r = cuInit (0);
+  r = CUDA_CALL_NOCHECK (cuInit, 0);
   fatal_unless_success (r, "cuInit failed");
 
   CUdevice dev;
   CUcontext ctx;
-  r = cuDeviceGet (&dev, 0);
+  r = CUDA_CALL_NOCHECK (cuDeviceGet, &dev, 0);
   fatal_unless_success (r, "cuDeviceGet failed");
-  r = cuCtxCreate (&ctx, 0, dev);
+  r = CUDA_CALL_NOCHECK (cuCtxCreate, &ctx, 0, dev);
   fatal_unless_success (r, "cuCtxCreate failed");
 
   CUdeviceptr d_retval;
-  r = cuMemAlloc(&d_retval, sizeof (int));
+  r = CUDA_CALL_NOCHECK (cuMemAlloc, &d_retval, sizeof (int));
   fatal_unless_success (r, "cuMemAlloc failed");
   int d_argc = argc - optind;
   /* The argv pointers, followed by the actual argv strings.  */
@@ -245,7 +330,7 @@ This program has absolutely no warranty.\n",
     size_t s_d_argv = d_argc * sizeof (char *);
     for (int arg = optind; arg < argc; ++arg)
       s_d_argv += strlen (argv[arg]) + 1;
-    r = cuMemAlloc(&d_argv, s_d_argv);
+    r = CUDA_CALL_NOCHECK (cuMemAlloc, &d_argv, s_d_argv);
     fatal_unless_success (r, "cuMemAlloc failed");
     /* Skip the argv pointers.  */
     size_t pos = d_argc * sizeof (char *);
@@ -253,11 +338,12 @@ This program has absolutely no warranty.\n",
     {
       CUdeviceptr d_arg = (CUdeviceptr) ((char *) d_argv + pos);
       size_t len = strlen (argv[arg]) + 1;
-      r = cuMemcpyHtoD(d_arg, argv[arg], len);
+      r = CUDA_CALL_NOCHECK (cuMemcpyHtoD, d_arg, argv[arg], len);
       fatal_unless_success (r, "cuMemcpyHtoD (d_arg) failed");
-      r = cuMemcpyHtoD((CUdeviceptr) ((char *) d_argv
-				      + (arg - optind) * sizeof (char *)),
-		       &d_arg, sizeof (char *));
+      r = CUDA_CALL_NOCHECK (cuMemcpyHtoD,
+			     (CUdeviceptr) ((char *) d_argv
+					    + (arg - optind) * sizeof (char *)),
+			     &d_arg, sizeof (char *));
       fatal_unless_success (r, "cuMemcpyHtoD (d_argv) failed");
       pos += len;
     }
@@ -266,8 +352,8 @@ This program has absolutely no warranty.\n",
 #if 0
   /* Default seems to be 1 KiB stack, 8 MiB heap.  */
   size_t stack, heap;
-  cuCtxGetLimit (&stack, CU_LIMIT_STACK_SIZE);
-  cuCtxGetLimit (&heap, CU_LIMIT_MALLOC_HEAP_SIZE);
+  CUDA_CALL_NOCHECK (cuCtxGetLimit, &stack, CU_LIMIT_STACK_SIZE);
+  CUDA_CALL_NOCHECK (cuCtxGetLimit, &heap, CU_LIMIT_MALLOC_HEAP_SIZE);
   printf ("stack %ld heap %ld\n", stack, heap);
 #endif
 
@@ -277,15 +363,23 @@ This program has absolutely no warranty.\n",
          were reserved for the maximum number of threads the device can host,
 	 even if only a few are launched.  Compute the default accordingly.  */
       int sm_count, thread_max;
-      r = cuDeviceGetAttribute (&sm_count,
-				CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev);
+      r = CUDA_CALL_NOCHECK (cuDeviceGetAttribute,
+			     &sm_count,
+			     CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
+			     dev);
       fatal_unless_success (r, "could not get SM count");
-      r = cuDeviceGetAttribute
-	(&thread_max, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
+      r = CUDA_CALL_NOCHECK (cuDeviceGetAttribute,
+			     &thread_max,
+			     CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR,
+			     dev);
       fatal_unless_success (r, "could not get max threads per SM count");
       size_t mem;
-      r = cuDeviceTotalMem (&mem, dev);
-      fatal_unless_success (r, "could not get available memory");
+      {
+	size_t mem_free, mem_total;
+	r = CUDA_CALL_NOCHECK (cuMemGetInfo, &mem_free, &mem_total);
+	fatal_unless_success (r, "could not get free and total memory");
+	mem = mem_free;
+      }
       /* Subtract heap size and a 128 MiB extra.  */
       mem -= heap_size + 128 * 1024 * 1024;
       mem /= sm_count * thread_max;
@@ -295,31 +389,39 @@ This program has absolutely no warranty.\n",
       /* Round down to 8-byte boundary.  */
       stack_size = mem & -8u;
     }
-  r = cuCtxSetLimit(CU_LIMIT_STACK_SIZE, stack_size);
+  r = CUDA_CALL_NOCHECK (cuCtxSetLimit, CU_LIMIT_STACK_SIZE, stack_size);
   fatal_unless_success (r, "could not set stack limit");
-  r = cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, heap_size);
+  r = CUDA_CALL_NOCHECK (cuCtxSetLimit, CU_LIMIT_MALLOC_HEAP_SIZE, heap_size);
   fatal_unless_success (r, "could not set heap limit");
 
   CUmodule hModule = 0;
+  compile_file (f, &hModule);
+
+  fclose (f);
+  f = NULL;
+
   CUfunction hKernel = 0;
-  compile_file (f, &hModule, &hKernel);
+  r = CUDA_CALL_NOCHECK (cuModuleGetFunction, &hKernel, hModule, "__main");
+  fatal_unless_success (r, "could not find kernel __main");
 
   void *args[] = { &d_retval, &d_argc, &d_argv };
     
-  r = cuLaunchKernel (hKernel, 1, 1, 1, num_lanes, 1, 1, 1024, NULL, args, NULL);
+  r = CUDA_CALL_NOCHECK (cuLaunchKernel,
+			 hKernel, 1, 1, 1, num_lanes, 1, 1,
+			 1024, NULL, args, NULL);
   fatal_unless_success (r, "error launching kernel");
 
   int result;
-  r = cuMemcpyDtoH(&result, d_retval, sizeof (int));
+  r = CUDA_CALL_NOCHECK (cuMemcpyDtoH, &result, d_retval, sizeof (int));
   fatal_unless_success (r, "error getting kernel result");
 
-  cuMemFree (d_retval);
-  cuMemFree (d_argv);
+  CUDA_CALL_NOCHECK (cuMemFree, d_retval);
+  CUDA_CALL_NOCHECK (cuMemFree, d_argv);
 
   if (hModule)
-    cuModuleUnload (hModule);
+    CUDA_CALL_NOCHECK (cuModuleUnload, hModule);
 
-  cuCtxDestroy (ctx);
+  CUDA_CALL_NOCHECK (cuCtxDestroy, ctx);
 
   return result;
 }

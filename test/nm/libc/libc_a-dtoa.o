@@ -1,0 +1,25 @@
+// BEGIN PREAMBLE
+.version 3.1
+.target sm_35
+.address_size 64
+// END PREAMBLE
+// BEGIN FUNCTION DECL: quorem
+.func (.param .u32 %value_out) quorem (.param .u64 %in_ar0, .param .u64 %in_ar1);
+// BEGIN GLOBAL FUNCTION DECL: _dtoa_r
+.visible .func (.param .u64 %value_out) _dtoa_r (.param .u64 %in_ar0, .param .f64 %in_ar1, .param .u32 %in_ar2, .param .u32 %in_ar3, .param .u64 %in_ar4, .param .u64 %in_ar5, .param .u64 %in_ar6);
+// BEGIN GLOBAL VAR DECL: __mprec_bigtens
+.extern .const .align 8 .u64 __mprec_bigtens[];
+[...]
+// BEGIN VAR DEF: $LC2
+.const .align 1 .u8 $LC2[2] =
+{48,0 };
+// BEGIN FUNCTION DEF: quorem
+.func (.param .u32 %value_out) quorem (.param .u64 %in_ar0, .param .u64 %in_ar1)
+{
+[...]
+}
+// BEGIN GLOBAL FUNCTION DEF: _dtoa_r
+.visible .func (.param .u64 %value_out) _dtoa_r (.param .u64 %in_ar0, .param .f64 %in_ar1, .param .u32 %in_ar2, .param .u32 %in_ar3, .param .u64 %in_ar4, .param .u64 %in_ar5, .param .u64 %in_ar6)
+{
+[...]
+}

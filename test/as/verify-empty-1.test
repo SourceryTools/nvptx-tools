@@ -1,0 +1,49 @@
+Per #26 commit ea21ab573245b0ce8d9e9da53f18d37b9d671a18 "[nvptx-as] Allow empty input file", verification isn't done if the input file is empty.
+
+
+'empty.s'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --verify %S/empty.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: rm -f %t*
+RUN: %target_as_cmd %S/empty.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify %S/empty.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'/dev/null'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --verify /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: rm -f %t*
+RUN: %target_as_cmd /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify /dev/null -o %t.o > %t.stdout 2> %t.stderr
+RUN: test -f %t.o
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr

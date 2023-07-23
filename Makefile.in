@@ -7,10 +7,27 @@ CPPFLAGS_ALL = $(DEFS) $(CPPFLAGS) $(CPPFLAGS_EXTRA)
 CXXFLAGS = @CXXFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
+DL_LIBS = @DL_LIBS@
 
-CUDA_DRIVER_CPPFLAGS = @CUDA_DRIVER_CPPFLAGS@
-CUDA_DRIVER_LDFLAGS = @CUDA_DRIVER_LDFLAGS@
-CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED = @CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED@
+NVPTX_RUN = @NVPTX_RUN@
+
+# nvptx-tools developer's section.
+#
+# Letting 'configure' decide whether to build 'nvptx-none-run' (default) vs. force-enabling its build:
+#NVPTX_RUN = nvptx-none-run
+#
+# Including the nvptx-tools-shipped 'include/cuda/cuda.h' (default) vs. system <cuda.h>:
+#NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_INCLUDE_SYSTEM_CUDA_H
+#NVPTX_RUN_CPPFLAGS += -I[CUDA]/include
+#
+# 'dlopen'ing the CUDA Driver library (default):
+NVPTX_RUN_LDFLAGS += $(DL_LIBS)
+# ... vs. linking it:
+#NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_LINK_LIBCUDA
+#NVPTX_RUN_LDFLAGS += -L[CUDA]/lib64/stubs
+#NVPTX_RUN_LDFLAGS += -lcuda
+# See <https://github.com/MentorEmbedded/nvptx-tools/pull/21> 'Work around "libnvidia-fatbinaryloader.so needed by libcuda.so" linking issue'.
+#NVPTX_RUN_LDFLAGS += -Wl,--allow-shlib-undefined
 
 AR = @AR@
 RANLIB = @RANLIB@
@@ -31,7 +48,7 @@ srcdir = @srcdir@
 
 mkinstalldirs = $(SHELL) $(srcdir)/mkinstalldirs
 
-PROGRAMS = nvptx-none-as nvptx-none-ld @NVPTX_RUN@
+PROGRAMS = nvptx-none-as nvptx-none-ld nvptx-none-nm $(NVPTX_RUN)
 
 all: $(PROGRAMS)
 
@@ -39,23 +56,26 @@ libiberty.stmp:
 	cd libiberty/ && $(MAKE)
 	: > $@
 
-nvptx-none-as: $(srcdir)/nvptx-as.c libiberty.stmp $(srcdir)/version.h
+nvptx-none-as: $(srcdir)/nvptx-as.cc libiberty.stmp $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-ld: $(srcdir)/nvptx-ld.c libiberty.stmp $(srcdir)/version.h
+nvptx-none-ld: $(srcdir)/nvptx-ld.cc libiberty.stmp $(srcdir)/version.h
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-run: $(srcdir)/nvptx-run.c libiberty.stmp $(srcdir)/version.h
-	$(CXX) $(CUDA_DRIVER_CPPFLAGS) \
-		$(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+nvptx-none-nm: $(srcdir)/nvptx-nm.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
 		$< -o $@ \
-		$(CUDA_DRIVER_LDFLAGS) \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
+
+nvptx-none-run: $(srcdir)/nvptx-run.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+		$< -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS) \
-		-lcuda $(CUDA_DRIVER_LDFLAGS_ALLOW_SHLIB_UNDEFINED)
+		$(NVPTX_RUN_CPPFLAGS) $(NVPTX_RUN_LDFLAGS)
 
 
 # Testsuite
@@ -95,7 +115,7 @@ install: all
 	for x in $(PROGRAMS); do \
 		$(INSTALL_PROGRAM) -m 755 $$x $(DESTDIR)$(bindir)/$$x; \
 	done
-	[ -z "@NVPTX_RUN@" ] || $(INSTALL_PROGRAM) -m 755 $(srcdir)/nvptx-run-single $(DESTDIR)$(bindir)/nvptx-none-run-single
+	[ -z "$(NVPTX_RUN)" ] || $(INSTALL_PROGRAM) -m 755 $(srcdir)/nvptx-run-single $(DESTDIR)$(bindir)/nvptx-none-run-single
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar
 	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
 	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
@@ -104,7 +124,7 @@ install: all
 	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
 	rel=$$(perl -MFile::Spec -e 'print File::Spec->abs2rel(@ARGV)' \
 	  $(DESTDIR)$(bindir) $(DESTDIR)$(prefix)/nvptx-none/bin) && \
-	for p in ar as ld ranlib; do \
+	for p in ar as ld nm ranlib; do \
 	  rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p" && \
 	  $(LN_S) "$$rel"/nvptx-none-"$$p" $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p"; \
 	done

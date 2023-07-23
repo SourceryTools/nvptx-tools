@@ -1,0 +1,56 @@
+What happens if 'ptxas' is missing.
+
+UNSUPPORTED: ptxas
+
+
+'--no-verify'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --no-verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '^nvptx-as: .*ptxas'
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '^ ptxas '
+RUN: < %t.stderr grep -qe '^nvptx-as: .*ptxas'
+
+
+Implicit '--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_cmd -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "'ptxas' not available." > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr

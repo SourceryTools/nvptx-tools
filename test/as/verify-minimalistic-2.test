@@ -1,0 +1,97 @@
+Aspects of (failing) minimalistic verification.
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s ' '
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '\n'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '123'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_malformed_version_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version abc'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_malformed_version_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version 0'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_target_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version // zero\n/* Z *//* E *//* R *//* O */0'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_target_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version 0 0'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_missing_target_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version 0 .target'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_malformed_target_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version 0 .target 0'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_malformed_target_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version 0 .target abc,'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_unsupported_list_in_target_directive'
+
+
+RUN: rm -f %t*
+RUN: printf > %t.s '.version // zero\n/* Z *//* E *//* R *//* O */0 .target /* A *//* B *//* C */// abc\nabc,'
+RUN: %target_as_cmd %t.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.o
+RUN: ! test -s %t.stdout
+RUN: < %t.stderr grep -qe '%r_target_as_unsupported_list_in_target_directive'

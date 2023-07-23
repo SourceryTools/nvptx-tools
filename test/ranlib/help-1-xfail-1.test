@@ -1,0 +1,7 @@
+Variant of 'help-1.test'.
+XFAIL: *
+See <https://github.com/MentorEmbedded/nvptx-tools/issues/4> "nvptx-none-ar and nvptx-none-ranlib".
+
+RUN: %target_ranlib_cmd --help > %t.stdout 2> %t.stderr
+RUN: < %t.stdout head -n 1 | grep -qe '^Usage: nvptx-none-ranlib '
+RUN: ! test -s %t.stderr

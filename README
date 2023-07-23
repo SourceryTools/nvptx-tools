@@ -2,6 +2,7 @@ nvptx-tools: a collection of tools for use with nvptx-none GCC toolchains.
 
   * nvptx-none-as: "assembler" for PTX.
   * nvptx-none-ld: "linker" for PTX.
+  * nvptx-none-nm: list symbols.
   * nvptx-none-run: run PTX binaries compiled with -mmainkernel.
   * nvptx-none-run-single: as nvptx-none-run, locked, such that system-wide
     only one instance of it is running at a time.
@@ -33,6 +34,57 @@ as follows with the GCC testsuite:
 By default, this will use nvptx-none-run found in $PATH, but that can be
 overridden by setting the NVPTX_NONE_RUN environment variable, for example to
 [...]/nvptx-none-run-single.
+
+
+Nvidia CUDA/PTX Dependency
+--------------------------
+
+The nvptx-tools are used for interfacing nvptx-none GCC toolchains with Nvidia
+tools and GPUs via Nvidia CUDA/PTX.
+
+Individual nvptx-tools depend on CUDA/PTX as follows:
+
+  * nvptx-none-as
+
+    In addition to its own minimalistic verification, it verifies the output
+    file produced by feeding it into 'ptxas'.  If (at run time) that executable
+    isn't available in the standard search path, this verification step is
+    skipped (output file assumed compliant).
+
+    Unless overridden with the '-m' option, the target architecture used for
+    'ptxas' verification ('--gpu-name' option to 'ptxas') is deduced from the
+    '.target' directive in the input's preamble.  This means that it's the
+    responsibility of the producer (nvptx-none GCC toolchain) that the PTX code
+    works with the CUDA version used.
+
+  * nvptx-none-run
+
+    Uses the CUDA Driver library ('libcuda') to run PTX binaries.
+
+
+For the testsuite (only), the baseline dependency is sm_35 functionality (or
+higher).
+
+Support for sm_35 has been introduced with PTX ISA 3.1, CUDA 5.0, driver r302,
+has been deprecated in CUDA 10.2 (see
+<https://docs.nvidia.com/cuda/archive/10.2/cuda-toolkit-release-notes/#deprecated-features>),
+but has not yet been removed.
+
+Certain testcases for the nvptx-tools have dependencies as follows:
+
+  * nvptx-none-as
+
+    Testcases depending on 'ptxas' are UNSUPPORTED if 'ptxas' isn't available.
+
+  * nvptx-none-run
+
+    Testcases depending on this tool are UNSUPPORTED if it isn't available.
+    Otherwise, if no suitable CUDA Driver library or Nvidia GPU are available
+    (at run time), certain testcases FAIL.
+
+
+With reduced functionality as indicated, it's possible to build, test, and use
+the nvptx-tools without a CUDA installation.
 
 
 Report Issues

@@ -1,0 +1,58 @@
+//     $ [nvptx-none-gcc] print-argv-1.c -o print-argv-1.nvptx -O3
+// ..., and then manually simplify.
+
+.version 3.1
+.target sm_35
+.address_size 64
+.extern .func (.param .u32 %value_out) vprintf (.param .u64 %in_ar0, .param .u64 %in_ar1);
+.const .align 1 .u8 $LC0[8] =
+{37,100,58,32,37,115,10,0 };
+.visible .entry __main (.param .u64 %in_ar0, .param .u32 %in_ar1, .param .u64 %in_ar2)
+{
+.reg .u64 %ar0;
+ld.param.u64 %ar0,[%in_ar0];
+.reg .u32 %ar1;
+ld.param.u32 %ar1,[%in_ar1];
+.reg .u64 %ar2;
+ld.param.u64 %ar2,[%in_ar2];
+.local .align 8 .b8 %stack_ar[16];
+.reg .u64 %stack;
+cvta.local.u64 %stack,%stack_ar;
+.reg .u64 %r27;
+.reg .u64 %r29;
+.reg .pred %r33;
+.reg .u64 %r35;
+.reg .u64 %r36;
+.reg .u64 %r37;
+.reg .pred %r40;
+.reg .u32 %r42;
+.reg .u32 %r43;
+.reg .u64 %r44;
+setp.le.s32 %r33,%ar1,0;
+@ %r33 bra $L2;
+cvt.s64.s32 %r29,%ar1;
+mov.u64 %r27,0;
+cvta.const.u64 %r44,$LC0;
+$L3:
+shl.b64 %r35,%r27,3;
+add.u64 %r36,%ar2,%r35;
+ld.u64 %r37,[%r36];
+st.u64 [%stack+8],%r37;
+st.u32 [%stack],%r27;
+{
+.param .u32 %value_in;
+.param .u64 %out_arg1;
+st.param.u64 [%out_arg1],%r44;
+.param .u64 %out_arg2;
+st.param.u64 [%out_arg2],%stack;
+call (%value_in),vprintf,(%out_arg1,%out_arg2);
+}
+add.u64 %r27,%r27,1;
+setp.ne.u64 %r40,%r27,%r29;
+@ %r40 bra $L3;
+$L2:
+set.u32.le.s32 %r42,%ar1,0;
+neg.s32 %r43,%r42;
+st.u32 [%ar0],%r43;
+ret;
+}

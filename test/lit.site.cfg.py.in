@@ -1,0 +1,42 @@
+# lit site configuration
+
+# This primarily captures build-tree configuration details, and then invokes
+# the actual test framework.
+
+import os
+
+
+# It's easier to use absolute paths.
+abs_srcdir = r'@abs_srcdir@'
+abs_builddir = r'@abs_builddir@'
+abs_top_builddir = r'@abs_top_builddir@'
+
+
+config.test_exec_root = abs_builddir
+
+
+config.target_ar = r'@AR@'
+
+
+config.target_as = 'nvptx-none-as'
+config.target_as = os.path.join(abs_top_builddir, config.target_as)
+
+
+config.target_ld = 'nvptx-none-ld'
+config.target_ld = os.path.join(abs_top_builddir, config.target_ld)
+
+
+config.target_nm = 'nvptx-none-nm'
+config.target_nm = os.path.join(abs_top_builddir, config.target_nm)
+
+
+config.target_ranlib = r'@RANLIB@'
+
+
+config.target_run = r'@NVPTX_RUN@'
+# This one is optional.
+if config.target_run:
+    config.target_run = os.path.join(abs_top_builddir, config.target_run)
+
+
+lit_config.load_config(config, os.path.join(abs_srcdir, 'lit.cfg.py'))

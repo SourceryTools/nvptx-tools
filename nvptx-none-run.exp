@@ -1,0 +1,47 @@
+# DejaGnu board file for nvptx-none.
+
+# Copyright (C) 2015 Mentor Graphics
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 3, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with nvptx-tools; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.  */
+
+set_board_info target_install {nvptx-none}
+
+load_generic_config "sim"
+if { [info exists env(NVPTX_NONE_RUN)] } then {
+    set_board_info sim "$env(NVPTX_NONE_RUN)"
+} else {
+    set_board_info sim "nvptx-none-run"
+}
+# This isn't a simulator, but rather a "launcher".
+unset_board_info is_simulator
+unset_board_info slow_simulator
+
+process_multilib_options ""
+
+set_board_info gcc,stack_size 8192
+set_board_info gcc,no_trampolines 1
+set_board_info gcc,no_label_values 1
+set_board_info gcc,signal_suppress 1
+
+set_board_info compiler "[find_gcc]"
+set_board_info cflags "[newlib_include_flags]"
+# Specify -mmainkernel to link in crt0.o.
+set_board_info ldflags "[newlib_link_flags] -mmainkernel"
+set_board_info ldscript ""
+
+# <http://news.gmane.org/find-root.php?message_id=%3C1392398663.17835.120.camel%40ubuntu-sellcey%3E>
+proc sim_exec { dest srcfile args } {
+    return [remote_exec host $srcfile $args]
+}

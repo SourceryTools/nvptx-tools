@@ -1,0 +1,8 @@
+RUN: %target_run_tiny_cmd %S/exit-argc_minus_five.nvptx 22 333 4444 55555
+
+
+Fixed in commit 40d96734377b56596b86e8075fe9f04850c36301 "nvptx-none-run: Return the actual result":
+
+RUN: %target_run_tiny_cmd %S/exit-argc_minus_five.nvptx 22 333 4444 55555 666666; r=$?; [ x"$r" = x1 ]
+
+RUN: %target_run_tiny_cmd %S/exit-argc_minus_five.nvptx 22 333 4444 55555 666666 7777777 88888888 999999999; r=$?; [ x"$r" = x4 ]

@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Dummy 'ptxas'.
+
+set -e
+
+
+if [ x"$DUMMY_PTXAS_LOG" != x ]; then
+    exec > "$DUMMY_PTXAS_LOG"
+
+    echo "dummy ptxas"
+    for arg; do
+	echo "  arg: $arg"
+    done
+fi

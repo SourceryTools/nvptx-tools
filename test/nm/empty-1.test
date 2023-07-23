@@ -1,0 +1,31 @@
+Empty file doesn't mean "no symbols".
+
+
+RUN: %target_as_cmd -o %t.empty-1.o %S/../as/bare-1.s
+
+
+RUN: %target_nm_cmd %t.empty-1.o > %t.stdout 2> %t.stderr
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd %t.empty-1.o %t.empty-1.o > %t.stdout 2> %t.stderr
+RUN: : > %t.stdout.golden
+RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: cmp %t.stdout.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd %t.empty-1.o %t.empty-1.o %t.empty-1.o > %t.stdout 2> %t.stderr
+RUN: : > %t.stdout.golden
+RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: cmp %t.stdout.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+
+Therefore, '--quiet' is a no-op.
+
+RUN: %target_nm_cmd --quiet %t.empty-1.o > %t.stdout 2> %t.stderr
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr

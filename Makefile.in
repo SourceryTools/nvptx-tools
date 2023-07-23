@@ -1,7 +1,130 @@
-all:
-	(cd libiberty && $(MAKE))
-	(cd tools && $(MAKE))
+CXX = @CXX@
+CPPFLAGS = @CPPFLAGS@
+CPPFLAGS_EXTRA = -DPKGVERSION="\"@PKGVERSION@\"" \
+		 -DREPORT_BUGS_TO="\"@REPORT_BUGS_TO@\""
+DEFS = @DEFS@
+CPPFLAGS_ALL = $(DEFS) $(CPPFLAGS) $(CPPFLAGS_EXTRA)
+CXXFLAGS = @CXXFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+DL_LIBS = @DL_LIBS@
+
+NVPTX_RUN = @NVPTX_RUN@
+
+# nvptx-tools developer's section.
+#
+# Letting 'configure' decide whether to build 'nvptx-none-run' (default) vs. force-enabling its build:
+#NVPTX_RUN = nvptx-none-run
+#
+# Including the nvptx-tools-shipped 'include/cuda/cuda.h' (default) vs. system <cuda.h>:
+#NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_INCLUDE_SYSTEM_CUDA_H
+#NVPTX_RUN_CPPFLAGS += -I[CUDA]/include
+#
+# 'dlopen'ing the CUDA Driver library (default):
+NVPTX_RUN_LDFLAGS += $(DL_LIBS)
+# ... vs. linking it:
+#NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_LINK_LIBCUDA
+#NVPTX_RUN_LDFLAGS += -L[CUDA]/lib64/stubs
+#NVPTX_RUN_LDFLAGS += -lcuda
+# See <https://github.com/MentorEmbedded/nvptx-tools/pull/21> 'Work around "libnvidia-fatbinaryloader.so needed by libcuda.so" linking issue'.
+#NVPTX_RUN_LDFLAGS += -Wl,--allow-shlib-undefined
+
+AR = @AR@
+RANLIB = @RANLIB@
+
+LIT = @LIT@
+LITFLAGS =
+
+LN_S = @LN_S@
+INSTALL = @INSTALL@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+libdir = @libdir@
+srcdir = @srcdir@
+
+mkinstalldirs = $(SHELL) $(srcdir)/mkinstalldirs
+
+PROGRAMS = nvptx-none-as nvptx-none-ld nvptx-none-nm $(NVPTX_RUN)
+
+all: $(PROGRAMS)
+
+libiberty.stmp:
+	cd libiberty/ && $(MAKE)
+	: > $@
+
+nvptx-none-as: $(srcdir)/nvptx-as.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+		$< -o $@ \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
+
+nvptx-none-ld: $(srcdir)/nvptx-ld.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+		$< -o $@ \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
+
+nvptx-none-nm: $(srcdir)/nvptx-nm.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+		$< -o $@ \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
+
+nvptx-none-run: $(srcdir)/nvptx-run.cc libiberty.stmp $(srcdir)/version.h
+	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS) -I$(srcdir)/include \
+		$< -o $@ \
+		-Llibiberty -liberty $(LDFLAGS) $(LIBS) \
+		$(NVPTX_RUN_CPPFLAGS) $(NVPTX_RUN_LDFLAGS)
+
+
+# Testsuite
+
+.PHONY: check
+check:
+
+# libiberty
+
+check: check-libiberty
+.PHONY: check-libiberty
+check-libiberty: libiberty.stmp
+	cd libiberty/testsuite/ && $(MAKE) check
+
+# lit
+
+# Unless 'make' has been invoked in parallel mode ('-jN'), don't run lit in
+# parallel mode (stable output).  In parallel mode, don't pass a '-j' option to
+# lit, instead let it figure out the number of tests to run in parallel; we
+# don't know the 'N' parameter of the 'make' '-jN' option.
+LITFLAGS_J = $(if $(filter -j%,$(MFLAGS)),,-j 1)
+
+check: check-lit
+.PHONY: check-lit
+check-lit: all
+ifeq ($(LIT),)
+	@echo >&2 Need lit to run the testsuite, see \'$(srcdir)/test/README\'
+	@exit 1
+else
+	$(LIT) $(LITFLAGS_J) $(LITFLAGS) test
+endif
+
 
 .PHONY: install
-install:
-	(cd tools && $(MAKE) install)
+install: all
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	for x in $(PROGRAMS); do \
+		$(INSTALL_PROGRAM) -m 755 $$x $(DESTDIR)$(bindir)/$$x; \
+	done
+	[ -z "$(NVPTX_RUN)" ] || $(INSTALL_PROGRAM) -m 755 $(srcdir)/nvptx-run-single $(DESTDIR)$(bindir)/nvptx-none-run-single
+	rm -f $(DESTDIR)$(bindir)/nvptx-none-ar
+	rm -f $(DESTDIR)$(bindir)/nvptx-none-ranlib
+	$(LN_S) $(AR) $(DESTDIR)$(bindir)/nvptx-none-ar
+	$(LN_S) $(RANLIB) $(DESTDIR)$(bindir)/nvptx-none-ranlib
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none
+	$(mkinstalldirs) $(DESTDIR)$(prefix)/nvptx-none/bin
+	rel=$$(perl -MFile::Spec -e 'print File::Spec->abs2rel(@ARGV)' \
+	  $(DESTDIR)$(bindir) $(DESTDIR)$(prefix)/nvptx-none/bin) && \
+	for p in ar as ld nm ranlib; do \
+	  rm -f $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p" && \
+	  $(LN_S) "$$rel"/nvptx-none-"$$p" $(DESTDIR)$(prefix)/nvptx-none/bin/"$$p"; \
+	done

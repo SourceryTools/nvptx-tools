@@ -1,0 +1,3 @@
+RUN: %target_ld_cmd --version > %t.stdout 2> %t.stderr
+RUN: < %t.stdout head -n 1 | grep -qe '^nvptx-none-ld '
+RUN: ! test -s %t.stderr

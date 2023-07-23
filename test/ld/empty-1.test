@@ -1,0 +1,7 @@
+Per #26 commit 86b4fa1bd2f7b96099f52c965d82d884730be7fb "Merge pull request #26 from vries/nvptx-as-allow-empty-input-file", "For an empty (zero-size) input file, 'nvptx-as' (now) produces an empty (zero-size) object file" -- which we ought to handle in some defined way.
+
+RUN: rm -f %t*
+RUN: %target_ld_cmd -o %t.nvptx %S/empty.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/empty-1-1.nvptx.golden %t.nvptx
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr

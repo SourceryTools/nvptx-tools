@@ -1,0 +1,15 @@
+                 U environ
+                 U memset
+0000000000000000 T global_function
+0000000000000000 T global_function2
+0000000000000000 D global_var
+0000000000000000 D global_var_init
+0000000000000000 d local_static_var$1
+0000000000000000 d local_static_var$3
+0000000000000000 d local_static_var_init$0
+0000000000000000 d local_static_var_init$2
+0000000000000000 T main
+0000000000000000 T non_mangled_function
+0000000000000000 t static_function
+0000000000000000 d static_var
+0000000000000000 d static_var_init

@@ -2,7 +2,7 @@
    with other subprocesses), and wait for it.  Generic Unix version
    (also used for UWIN and VMS).
    Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2009,
-   2010 Free Software Foundation, Inc.
+   2010, 2015 Free Software Foundation, Inc.
 
 This file is part of the libiberty library.
 Libiberty is free software; you can redistribute it and/or
@@ -23,6 +23,7 @@ Boston, MA 02110-1301, USA.  */
 #include "config.h"
 #include "libiberty.h"
 #include "pex-common.h"
+#include "environ.h"
 
 #include <stdio.h>
 #include <signal.h>
@@ -301,7 +302,7 @@ pex_wait (struct pex_obj *obj, pid_t pid, int *status, struct pex_time *time)
 static void pex_child_error (struct pex_obj *, const char *, const char *, int)
      ATTRIBUTE_NORETURN;
 static int pex_unix_open_read (struct pex_obj *, const char *, int);
-static int pex_unix_open_write (struct pex_obj *, const char *, int);
+static int pex_unix_open_write (struct pex_obj *, const char *, int, int);
 static pid_t pex_unix_exec_child (struct pex_obj *, int, const char *,
 				 char * const *, char * const *,
 				 int, int, int, int,
@@ -350,11 +351,12 @@ pex_unix_open_read (struct pex_obj *obj ATTRIBUTE_UNUSED, const char *name,
 
 static int
 pex_unix_open_write (struct pex_obj *obj ATTRIBUTE_UNUSED, const char *name,
-		     int binary ATTRIBUTE_UNUSED)
+		     int binary ATTRIBUTE_UNUSED, int append)
 {
   /* Note that we can't use O_EXCL here because gcc may have already
      created the temporary file via make_temp_file.  */
-  return open (name, O_WRONLY | O_CREAT | O_TRUNC, PUBLIC_MODE);
+  return open (name, O_WRONLY | O_CREAT
+		     | (append ? O_APPEND : O_TRUNC), PUBLIC_MODE);
 }
 
 /* Close a file.  */
@@ -388,8 +390,6 @@ pex_child_error (struct pex_obj *obj, const char *executable,
 }
 
 /* Execute a child.  */
-
-extern char **environ;
 
 #if defined(HAVE_SPAWNVE) && defined(HAVE_SPAWNVPE)
 /* Implementation of pex->exec_child using the Cygwin spawn operation.  */

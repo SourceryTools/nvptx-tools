@@ -40,11 +40,5 @@ A number of files are imported from GCC:
   - 'mkinstalldirs'
   - 'move-if-change'
 
-These correspond to GCC commit a4ebe104540e7b6d3c637d793dbcd5171b4b8209
-(Subversion r209988).
-
-Exception for 'include/libiberty.h': the 'MAX_ALLOCA_SIZE' definition
-introduced in #18 commit 39511bae362d5746c0bf0a1dcbc76297b4a0155c
-"nvptx-none-as: Cope with ptxas not being available" was picked from
-GCC commit ac631cbe7021105c7fb8438deaeef66fe544b9aa (Subversion r238880)
-"[libiberty] fix unbounded alloca in make_relative_prefix_1".
+These correspond to GCC commit ac631cbe7021105c7fb8438deaeef66fe544b9aa
+(Subversion r238880).

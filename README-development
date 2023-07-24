@@ -20,3 +20,34 @@ Autotools
 ---------
 
 Run 'autoreconf' (or, manually, 'aclocal') with '-I config'.
+
+
+Imported Files
+--------------
+
+A number of files are imported from GCC:
+
+  - 'COPYING3'
+  - 'config.guess'
+  - 'config.sub'
+  - 'config/ChangeLog' (partial)
+  - 'config/acx.m4' (partial)
+  - 'include/'
+    But not:
+      - 'include/cuda/', which is local to nvptx-tools.
+  - 'install-sh'
+  - 'libiberty/'
+  - 'mkinstalldirs'
+  - 'move-if-change'
+
+These correspond to GCC commit 9ffaa03201577636e08e596570e95b572674681f
+(Subversion r201139).
+
+Exception for 'config.guess', 'config.sub': these correspond to
+GCC commit a4ebe104540e7b6d3c637d793dbcd5171b4b8209 (Subversion r209988).
+
+Exception for 'include/libiberty.h': the 'MAX_ALLOCA_SIZE' definition
+introduced in #18 commit 39511bae362d5746c0bf0a1dcbc76297b4a0155c
+"nvptx-none-as: Cope with ptxas not being available" was picked from
+GCC commit ac631cbe7021105c7fb8438deaeef66fe544b9aa (Subversion r238880)
+"[libiberty] fix unbounded alloca in make_relative_prefix_1".

@@ -16,12 +16,6 @@ If the 'run' test cases fail due to:
 <https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags>.
 
 
-Autotools
----------
-
-Run 'autoreconf' (or, manually, 'aclocal') with '-I config'.
-
-
 Imported Files
 --------------
 

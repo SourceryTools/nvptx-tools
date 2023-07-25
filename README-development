@@ -34,4 +34,4 @@ A number of files are imported from GCC:
   - 'mkinstalldirs'
   - 'move-if-change'
 
-These correspond to GCC commit 5e431ae4ccc5fb0e077e598cb4efb1e12fc66c68.
+These correspond to GCC commit 3d9439b1bb76c186958d5b86f0076f8b3017b8a2.

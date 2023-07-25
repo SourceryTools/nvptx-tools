@@ -40,5 +40,5 @@ A number of files are imported from GCC:
   - 'mkinstalldirs'
   - 'move-if-change'
 
-These correspond to GCC commit 7e2de6df10b532be4e66025e318f68a0ebf2c408
-(Subversion r265610).
+These correspond to GCC commit 22e052725189a472e4e86ebb6595278a49f4bcdd
+(Subversion r265695).

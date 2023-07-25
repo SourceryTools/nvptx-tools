@@ -27,11 +27,11 @@ A number of files are imported from GCC:
   - 'config/ChangeLog' (partial)
   - 'config/acx.m4' (partial)
   - 'include/'
-    But not:
-      - 'include/cuda/', which is local to nvptx-tools.
+    But carefully review:
+      - 'include/cuda/', which has local modifications.
   - 'install-sh'
   - 'libiberty/'
   - 'mkinstalldirs'
   - 'move-if-change'
 
-These correspond to GCC commit d7f00da1c0ed414175305c41a07b3a50fa577cce.
+These correspond to GCC commit 5e431ae4ccc5fb0e077e598cb4efb1e12fc66c68.

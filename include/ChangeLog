@@ -1,3 +1,185 @@
+2023-06-12  Tobias Burnus  <tobias@codesourcery.com>
+
+	* gomp-constants.h (enum gomp_map_kind): Change the enum values
+	GOMP_MAP_PRESENT_{TO,TOFROM,FROM,ALLOC} to be compiler only.
+	(GOMP_MAP_PRESENT_P): Update to include also GOMP_MAP_FORCE_PRESENT.
+
+2023-06-06  Kwok Cheung Yeung  <kcy@codesourcery.com>
+	    Tobias Burnus  <tobias@codesourcery.com>
+
+	* gomp-constants.h (GOMP_MAP_FLAG_SPECIAL_5): New.
+	(GOMP_MAP_FLAG_FORCE): Redefine.
+	(GOMP_MAP_FLAG_PRESENT, GOMP_MAP_FLAG_ALWAYS_PRESENT): New.
+	(enum gomp_map_kind): Add map kinds with 'present' modifiers.
+	(GOMP_MAP_COPY_TO_P, GOMP_MAP_COPY_FROM_P): Evaluate to true for
+	map variants with 'present'
+	(GOMP_MAP_ALWAYS_TO_P, GOMP_MAP_ALWAYS_FROM_P): Evaluate to true
+	for map variants with 'always, present' modifiers.
+	(GOMP_MAP_ALWAYS): Redefine.
+	(GOMP_MAP_FORCE_P, GOMP_MAP_PRESENT_P): New.
+
+2023-05-11  Joseph Myers  <joseph@codesourcery.com>
+
+	PR middle-end/109128
+	* plugin-api.h (ld_plugin_claim_file_handler_v2)
+	(ld_plugin_register_claim_file_v2)
+	(LDPT_REGISTER_CLAIM_FILE_HOOK_V2): New.
+	(struct ld_plugin_tv): Add tv_register_claim_file_v2.
+
+2023-04-28  Roger Sayle  <roger@nextmovesoftware.com>
+
+	* ctf.h: Import latest version from binutils/libctf.
+
+2023-04-19  Max Filippov  <jcmvbkbc@gmail.com>
+
+	* xtensa-dynconfig.h (xtensa_config_v4): New struct.
+	(XCHAL_DATA_WIDTH, XCHAL_UNALIGNED_LOAD_EXCEPTION)
+	(XCHAL_UNALIGNED_STORE_EXCEPTION, XCHAL_UNALIGNED_LOAD_HW)
+	(XCHAL_UNALIGNED_STORE_HW, XTENSA_CONFIG_V4_ENTRY_LIST): New
+	definitions.
+	(XTENSA_CONFIG_INSTANCE_LIST): Add xtensa_config_v4 instance.
+	(XTENSA_CONFIG_ENTRY_LIST): Add XTENSA_CONFIG_V4_ENTRY_LIST.
+
+2023-02-27  Max Filippov  <jcmvbkbc@gmail.com>
+
+	* xtensa-dynconfig.h (xtensa_config_v3): New struct.
+	(xtensa_get_config_v3): New declaration.
+	(XCHAL_HAVE_CLAMPS, XCHAL_HAVE_DEPBITS, XCHAL_HAVE_EXCLUSIVE)
+	(XCHAL_HAVE_XEA3, XTENSA_CONFIG_V3_ENTRY_LIST): New definitions.
+	(XTENSA_CONFIG_INSTANCE_LIST): Add xtensa_config_v3 instance.
+	(XTENSA_CONFIG_ENTRY_LIST): Add XTENSA_CONFIG_V3_ENTRY_LIST.
+
+2023-02-02  Andrew Stubbs  <ams@codesourcery.com>
+
+	* gomp-constants.h (GOMP_VERSION_GCN): Bump.
+
+2022-12-21  Jason Merrill  <jason@redhat.com>
+
+	PR c++/84471
+	PR c++/107504
+	* ansidecl.h (ATTRIBUTE_WARN_UNUSED_RESULT): Add __.
+
+2022-12-14  David Faust  <david.faust@oracle.com>
+
+	PR target/106773
+	* btf.h (enum btf_func_linkage): New.
+	(struct btf_var_secinfo): Update comments with notes about extern
+	functions.
+
+2022-12-14  David Faust  <david.faust@oracle.com>
+
+	PR target/106773
+	* btf.h (enum btf_var_linkage): New.
+	(struct btf_var): Update comment to note 'extern' linkage.
+
+2022-12-07  Max Filippov  <jcmvbkbc@gmail.com>
+
+	* xtensa-dynconfig.h: New file.
+
+2022-11-15  Nathan Sidwell  <nathan@acm.org>
+
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_TEMPLATE_HEAD,
+	DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM,
+	DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM,
+	DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM,
+	DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM.
+
+2022-11-04  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (GOMP_DEVICE_INTEL_MIC): Comment out.
+	(GOMP_VERSION_INTEL_MIC): Remove.
+
+2022-10-31  Guillermo E. Martinez  <guillermo.e.martinez@oracle.com>
+
+	* btf.h (btf_enum64): Add new definition and new symbolic
+	constant to BTF_KIND_ENUM64 and BTF_KF_ENUM_{UN,}SIGNED.
+
+2022-10-31  Lulu Cheng  <chenglulu@loongson.cn>
+	    qijingwen  <qijingwen@loongson.cn>
+
+	* vtv-change-permission.h (defined): Determines whether the macro
+	__loongarch_lp64 is defined
+	(VTV_PAGE_SIZE): Set VTV_PAGE_SIZE to 16KiB for loongarch64.
+
+2022-10-24  Tobias Burnus  <tobias@codesourcery.com>
+
+	* cuda/cuda.h (enum CUdevice_attribute): Add
+	CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING.
+	(CU_MEMHOSTALLOC_DEVICEMAP): Define.
+	(cuMemHostAlloc): Add prototype.
+
+2022-10-20  Tobias Burnus  <tobias@codesourcery.com>
+
+	* gomp-constants.h (GOMP_DEVICE_HSA): Comment out unused define.
+
+2022-10-13  Xi Ruoyao  <xry111@xry111.site>
+
+	* longlong.h [__loongarch__] (count_leading_zeros): Define.
+	[__loongarch__] (count_trailing_zeros): Likewise.
+	[__loongarch__] (COUNT_LEADING_ZEROS_0): Likewise.
+
+2022-09-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/106652
+	PR c++/85518
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE.
+	(struct demangle_component): Add u.s_extended_builtin member.
+
+2022-09-27  Meghan Denny  <hello@nektro.net>
+
+	* dwarf2.h: Update with additional languages from dwarf
+	standard.
+
+2022-07-12  Martin Liska  <mliska@suse.cz>
+
+	* plugin-api.h (enum linker_api_version): New enum.
+	(ld_plugin_get_api_version): New.
+	(enum ld_plugin_tag): Add LDPT_GET_API_VERSION.
+	(struct ld_plugin_tv): Add tv_get_api_version.
+
+2022-07-06  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (OMP_REQUIRES_[...]): Update comment.
+
+2022-07-04  Tobias Burnus  <tobias@codesourcery.com>
+	    Chung-Lin Tang  <cltang@codesourcery.com>
+	    Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (GOMP_VERSION): Bump to 2.
+	(GOMP_REQUIRES_UNIFIED_ADDRESS, GOMP_REQUIRES_UNIFIED_SHARED_MEMORY,
+	GOMP_REQUIRES_REVERSE_OFFLOAD, GOMP_REQUIRES_TARGET_USED):
+	New defines.
+
+2022-06-13  Jakub Jelinek  <jakub@redhat.com>
+
+	* gomp-constants.h (GOMP_DEVICE_INVALID): Define.
+
+2022-05-31  Alan Modra  <amodra@gmail.com>
+
+	* dwarf2.def: Correct spelling of DW_AT_namelist_item.
+
+2022-05-24  David Malcolm  <dmalcolm@redhat.com>
+
+	* ansidecl.h: Drop macros OVERRIDE and FINAL.
+
+2022-05-23  Nathan Sidwell  <nathan@acm.org>
+
+	* demangle.h (enum demangle_component_type): Add module components.
+
+2022-05-18  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* cuda/cuda.h (enum CUjit_option): Add
+	'CU_JIT_GENERATE_DEBUG_INFO', 'CU_JIT_GENERATE_LINE_INFO'.
+	(enum CUlimit): Add 'CU_LIMIT_STACK_SIZE',
+	'CU_LIMIT_MALLOC_HEAP_SIZE'.
+	(cuCtxSetLimit, cuGetErrorName): Add.
+
+2022-05-18  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* cuda/cuda.h: For C++, wrap in 'extern "C"'.
+
 2022-05-17  Nathan Sidwell  <nathan@acm.org>
 
 	* demangle.h (enum demangle_component_type): Add

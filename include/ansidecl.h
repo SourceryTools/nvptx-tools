@@ -1,5 +1,5 @@
 /* Compiler compatibility macros
-   Copyright (C) 1991-2022 Free Software Foundation, Inc.
+   Copyright (C) 1991-2023 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
 This program is free software; you can redistribute it and/or modify
@@ -279,7 +279,7 @@ So instead we use the macro below and test it against specific values.  */
 /* Attribute `warn_unused_result' was valid as of gcc 3.3.  */
 #ifndef ATTRIBUTE_WARN_UNUSED_RESULT
 # if GCC_VERSION >= 3003
-#  define ATTRIBUTE_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
+#  define ATTRIBUTE_WARN_UNUSED_RESULT __attribute__ ((__warn_unused_result__))
 # else
 #  define ATTRIBUTE_WARN_UNUSED_RESULT
 # endif
@@ -319,47 +319,6 @@ So instead we use the macro below and test it against specific values.  */
 #define CONSTEXPR constexpr
 #else
 #define CONSTEXPR
-#endif
-
-/* C++11 adds the ability to add "override" after an implementation of a
-   virtual function in a subclass, to:
-     (A) document that this is an override of a virtual function
-     (B) allow the compiler to issue a warning if it isn't (e.g. a mismatch
-         of the type signature).
-
-   Similarly, it allows us to add a "final" to indicate that no subclass
-   may subsequently override the vfunc.
-
-   Provide OVERRIDE and FINAL as macros, allowing us to get these benefits
-   when compiling with C++11 support, but without requiring C++11.
-
-   For gcc, use "-std=c++11" to enable C++11 support; gcc 6 onwards enables
-   this by default (actually GNU++14).  */
-
-#if defined __cplusplus
-# if __cplusplus >= 201103
-   /* C++11 claims to be available: use it.  Final/override were only
-      implemented in 4.7, though.  */
-#  if GCC_VERSION < 4007
-#   define OVERRIDE
-#   define FINAL
-#  else
-#   define OVERRIDE override
-#   define FINAL final
-#  endif
-# elif GCC_VERSION >= 4007
-   /* G++ 4.7 supports __final in C++98.  */
-#  define OVERRIDE
-#  define FINAL __final
-# else
-   /* No C++11 support; leave the macros empty.  */
-#  define OVERRIDE
-#  define FINAL
-# endif
-#else
-  /* No C++11 support; leave the macros empty.  */
-# define OVERRIDE
-# define FINAL
 #endif
 
 /* A macro to disable the copy constructor and assignment operator.

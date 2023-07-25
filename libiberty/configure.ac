@@ -2,6 +2,7 @@ dnl Process this file with autoconf to produce a configure script
 
 AC_INIT
 AC_CONFIG_SRCDIR([xmalloc.c])
+AC_CONFIG_MACRO_DIRS([../config])
 
 # This works around the fact that libtool configuration may change LD
 # for this particular configuration, but some shells, instead of
@@ -232,8 +233,8 @@ case "${enable_shared}" in
   *) shared=yes ;;
 esac
 
-# ...unless --enable-host-shared was passed from top-level config:
-if [[ "${enable_host_shared}" = "yes" ]]; then
+# ...unless --enable-host-{shared,pie} was passed from top-level config:
+if [[ "${enable_host_shared}" = "yes" ]] || [[ "${enable_host_pie}" = "yes" ]]; then
   shared=yes
 fi
 

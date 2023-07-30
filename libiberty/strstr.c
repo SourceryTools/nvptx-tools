@@ -16,10 +16,6 @@ length, the function returns @var{string}.
 
 */
 
-
-/* FIXME:  The above description is ANSI compiliant.  This routine has not
-   been validated to comply with it.  -fnf */
-
 #include <stddef.h>
 
 extern char *strchr (const char *, int);
@@ -31,6 +27,9 @@ strstr (const char *s1, const char *s2)
 {
   const char *p = s1;
   const size_t len = strlen (s2);
+
+  if (!len)
+    return s1;
 
   for (; (p = strchr (p, *s2)) != 0; p++)
     {

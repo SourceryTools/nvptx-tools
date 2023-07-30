@@ -1,8 +1,8 @@
 AC_INIT([nvptx-tools])
 ACX_PKGVERSION([nvptx-tools])
 ACX_BUGURL([https://github.com/MentorEmbedded/nvptx-tools/issues])
-AC_PREREQ([2.64])
 AC_CONFIG_SRCDIR([nvptx-as.cc])
+AC_CONFIG_MACRO_DIRS([config])
 
 AC_PROG_CC
 AC_PROG_CXX

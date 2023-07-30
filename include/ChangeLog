@@ -1,3 +1,549 @@
+2023-06-12  Tobias Burnus  <tobias@codesourcery.com>
+
+	* gomp-constants.h (enum gomp_map_kind): Change the enum values
+	GOMP_MAP_PRESENT_{TO,TOFROM,FROM,ALLOC} to be compiler only.
+	(GOMP_MAP_PRESENT_P): Update to include also GOMP_MAP_FORCE_PRESENT.
+
+2023-06-06  Kwok Cheung Yeung  <kcy@codesourcery.com>
+	    Tobias Burnus  <tobias@codesourcery.com>
+
+	* gomp-constants.h (GOMP_MAP_FLAG_SPECIAL_5): New.
+	(GOMP_MAP_FLAG_FORCE): Redefine.
+	(GOMP_MAP_FLAG_PRESENT, GOMP_MAP_FLAG_ALWAYS_PRESENT): New.
+	(enum gomp_map_kind): Add map kinds with 'present' modifiers.
+	(GOMP_MAP_COPY_TO_P, GOMP_MAP_COPY_FROM_P): Evaluate to true for
+	map variants with 'present'
+	(GOMP_MAP_ALWAYS_TO_P, GOMP_MAP_ALWAYS_FROM_P): Evaluate to true
+	for map variants with 'always, present' modifiers.
+	(GOMP_MAP_ALWAYS): Redefine.
+	(GOMP_MAP_FORCE_P, GOMP_MAP_PRESENT_P): New.
+
+2023-05-11  Joseph Myers  <joseph@codesourcery.com>
+
+	PR middle-end/109128
+	* plugin-api.h (ld_plugin_claim_file_handler_v2)
+	(ld_plugin_register_claim_file_v2)
+	(LDPT_REGISTER_CLAIM_FILE_HOOK_V2): New.
+	(struct ld_plugin_tv): Add tv_register_claim_file_v2.
+
+2023-04-28  Roger Sayle  <roger@nextmovesoftware.com>
+
+	* ctf.h: Import latest version from binutils/libctf.
+
+2023-04-19  Max Filippov  <jcmvbkbc@gmail.com>
+
+	* xtensa-dynconfig.h (xtensa_config_v4): New struct.
+	(XCHAL_DATA_WIDTH, XCHAL_UNALIGNED_LOAD_EXCEPTION)
+	(XCHAL_UNALIGNED_STORE_EXCEPTION, XCHAL_UNALIGNED_LOAD_HW)
+	(XCHAL_UNALIGNED_STORE_HW, XTENSA_CONFIG_V4_ENTRY_LIST): New
+	definitions.
+	(XTENSA_CONFIG_INSTANCE_LIST): Add xtensa_config_v4 instance.
+	(XTENSA_CONFIG_ENTRY_LIST): Add XTENSA_CONFIG_V4_ENTRY_LIST.
+
+2023-02-27  Max Filippov  <jcmvbkbc@gmail.com>
+
+	* xtensa-dynconfig.h (xtensa_config_v3): New struct.
+	(xtensa_get_config_v3): New declaration.
+	(XCHAL_HAVE_CLAMPS, XCHAL_HAVE_DEPBITS, XCHAL_HAVE_EXCLUSIVE)
+	(XCHAL_HAVE_XEA3, XTENSA_CONFIG_V3_ENTRY_LIST): New definitions.
+	(XTENSA_CONFIG_INSTANCE_LIST): Add xtensa_config_v3 instance.
+	(XTENSA_CONFIG_ENTRY_LIST): Add XTENSA_CONFIG_V3_ENTRY_LIST.
+
+2023-02-02  Andrew Stubbs  <ams@codesourcery.com>
+
+	* gomp-constants.h (GOMP_VERSION_GCN): Bump.
+
+2022-12-21  Jason Merrill  <jason@redhat.com>
+
+	PR c++/84471
+	PR c++/107504
+	* ansidecl.h (ATTRIBUTE_WARN_UNUSED_RESULT): Add __.
+
+2022-12-14  David Faust  <david.faust@oracle.com>
+
+	PR target/106773
+	* btf.h (enum btf_func_linkage): New.
+	(struct btf_var_secinfo): Update comments with notes about extern
+	functions.
+
+2022-12-14  David Faust  <david.faust@oracle.com>
+
+	PR target/106773
+	* btf.h (enum btf_var_linkage): New.
+	(struct btf_var): Update comment to note 'extern' linkage.
+
+2022-12-07  Max Filippov  <jcmvbkbc@gmail.com>
+
+	* xtensa-dynconfig.h: New file.
+
+2022-11-15  Nathan Sidwell  <nathan@acm.org>
+
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_TEMPLATE_HEAD,
+	DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM,
+	DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM,
+	DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM,
+	DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM.
+
+2022-11-04  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (GOMP_DEVICE_INTEL_MIC): Comment out.
+	(GOMP_VERSION_INTEL_MIC): Remove.
+
+2022-10-31  Guillermo E. Martinez  <guillermo.e.martinez@oracle.com>
+
+	* btf.h (btf_enum64): Add new definition and new symbolic
+	constant to BTF_KIND_ENUM64 and BTF_KF_ENUM_{UN,}SIGNED.
+
+2022-10-31  Lulu Cheng  <chenglulu@loongson.cn>
+	    qijingwen  <qijingwen@loongson.cn>
+
+	* vtv-change-permission.h (defined): Determines whether the macro
+	__loongarch_lp64 is defined
+	(VTV_PAGE_SIZE): Set VTV_PAGE_SIZE to 16KiB for loongarch64.
+
+2022-10-24  Tobias Burnus  <tobias@codesourcery.com>
+
+	* cuda/cuda.h (enum CUdevice_attribute): Add
+	CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING.
+	(CU_MEMHOSTALLOC_DEVICEMAP): Define.
+	(cuMemHostAlloc): Add prototype.
+
+2022-10-20  Tobias Burnus  <tobias@codesourcery.com>
+
+	* gomp-constants.h (GOMP_DEVICE_HSA): Comment out unused define.
+
+2022-10-13  Xi Ruoyao  <xry111@xry111.site>
+
+	* longlong.h [__loongarch__] (count_leading_zeros): Define.
+	[__loongarch__] (count_trailing_zeros): Likewise.
+	[__loongarch__] (COUNT_LEADING_ZEROS_0): Likewise.
+
+2022-09-27  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/106652
+	PR c++/85518
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE.
+	(struct demangle_component): Add u.s_extended_builtin member.
+
+2022-09-27  Meghan Denny  <hello@nektro.net>
+
+	* dwarf2.h: Update with additional languages from dwarf
+	standard.
+
+2022-07-12  Martin Liska  <mliska@suse.cz>
+
+	* plugin-api.h (enum linker_api_version): New enum.
+	(ld_plugin_get_api_version): New.
+	(enum ld_plugin_tag): Add LDPT_GET_API_VERSION.
+	(struct ld_plugin_tv): Add tv_get_api_version.
+
+2022-07-06  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (OMP_REQUIRES_[...]): Update comment.
+
+2022-07-04  Tobias Burnus  <tobias@codesourcery.com>
+	    Chung-Lin Tang  <cltang@codesourcery.com>
+	    Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (GOMP_VERSION): Bump to 2.
+	(GOMP_REQUIRES_UNIFIED_ADDRESS, GOMP_REQUIRES_UNIFIED_SHARED_MEMORY,
+	GOMP_REQUIRES_REVERSE_OFFLOAD, GOMP_REQUIRES_TARGET_USED):
+	New defines.
+
+2022-06-13  Jakub Jelinek  <jakub@redhat.com>
+
+	* gomp-constants.h (GOMP_DEVICE_INVALID): Define.
+
+2022-05-31  Alan Modra  <amodra@gmail.com>
+
+	* dwarf2.def: Correct spelling of DW_AT_namelist_item.
+
+2022-05-24  David Malcolm  <dmalcolm@redhat.com>
+
+	* ansidecl.h: Drop macros OVERRIDE and FINAL.
+
+2022-05-23  Nathan Sidwell  <nathan@acm.org>
+
+	* demangle.h (enum demangle_component_type): Add module components.
+
+2022-05-18  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* cuda/cuda.h (enum CUjit_option): Add
+	'CU_JIT_GENERATE_DEBUG_INFO', 'CU_JIT_GENERATE_LINE_INFO'.
+	(enum CUlimit): Add 'CU_LIMIT_STACK_SIZE',
+	'CU_LIMIT_MALLOC_HEAP_SIZE'.
+	(cuCtxSetLimit, cuGetErrorName): Add.
+
+2022-05-18  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* cuda/cuda.h: For C++, wrap in 'extern "C"'.
+
+2022-05-17  Nathan Sidwell  <nathan@acm.org>
+
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_STRUCTURED_BINDING.
+
+2022-05-17  Jakub Jelinek  <jakub@redhat.com>
+
+	* gomp-constants.h (GOMP_DEPEND_INOUTSET): Define.
+
+2022-05-10  Martin Liska  <mliska@suse.cz>
+
+	* ansidecl.h (PTR): Remove.
+	(const): Likewise.
+	(volatile): Likewise.
+	(signed): Likewise.
+
+2022-05-10  Martin Liska  <mliska@suse.cz>
+
+	* hashtab.h (HTAB_EMPTY_ENTRY): Use void * instead PTR.
+	(HTAB_DELETED_ENTRY): Likewise.
+
+2022-05-09  Martin Liska  <mliska@suse.cz>
+
+	* ansidecl.h (PTR): Remove Not ANCI C part.
+
+2022-05-04  Martin Liska  <mliska@suse.cz>
+
+	* plugin-api.h (enum ld_plugin_tag): Do not set implicit enum
+	values.
+
+2022-04-06  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* cuda/cuda.h: New file.
+
+2022-03-19  Tiezhu Yang  <yangtiezhu@loongson.cn>
+
+	* floatformat.h (floatformat_ieee_quad_big): Renamed from
+	floatformat_ia64_quad_big.
+	(floatformat_ieee_quad_little): Similarly.
+
+2021-12-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	* unique-ptr.h: Removed.
+
+2021-12-10  Andrew Stubbs  <ams@codesourcery.com>
+
+	* gomp-constants.h (GOMP_VERSION_GCN): Bump.
+
+2021-12-08  Chung-Lin Tang  <cltang@codesourcery.com>
+
+	PR middle-end/92120
+	* gomp-constants.h (enum gomp_map_kind):
+	Add GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION, and
+	GOMP_MAP_POINTER_TO_ZERO_LENGTH_ARRAY_SECTION map kinds.
+	(GOMP_MAP_POINTER_P):
+	Include GOMP_MAP_POINTER_TO_ZERO_LENGTH_ARRAY_SECTION.
+
+2021-11-12  Chung-Lin Tang  <cltang@codesourcery.com>
+
+	* gomp-constants.h (GOMP_MAP_FLAG_SPECIAL_3): Define special bit macro.
+	(GOMP_MAP_IMPLICIT): New special map kind bits value.
+	(GOMP_MAP_FLAG_SPECIAL_BITS): Define helper mask for whole set of
+	special map kind bits.
+	(GOMP_MAP_IMPLICIT_P): New predicate macro for implicit map kinds.
+
+2021-11-05  Gerald Pfeifer  <gerald@pfeifer.com>
+	    Jakub Jelinek  <jakub@redhat.com>
+
+	* md5.h (USE_SYSTEM_MD5): Introduce.
+
+2021-09-27  Vincent Lefevre  <vincent@vinc17.net>
+
+	* floatformat.h: Update pathname for IBM long double description.
+
+2021-09-22  Alan Modra  <amodra@gmail.com>
+
+	* obstack.h (__PTR_ALIGN): Expand and simplify __BPTR_ALIGN
+	rather than calculating relative to a NULL pointer.
+
+2021-08-23  Jakub Jelinek  <jakub@redhat.com>
+
+	* gomp-constants.h (GOMP_TASK_FLAG_STRICT): Define.
+
+2021-07-24  Marek Polacek  <polacek@redhat.com>
+
+	* ansidecl.h: Check if __cplusplus is defined before checking
+	the value of __cpp_constexpr and __cplusplus.  Don't check
+	__STDC_VERSION__ in C++.
+
+2021-07-02  David Faust  <david.faust@oracle.com>
+
+	* btf.h (struct btf_type): Update bit usage comment.
+	(BTF_INFO_KIND): Update bit mask.
+	(BTF_KIND_FLOAT): New define.
+	(BTF_KIND_MAX): Update.
+
+2021-06-28  Indu Bhagat  <indu.bhagat@oracle.com>
+	    David Faust  <david.faust@oracle.com>
+	    Jose E. Marchesi  <jose.marchesi@oracle.com>
+	    Weimin Pan  <weimin.pan@oracle.com>
+
+	* ctf.h: New file.
+	* btf.h: Likewise.
+
+2021-05-06  Tom Tromey  <tom@tromey.com>
+
+	* hashtab.h (htab_eq_string): Declare.
+
+2021-03-31  Patrick Palka  <ppalka@redhat.com>
+
+	PR c++/88115
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_VENDOR_EXPR.
+
+2021-01-16  Kwok Cheung Yeung  <kcy@codesourcery.com>
+
+	* gomp-constants.h (GOMP_TASK_FLAG_DETACH): New.
+
+2021-01-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* libiberty.h (strverscmp): Delete duplicate prototype.
+
+2020-12-09  Andrew Stubbs  <ams@codesourcery.com>
+
+	* hsa.h: Replace whole file.
+	* hsa_ext_amd.h: New file.
+	* hsa_ext_image.h: New file.
+
+2020-09-24  Mark Wielaard  <mark@klomp.org>
+
+	* dwarf2.def: Add DWARF5 Unit type header encoding macros
+	DW_UT_FIRST, DW_UT and DW_UT_END.
+	* dwarf2.h (enum dwarf_unit_type): Removed and define using
+	DW_UT_FIRST, DW_UT and DW_UT_END macros.
+	(DW_CIE_VERSION): Removed.
+	(get_DW_UT_name): New function declaration.
+
+2020-09-15  Tobias Burnus  <tobias@codesourcery.com>
+
+	PR fortran/96668
+	* gomp-constants.h (GOMP_MAP_ALWAYS_POINTER_P): Define.
+
+2020-09-09  Caroline Tice  <cmtice@google.com>
+
+	* dwarf2.h (enum dwarf_sect_v5): A new enum section for the
+	sections in a DWARF 5 DWP file (DWP version 5).
+
+2020-09-09  Caroline Tice  <cmtice@google.com>
+
+	* dwarf2.h (enum dwarf_sect_v5): A new enum section for the
+	sections in a DWARF 5 DWP file (DWP version 5).
+
+2020-09-08  Felix Willgerodt  <felix.willgerodt@intel.com>
+
+	* floatformat.h (floatformat_bfloat16_big): New.
+	(floatformat_bfloat16_little): New.
+
+2020-08-03  Martin Jambor  <mjambor@suse.cz>
+
+	* gomp-constants.h (GOMP_VERSION_HSA): Remove.
+
+2020-07-09  Julian Brown  <julian@codesourcery.com>
+	    Thomas Schwinge  <thomas@codesourcery.com>
+
+	PR middle-end/95270
+	* gomp-constants.h (gomp_map_kind): Expand comment for attach/detach
+	mapping kinds.
+
+2020-07-09  Julian Brown  <julian@codesourcery.com>
+
+	* gomp-constants.h (gomp_map_kind): Update comment for GOMP_MAP_TO_PSET.
+
+2020-06-26  Nick Clifton  <nickc@redhat.com>
+
+	* libiberty.h (bsearch_r): Remove use of the register keyword from
+	the prototype.
+
+2020-06-23  Nick Alcock  <nick.alcock@oracle.com>
+
+	* libiberty.h (bsearch_r): New.
+
+2020-04-17  Martin Liska  <mliska@suse.cz>
+	    Jonathan Yong <10walls@gmail.com>
+
+	PR gcov-profile/94570
+	* filenames.h (defined): Do not define HAVE_DOS_BASED_FILE_SYSTEM
+	for CYGWIN.
+
+2020-04-01 Maciej W. Rozycki <macro@linux-mips.org>
+
+	PR lto/94249
+	* plugin-api.h: Fix a typo.
+
+2020-03-24  Martin Liska  <mliska@suse.cz>
+
+	PR lto/94249
+	* plugin-api.h: Add more robust endianess detection.
+
+2020-03-21  Martin Liska  <mliska@suse.cz>
+
+	* plugin-api.h (enum ld_plugin_symbol_type): Remove
+	comma after last value of an enum.
+	* lto-symtab.h (enum gcc_plugin_symbol_type): Likewise.
+
+2020-03-19  Martin Liska  <mliska@suse.cz>
+
+	* lto-symtab.h (enum gcc_plugin_symbol_type): New.
+	(enum gcc_plugin_symbol_section_kind): Likewise.
+
+2020-03-19  Martin Liska  <mliska@suse.cz>
+
+	* plugin-api.h (struct ld_plugin_symbol): Split
+	int def into 4 char fields.
+	(enum ld_plugin_symbol_type): New.
+	(enum ld_plugin_symbol_section_kind): New.
+	(enum ld_plugin_tag): Add LDPT_ADD_SYMBOLS_V2.
+
+2020-02-05  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* hashtab.h (htab_remove_elt): Make a parameter const.
+	(htab_remove_elt_with_hash): Likewise.
+
+2020-01-10  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (enum gomp_device_property): Remove.
+
+2020-01-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Update copyright years.
+
+2019-12-22  Maciej W. Rozycki  <macro@codesourcery.com>
+	    Frederik Harwath  <frederik@codesourcery.com>
+	    Thomas Schwinge  <tschwinge@codesourcery.com>
+
+	* gomp-constants.h (gomp_device_property): New enum.
+
+2019-12-19  Julian Brown  <julian@codesourcery.com>
+
+	* gomp-constants.h (gomp_map_kind): Add GOMP_MAP_ATTACH_DETACH.
+
+2019-12-19  Julian Brown  <julian@codesourcery.com>
+
+	* gomp-constants.h (GOMP_MAP_FLAG_SPECIAL_4, GOMP_MAP_DEEP_COPY):
+	Define.
+	(gomp_map_kind): Add GOMP_MAP_ATTACH, GOMP_MAP_DETACH,
+	GOMP_MAP_FORCE_DETACH.
+
+2019-12-19  Julian Brown  <julian@codesourcery.com>
+	    Maciej W. Rozycki  <macro@codesourcery.com>
+	    Tobias Burnus  <tobias@codesourcery.com>
+	    Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (gomp_map_kind): Support GOMP_MAP_NO_ALLOC.
+
+2019-11-16  Tim Ruehsen  <tim.ruehsen@gmx.de>
+
+	* demangle.h (struct demangle_component): Add member
+	d_counting.
+
+2019-11-16  Eduard-Mihai Burtescu  <eddyb@lyken.rs>
+
+	* demangle.h (rust_demangle_callback): Add.
+
+2019-11-13  Andrew Stubbs  <ams@codesourcery.com>
+	    Kwok Cheung Yeung  <kcy@codesourcery.com>
+	    Julian Brown  <julian@codesourcery.com>
+	    Tom de Vries  <tom@codesourcery.com>
+
+	* gomp-constants.h (GOMP_DEVICE_GCN): Define.
+	(GOMP_VERSION_GCN): Define.
+
+2019-08-08  Martin Liska  <mliska@suse.cz>
+
+	PR bootstrap/91352
+	* libiberty.h (is_valid_fd): New function.
+
+2019-07-18  Eduard-Mihai Burtescu  <eddyb@lyken.rs>
+
+	* demangle.h (rust_is_mangled): Move to libiberty/rust-demangle.h.
+	(rust_demangle_sym): Move to libiberty/rust-demangle.h.
+
+2019-06-18  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (enum gomp_map_kind): Fix description of
+	'GOMP_MAP_FIRSTPRIVATE'.
+
+2019-06-10  Martin Liska  <mliska@suse.cz>
+
+	* ansidecl.h (ATTRIBUTE_WARN_UNUSED_RESULT): New macro.
+	* libiberty.h (xmalloc): Use it.
+	(xrealloc): Likewise.
+	(xcalloc): Likewise.
+	(xstrdup): Likewise.
+	(xstrndup): Likewise.
+	(xmemdup): Likewise.
+
+2019-06-10  Martin Liska  <mliska@suse.cz>
+
+	* ansidecl.h:
+	(ATTRIBUTE_RESULT_SIZE_1): Define new macro.
+	(ATTRIBUTE_RESULT_SIZE_2): Likewise.
+	(ATTRIBUTE_RESULT_SIZE_1_2): Likewise.
+	* libiberty.h (xmalloc): Add RESULT_SIZE attribute.
+	(xrealloc): Likewise.
+	(xcalloc): Likewise.
+
+2019-04-26  Michael Forney  <mforney@mforney.org>
+
+	* libiberty.h (vasprintf): Don't declare if HAVE_DECL_VASPRINTF
+	is not defined.
+
+2019-04-03  Vineet Gupta  <vgupta@synopsys.com>
+
+	PR89877
+	* longlong.h [__arc__] (add_ssaaaa): Add cc clobber.
+	(sub_ddmmss): Likewise.
+
+2019-02-11  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* splay-tree.h (splay_tree_delete_key_fn): Update comment.
+	(splay_tree_delete_value_fn): Likewise.
+
+2019-01-09  Sandra Loosemore  <sandra@codesourcery.com>
+
+	PR other/16615
+
+	* libiberty.h: Mechanically replace "can not" with "cannot".
+	* plugin-api.h: Likewise.
+
+2019-01-01  Jakub Jelinek  <jakub@redhat.com>
+
+	Update copyright years.
+
+2018-12-28  Thomas Schwinge  <thomas@codesourcery.com>
+
+	* gomp-constants.h (GOACC_FLAG_HOST_FALLBACK)
+	(GOACC_FLAGS_MARSHAL_OP, GOACC_FLAGS_UNMARSHAL): Define.
+
+2018-12-22  Jason Merrill  <jason@redhat.com>
+
+	* demangle.h: Remove support for ancient GNU (pre-3.0), Lucid,
+	ARM, HP, and EDG demangling styles.
+
+2018-12-11  Nick Clifton  <nickc@redhat.com>
+
+	PR 88409
+	* demangle.h (DEMANGLE_RECURSION_LIMIT): Increase to 2048.
+
+2018-12-07  Nick Clifton  <nickc@redhat.com>
+
+	* demangle.h (DMGL_NO_RECURSE_LIMIT): Define.
+        (DEMANGLE_RECURSION_LIMIT): Define
+
+2018-11-08  Jakub Jelinek  <jakub@redhat.com>
+
+	* gomp-constants.h (GOMP_TASK_FLAG_REDUCTION,
+	GOMP_DEPEND_IN, GOMP_DEPEND_OUT, GOMP_DEPEND_INOUT,
+	GOMP_DEPEND_MUTEXINOUTSET): Define.
+
+2018-10-19  Jason Merrill  <jason@redhat.com>
+
+	* demangle.h (enum demangle_component_type): Add
+	DEMANGLE_COMPONENT_TPARM_OBJ.
+
 2018-10-29  David Malcolm  <dmalcolm@redhat.com>
 
 	* unique-ptr.h (gnu::move): Generalize so it applies to all

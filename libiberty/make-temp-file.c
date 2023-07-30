@@ -1,5 +1,5 @@
 /* Utility to pick a temporary filename prefix.
-   Copyright (C) 1996-2018 Free Software Foundation, Inc.
+   Copyright (C) 1996-2023 Free Software Foundation, Inc.
 
 This file is part of the libiberty library.
 Libiberty is free software; you can redistribute it and/or
@@ -37,8 +37,13 @@ Boston, MA 02110-1301, USA.  */
 #include <sys/file.h>   /* May get R_OK, etc. on some systems.  */
 #endif
 #if defined(_WIN32) && !defined(__CYGWIN__)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
 
 #ifndef R_OK
 #define R_OK 4
@@ -76,13 +81,21 @@ try_dir (const char *dir, const char *base)
     return base;
   if (dir != 0
       && access (dir, R_OK | W_OK | X_OK) == 0)
-    return dir;
+    {
+      /* Check to make sure dir is actually a directory. */
+#ifdef S_ISDIR
+      struct stat s;
+      if (stat (dir, &s))
+	return NULL;
+      if (!S_ISDIR (s.st_mode))
+	return NULL;
+#endif
+      return dir;
+    }
   return 0;
 }
 
 static const char tmp[] = { DIR_SEPARATOR, 't', 'm', 'p', 0 };
-static const char usrtmp[] =
-{ DIR_SEPARATOR, 'u', 's', 'r', DIR_SEPARATOR, 't', 'm', 'p', 0 };
 static const char vartmp[] =
 { DIR_SEPARATOR, 'v', 'a', 'r', DIR_SEPARATOR, 't', 'm', 'p', 0 };
 
@@ -129,9 +142,8 @@ choose_tmpdir (void)
 	base = try_dir (P_tmpdir, base);
 #endif
 
-      /* Try /var/tmp, /usr/tmp, then /tmp.  */
+      /* Try /var/tmp, then /tmp.  */
       base = try_dir (vartmp, base);
-      base = try_dir (usrtmp, base);
       base = try_dir (tmp, base);
       
       /* If all else fails, use the current directory!  */

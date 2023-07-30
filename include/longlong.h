@@ -1,5 +1,5 @@
 /* longlong.h -- definitions for mixed size 32/64 bit arithmetic.
-   Copyright (C) 1991-2018 Free Software Foundation, Inc.
+   Copyright (C) 1991-2023 Free Software Foundation, Inc.
 
    This file is part of the GNU C Library.
 
@@ -199,7 +199,8 @@ extern UDItype __udiv_qrnnd (UDItype *, UDItype, UDItype, UDItype);
 	   : "%r" ((USItype) (ah)),					\
 	     "rICal" ((USItype) (bh)),					\
 	     "%r" ((USItype) (al)),					\
-	     "rICal" ((USItype) (bl)))
+	     "rICal" ((USItype) (bl))					\
+	   : "cc")
 #define sub_ddmmss(sh, sl, ah, al, bh, bl) \
   __asm__ ("sub.f	%1, %4, %5\n\tsbc	%0, %2, %3"		\
 	   : "=r" ((USItype) (sh)),					\
@@ -207,7 +208,8 @@ extern UDItype __udiv_qrnnd (UDItype *, UDItype, UDItype, UDItype);
 	   : "r" ((USItype) (ah)),					\
 	     "rICal" ((USItype) (bh)),					\
 	     "r" ((USItype) (al)),					\
-	     "rICal" ((USItype) (bl)))
+	     "rICal" ((USItype) (bl))					\
+	   : "cc")
 
 #define __umulsidi3(u,v) ((UDItype)(USItype)u*(USItype)v)
 #ifdef __ARC_NORM__
@@ -589,6 +591,18 @@ extern UDItype __umulsidi3 (USItype, USItype);
 	     : "r" ((__ctz_x-1) & ~__ctz_x));				\
   } while (0)
 #define UMUL_TIME 14
+#endif
+
+#ifdef __loongarch__
+# if W_TYPE_SIZE == 32
+#  define count_leading_zeros(count, x)  ((count) = __builtin_clz (x))
+#  define count_trailing_zeros(count, x) ((count) = __builtin_ctz (x))
+#  define COUNT_LEADING_ZEROS_0 32
+# elif W_TYPE_SIZE == 64
+#  define count_leading_zeros(count, x)  ((count) = __builtin_clzll (x))
+#  define count_trailing_zeros(count, x) ((count) = __builtin_ctzll (x))
+#  define COUNT_LEADING_ZEROS_0 64
+# endif
 #endif
 
 #if defined (__M32R__) && W_TYPE_SIZE == 32

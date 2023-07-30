@@ -1050,10 +1050,10 @@ fork_execute (const char *prog, const char *const *argv)
       if (err != 0)
 	{
 	  errno = err;
-	  fatal_error ("%s: %m", errmsg);
+	  fatal_error ("error trying to exec '%s': %s: %m", argv[0], errmsg);
 	}
       else
-	fatal_error ("%s", errmsg);
+	fatal_error ("error trying to exec '%s': %s", argv[0], errmsg);
     }
   do_wait (prog, pex);
 }

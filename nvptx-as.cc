@@ -221,38 +221,11 @@ typedef struct Stmt
   unsigned len : 12;
 } Stmt;
 
-struct id_map
-{
-  id_map *next;
-  char *ptx_name;
-};
-
 #define alloc_comment(S,E) alloc_stmt (V_comment, S, E, 0)
 #define append_stmt(V, S) ((S)->next = *(V), *(V) = (S))
 
 static Stmt *decls;
 static Stmt *fns;
-
-static id_map *func_ids, **funcs_tail = &func_ids;
-static id_map *var_ids, **vars_tail = &var_ids;
-
-static void
-record_id (const char *p1, id_map ***where)
-{
-  const char *end = strchr (p1, '\n');
-  if (!end)
-    fatal_error ("malformed ptx file");
-
-  id_map *v = XNEW (id_map);
-  size_t len = end - p1;
-  v->ptx_name = XNEWVEC (char, len + 1);
-  memcpy (v->ptx_name, p1, len);
-  v->ptx_name[len] = '\0';
-  v->next = NULL;
-  id_map **tail = *where;
-  *tail = v;
-  *where = &v->next;
-}
 
 /* Read the whole input file.  It will be NUL terminated (but
    remember, there could be a NUL in the file itself.  */
@@ -728,13 +701,7 @@ parse_file (htab_t symbol_table, Token *tok)
       Token *start = tok;
 
       while (tok->kind == K_comment)
-	{
-	  if (strncmp (tok->ptr, ":VAR_MAP ", 9) == 0)
-	    record_id (tok->ptr + 9, &vars_tail);
-	  if (strncmp (tok->ptr, ":FUNC_MAP ", 10) == 0)
-	    record_id (tok->ptr + 10, &funcs_tail);
-	  tok++;
-	}
+	tok++;
       comment = alloc_comment (start, tok);
       comment->vis |= V_prefix_comment;
     }

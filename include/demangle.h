@@ -1,7 +1,6 @@
 /* Defs for interface to demanglers.
-   Copyright 1992, 1993, 1994, 1995, 1996, 1997, 1998, 2000, 2001, 2002,
-   2003, 2004, 2005, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
-   
+   Copyright (C) 1992-2023 Free Software Foundation, Inc.
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License
    as published by the Free Software Foundation; either version 2, or
@@ -54,19 +53,25 @@ extern "C" {
 					   */
 
 #define DMGL_AUTO	 (1 << 8)
-#define DMGL_GNU	 (1 << 9)
-#define DMGL_LUCID	 (1 << 10)
-#define DMGL_ARM	 (1 << 11)
-#define DMGL_HP 	 (1 << 12)       /* For the HP aCC compiler;
-                                            same as ARM except for
-                                            template arguments, etc. */
-#define DMGL_EDG	 (1 << 13)
 #define DMGL_GNU_V3	 (1 << 14)
 #define DMGL_GNAT	 (1 << 15)
+#define DMGL_DLANG	 (1 << 16)
+#define DMGL_RUST	 (1 << 17)	/* Rust wraps GNU_V3 style mangling.  */
 
 /* If none of these are set, use 'current_demangling_style' as the default. */
-#define DMGL_STYLE_MASK (DMGL_AUTO|DMGL_GNU|DMGL_LUCID|DMGL_ARM|DMGL_HP|DMGL_EDG|DMGL_GNU_V3|DMGL_JAVA|DMGL_GNAT)
+#define DMGL_STYLE_MASK (DMGL_AUTO|DMGL_GNU_V3|DMGL_JAVA|DMGL_GNAT|DMGL_DLANG|DMGL_RUST)
 
+/* Disable a limit on the depth of recursion in mangled strings.
+   Note if this limit is disabled then stack exhaustion is possible when
+   demangling pathologically complicated strings.  Bug reports about stack
+   exhaustion when the option is enabled will be rejected.  */  
+#define DMGL_NO_RECURSE_LIMIT (1 << 18)	
+
+/* If DMGL_NO_RECURSE_LIMIT is not enabled, then this is the value used as
+   the maximum depth of recursion allowed.  It should be enough for any
+   real-world mangled name.  */
+#define DEMANGLE_RECURSION_LIMIT 2048
+  
 /* Enumeration of possible demangling styles.
 
    Lucid and ARM styles are still kept logically distinct, even though
@@ -80,41 +85,32 @@ extern enum demangling_styles
   no_demangling = -1,
   unknown_demangling = 0,
   auto_demangling = DMGL_AUTO,
-  gnu_demangling = DMGL_GNU,
-  lucid_demangling = DMGL_LUCID,
-  arm_demangling = DMGL_ARM,
-  hp_demangling = DMGL_HP,
-  edg_demangling = DMGL_EDG,
   gnu_v3_demangling = DMGL_GNU_V3,
   java_demangling = DMGL_JAVA,
-  gnat_demangling = DMGL_GNAT
+  gnat_demangling = DMGL_GNAT,
+  dlang_demangling = DMGL_DLANG,
+  rust_demangling = DMGL_RUST
 } current_demangling_style;
 
 /* Define string names for the various demangling styles. */
 
 #define NO_DEMANGLING_STYLE_STRING            "none"
 #define AUTO_DEMANGLING_STYLE_STRING	      "auto"
-#define GNU_DEMANGLING_STYLE_STRING    	      "gnu"
-#define LUCID_DEMANGLING_STYLE_STRING	      "lucid"
-#define ARM_DEMANGLING_STYLE_STRING	      "arm"
-#define HP_DEMANGLING_STYLE_STRING	      "hp"
-#define EDG_DEMANGLING_STYLE_STRING	      "edg"
 #define GNU_V3_DEMANGLING_STYLE_STRING        "gnu-v3"
 #define JAVA_DEMANGLING_STYLE_STRING          "java"
 #define GNAT_DEMANGLING_STYLE_STRING          "gnat"
+#define DLANG_DEMANGLING_STYLE_STRING         "dlang"
+#define RUST_DEMANGLING_STYLE_STRING          "rust"
 
 /* Some macros to test what demangling style is active. */
 
 #define CURRENT_DEMANGLING_STYLE current_demangling_style
 #define AUTO_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_AUTO)
-#define GNU_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_GNU)
-#define LUCID_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_LUCID)
-#define ARM_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_ARM)
-#define HP_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_HP)
-#define EDG_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_EDG)
 #define GNU_V3_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_GNU_V3)
 #define JAVA_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_JAVA)
 #define GNAT_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_GNAT)
+#define DLANG_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_DLANG)
+#define RUST_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_RUST)
 
 /* Provide information about the available demangle styles. This code is
    pulled from gdb into libiberty because it is useful to binutils also.  */
@@ -129,21 +125,12 @@ extern const struct demangler_engine
 extern char *
 cplus_demangle (const char *mangled, int options);
 
-extern int
-cplus_demangle_opname (const char *opname, char *result, int options);
-
-extern const char *
-cplus_mangle_opname (const char *opname, int options);
-
 /* Note: This sets global state.  FIXME if you care about multi-threading. */
 
-extern void
-set_cplus_marker_for_demangling (int ch);
-
-extern enum demangling_styles 
+extern enum demangling_styles
 cplus_demangle_set_style (enum demangling_styles style);
 
-extern enum demangling_styles 
+extern enum demangling_styles
 cplus_demangle_name_to_style (const char *name);
 
 /* Callback typedef for allocation-less demangler interfaces. */
@@ -169,10 +156,25 @@ java_demangle_v3 (const char *mangled);
 char *
 ada_demangle (const char *mangled, int options);
 
+extern char *
+dlang_demangle (const char *mangled, int options);
+
+extern int
+rust_demangle_callback (const char *mangled, int options,
+                        demangle_callbackref callback, void *opaque);
+
+
+extern char *
+rust_demangle (const char *mangled, int options);
+
 enum gnu_v3_ctor_kinds {
   gnu_v3_complete_object_ctor = 1,
   gnu_v3_base_object_ctor,
   gnu_v3_complete_object_allocating_ctor,
+  /* These are not part of the V3 ABI.  Unified constructors are generated
+     as a speed-for-space optimization when the -fdeclone-ctor-dtor option
+     is used, and are always internal symbols.  */
+  gnu_v3_unified_ctor,
   gnu_v3_object_ctor_group
 };
 
@@ -188,6 +190,10 @@ enum gnu_v3_dtor_kinds {
   gnu_v3_deleting_dtor = 1,
   gnu_v3_complete_object_dtor,
   gnu_v3_base_object_dtor,
+  /* These are not part of the V3 ABI.  Unified destructors are generated
+     as a speed-for-space optimization when the -fdeclone-ctor-dtor option
+     is used, and are always internal symbols.  */
+  gnu_v3_unified_dtor,
   gnu_v3_object_dtor_group
 };
 
@@ -353,6 +359,9 @@ enum demangle_component_type
      template argument, and the right subtree is either NULL or
      another TEMPLATE_ARGLIST node.  */
   DEMANGLE_COMPONENT_TEMPLATE_ARGLIST,
+  /* A template parameter object (C++20).  The left subtree is the
+     corresponding template argument.  */
+  DEMANGLE_COMPONENT_TPARM_OBJ,
   /* An initializer list.  The left subtree is either an explicit type or
      NULL, and the right subtree is a DEMANGLE_COMPONENT_ARGLIST.  */
   DEMANGLE_COMPONENT_INITIALIZER_LIST,
@@ -365,6 +374,10 @@ enum demangle_component_type
   /* A typecast, represented as a unary operator.  The one subtree is
      the type to which the argument should be cast.  */
   DEMANGLE_COMPONENT_CAST,
+  /* A conversion operator, represented as a unary operator.  The one
+     subtree is the type to which the argument should be converted
+     to.  */
+  DEMANGLE_COMPONENT_CONVERSION,
   /* A nullary expression.  The left subtree is the operator.  */
   DEMANGLE_COMPONENT_NULLARY,
   /* A unary expression.  The left subtree is the operator, and the
@@ -395,6 +408,9 @@ enum demangle_component_type
      number which involves neither modifying the mangled string nor
      allocating a new copy of the literal in memory.  */
   DEMANGLE_COMPONENT_LITERAL_NEG,
+  /* A vendor's builtin expression.  The left subtree holds the
+     expression's name, and the right subtree is a argument list.  */
+  DEMANGLE_COMPONENT_VENDOR_EXPR,
   /* A libgcj compiled resource.  The left subtree is the name of the
      resource.  */
   DEMANGLE_COMPONENT_JAVA_RESOURCE,
@@ -428,8 +444,30 @@ enum demangle_component_type
   DEMANGLE_COMPONENT_PACK_EXPANSION,
   /* A name with an ABI tag.  */
   DEMANGLE_COMPONENT_TAGGED_NAME,
+  /* A transaction-safe function type.  */
+  DEMANGLE_COMPONENT_TRANSACTION_SAFE,
   /* A cloned function.  */
-  DEMANGLE_COMPONENT_CLONE
+  DEMANGLE_COMPONENT_CLONE,
+  DEMANGLE_COMPONENT_NOEXCEPT,
+  DEMANGLE_COMPONENT_THROW_SPEC,
+
+  DEMANGLE_COMPONENT_STRUCTURED_BINDING,
+
+  DEMANGLE_COMPONENT_MODULE_NAME,
+  DEMANGLE_COMPONENT_MODULE_PARTITION,
+  DEMANGLE_COMPONENT_MODULE_ENTITY,
+  DEMANGLE_COMPONENT_MODULE_INIT,
+
+  DEMANGLE_COMPONENT_TEMPLATE_HEAD,
+  DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM,
+  DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM,
+  DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM,
+  DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM,
+
+  /* A builtin type with argument.  This holds the builtin type
+     information.  */
+  DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE
+
 };
 
 /* Types which are only used internally.  */
@@ -446,6 +484,12 @@ struct demangle_component
 {
   /* The type of this component.  */
   enum demangle_component_type type;
+
+  /* Guard against recursive component printing.
+     Initialize to zero.  Private to d_print_comp.
+     All other fields are final after initialization.  */
+  int d_printing;
+  int d_counting;
 
   union
   {
@@ -509,6 +553,15 @@ struct demangle_component
       /* Builtin type.  */
       const struct demangle_builtin_type_info *type;
     } s_builtin;
+
+    /* For DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE.  */
+    struct
+    {
+      /* Builtin type.  */
+      const struct demangle_builtin_type_info *type;
+      short arg;
+      char suffix;
+    } s_extended_builtin;
 
     /* For DEMANGLE_COMPONENT_SUB_STD.  */
     struct
@@ -641,7 +694,7 @@ cplus_demangle_v3_components (const char *mangled, int options, void **mem);
 
 extern char *
 cplus_demangle_print (int options,
-                      const struct demangle_component *tree,
+                      struct demangle_component *tree,
                       int estimated_length,
                       size_t *p_allocated_size);
 
@@ -661,7 +714,7 @@ cplus_demangle_print (int options,
 
 extern int
 cplus_demangle_print_callback (int options,
-                               const struct demangle_component *tree,
+                               struct demangle_component *tree,
                                demangle_callbackref callback, void *opaque);
 
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 /* simple-object-mach-o.c -- routines to manipulate Mach-O object files.
-   Copyright 2010, 2011, 2013 Free Software Foundation, Inc.
+   Copyright (C) 2010-2023 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 This program is free software; you can redistribute it and/or modify it
@@ -1225,6 +1225,11 @@ simple_object_mach_o_write_segment (simple_object_write *sobj, int descriptor,
 	index[4 * i] -= index[0];
       index[0] = 0;
 
+      /* Swap the indices, if required.  */
+
+      for (i = 0; i < (nsects_in * 4); ++i)
+	set_32 ((unsigned char *) &index[i], index[i]);
+
       sechdr_offset += sechdrsize;
 
       /* Write out the section names.
@@ -1374,5 +1379,6 @@ const struct simple_object_functions simple_object_mach_o_functions =
   simple_object_mach_o_release_attributes,
   simple_object_mach_o_start_write,
   simple_object_mach_o_write_to_file,
-  simple_object_mach_o_release_write
+  simple_object_mach_o_release_write,
+  NULL
 };

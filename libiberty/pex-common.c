@@ -1,5 +1,5 @@
 /* Common code for executing a program in a sub-process.
-   Copyright (C) 2005, 2010 Free Software Foundation, Inc.
+   Copyright (C) 2005-2023 Free Software Foundation, Inc.
    Written by Ian Lance Taylor <ian@airs.com>.
 
 This file is part of the libiberty library.
@@ -267,7 +267,8 @@ pex_run_in_environment (struct pex_obj *obj, int flags, const char *executable,
   if (out < 0)
     {
       out = obj->funcs->open_write (obj, outname,
-				    (flags & PEX_BINARY_OUTPUT) != 0);
+				    (flags & PEX_BINARY_OUTPUT) != 0,
+				    (flags & PEX_STDOUT_APPEND) != 0);
       if (out < 0)
 	{
 	  *err = errno;
@@ -319,8 +320,9 @@ pex_run_in_environment (struct pex_obj *obj, int flags, const char *executable,
     }
   else
     {
-      errdes = obj->funcs->open_write (obj, errname, 
-				       (flags & PEX_BINARY_ERROR) != 0);
+      errdes = obj->funcs->open_write (obj, errname,
+				       (flags & PEX_BINARY_ERROR) != 0,
+				       (flags & PEX_STDERR_APPEND) != 0);
       if (errdes < 0)
 	{
 	  *err = errno;

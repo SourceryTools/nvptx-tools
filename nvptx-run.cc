@@ -42,7 +42,7 @@ extern "C" CUresult cuGetErrorString (CUresult, const char **);
 #ifndef NVPTX_RUN_LINK_LIBCUDA
 # include <dlfcn.h>
 
-struct cuda_lib_s {
+static struct cuda_lib_s {
 
 # define CUDA_ONE_CALL(call)			\
   __typeof (::call) *call;
@@ -137,7 +137,7 @@ fatal_unless_success (CUresult r, const char *err)
 static size_t jitopt_lineinfo, jitopt_debuginfo, jitopt_optimize = 4;
 
 static void
-compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
+compile_file (FILE *f, CUmodule *phModule)
 {
   CUresult r;
    
@@ -178,7 +178,7 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
       sprintf (namebuf, "input file %d at offset %d", count++, off);
       r = CUDA_CALL_NOCHECK (cuLinkAddData, linkstate,
 			     CU_JIT_INPUT_PTX, program + off, l + 1,
-			     strdup (namebuf), 0, 0, 0);
+			     namebuf, 0, 0, 0);
       if (r != CUDA_SUCCESS)
 	{
 #if 0
@@ -193,6 +193,9 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
 	off++;
     }
 
+  delete[] program;
+  program = NULL;
+
   void *linkout;
   r = CUDA_CALL_NOCHECK (cuLinkComplete, linkstate, &linkout, NULL);
   if (r != CUDA_SUCCESS)
@@ -204,8 +207,8 @@ compile_file (FILE *f, CUmodule *phModule, CUfunction *phKernel)
   r = CUDA_CALL_NOCHECK (cuModuleLoadData, phModule, linkout);
   fatal_unless_success (r, "cuModuleLoadData failed");
 
-  r = CUDA_CALL_NOCHECK (cuModuleGetFunction, phKernel, *phModule, "__main");
-  fatal_unless_success (r, "could not find kernel __main");
+  r = CUDA_CALL_NOCHECK (cuLinkDestroy, linkstate);
+  fatal_unless_success (r, "cuLinkDestroy failed");
 }
 
 ATTRIBUTE_NORETURN static void
@@ -371,8 +374,12 @@ This program has absolutely no warranty.\n",
 			     dev);
       fatal_unless_success (r, "could not get max threads per SM count");
       size_t mem;
-      r = CUDA_CALL_NOCHECK (cuDeviceTotalMem, &mem, dev);
-      fatal_unless_success (r, "could not get available memory");
+      {
+	size_t mem_free, mem_total;
+	r = CUDA_CALL_NOCHECK (cuMemGetInfo, &mem_free, &mem_total);
+	fatal_unless_success (r, "could not get free and total memory");
+	mem = mem_free;
+      }
       /* Subtract heap size and a 128 MiB extra.  */
       mem -= heap_size + 128 * 1024 * 1024;
       mem /= sm_count * thread_max;
@@ -388,11 +395,14 @@ This program has absolutely no warranty.\n",
   fatal_unless_success (r, "could not set heap limit");
 
   CUmodule hModule = 0;
-  CUfunction hKernel = 0;
-  compile_file (f, &hModule, &hKernel);
+  compile_file (f, &hModule);
 
   fclose (f);
   f = NULL;
+
+  CUfunction hKernel = 0;
+  r = CUDA_CALL_NOCHECK (cuModuleGetFunction, &hKernel, hModule, "__main");
+  fatal_unless_success (r, "could not find kernel __main");
 
   void *args[] = { &d_retval, &d_argc, &d_argv };
     

@@ -1,6 +1,6 @@
 /* plugin-api.h -- External linker plugin API.  */
 
-/* Copyright 2009, 2010 Free Software Foundation, Inc.
+/* Copyright (C) 2009-2023 Free Software Foundation, Inc.
    Written by Cary Coutant <ccoutant@google.com>.
 
    This file is part of binutils.
@@ -34,7 +34,61 @@
 #include <sys/types.h>
 #if !defined(HAVE_STDINT_H) && !defined(HAVE_INTTYPES_H) && \
     !defined(UINT64_MAX) && !defined(uint64_t)
-#error can not find uint64_t type
+#error cannot find uint64_t type
+#endif
+
+/* Detect endianess based on __BYTE_ORDER__ macro.  */
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
+    defined(__ORDER_LITTLE_ENDIAN__) && defined(__ORDER_PDP_ENDIAN__)
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define PLUGIN_LITTLE_ENDIAN 1
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define PLUGIN_BIG_ENDIAN 1
+#elif __BYTE_ORDER__ == __ORDER_PDP_ENDIAN__
+#define PLUGIN_PDP_ENDIAN 1
+#endif
+#else
+/* Older GCC releases (<4.6.0) can make detection from glibc macros.  */
+#if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__ANDROID__)
+#include <endian.h>
+#ifdef __BYTE_ORDER
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define PLUGIN_LITTLE_ENDIAN 1
+#elif __BYTE_ORDER == __BIG_ENDIAN
+#define PLUGIN_BIG_ENDIAN 1
+#endif
+#endif
+#endif
+/* Include all necessary header files based on target.  */
+#if defined(__SVR4) && defined(__sun)
+#include <sys/byteorder.h>
+#endif
+#if defined(__FreeBSD__) || defined(__NetBSD__) || \
+    defined(__DragonFly__) || defined(__minix)
+#include <sys/endian.h>
+#endif
+#if defined(__OpenBSD__)
+#include <machine/endian.h>
+#endif
+/* Detect endianess based on _BYTE_ORDER.  */
+#ifdef _BYTE_ORDER
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+#define PLUGIN_LITTLE_ENDIAN 1
+#elif _BYTE_ORDER == _BIG_ENDIAN
+#define PLUGIN_BIG_ENDIAN 1
+#endif
+#endif
+/* Detect based on _WIN32.  */
+#if defined(_WIN32)
+#define PLUGIN_LITTLE_ENDIAN 1
+#endif
+/* Detect based on __BIG_ENDIAN__ and __LITTLE_ENDIAN__ */
+#ifdef __LITTLE_ENDIAN__
+#define PLUGIN_LITTLE_ENDIAN 1
+#endif
+#ifdef __BIG_ENDIAN__
+#define PLUGIN_BIG_ENDIAN 1
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -87,7 +141,26 @@ struct ld_plugin_symbol
 {
   char *name;
   char *version;
-  int def;
+  /* This is for compatibility with older ABIs.  The older ABI defined
+     only 'def' field.  */
+#if PLUGIN_BIG_ENDIAN == 1
+  char unused;
+  char section_kind;
+  char symbol_type;
+  char def;
+#elif PLUGIN_LITTLE_ENDIAN == 1
+  char def;
+  char symbol_type;
+  char section_kind;
+  char unused;
+#elif PLUGIN_PDP_ENDIAN == 1
+  char symbol_type;
+  char def;
+  char unused;
+  char section_kind;
+#else
+#error "Could not detect architecture endianess"
+#endif
   int visibility;
   uint64_t size;
   char *comdat_key;
@@ -121,6 +194,21 @@ enum ld_plugin_symbol_visibility
   LDPV_PROTECTED,
   LDPV_INTERNAL,
   LDPV_HIDDEN
+};
+
+/* The type of the symbol.  */
+
+enum ld_plugin_symbol_type
+{
+  LDST_UNKNOWN,
+  LDST_FUNCTION,
+  LDST_VARIABLE
+};
+
+enum ld_plugin_symbol_section_kind
+{
+  LDSSK_DEFAULT,
+  LDSSK_BSS
 };
 
 /* How a symbol is resolved.  */
@@ -172,6 +260,13 @@ enum ld_plugin_status
 (*ld_plugin_claim_file_handler) (
   const struct ld_plugin_input_file *file, int *claimed);
 
+/* The plugin library's "claim file" handler, version 2.  */
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_claim_file_handler_v2) (
+  const struct ld_plugin_input_file *file, int *claimed, int known_used);
+
 /* The plugin library's "all symbols read" handler.  */
 
 typedef
@@ -189,6 +284,13 @@ enum ld_plugin_status
 typedef
 enum ld_plugin_status
 (*ld_plugin_register_claim_file) (ld_plugin_claim_file_handler handler);
+
+/* The linker's interface for registering the "claim file" handler,
+   version 2.  */
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_register_claim_file_v2) (ld_plugin_claim_file_handler_v2 handler);
 
 /* The linker's interface for registering the "all symbols read" handler.  */
 
@@ -345,6 +447,48 @@ enum ld_plugin_status
     const struct ld_plugin_section * section_list,
     unsigned int num_sections);
 
+/* The linker's interface for retrieving the section alignment requirement
+   of a specific section in an object.  This interface should only be invoked in the
+   claim_file handler.  This function sets *ADDRALIGN to the ELF sh_addralign
+   value of the input section.  */
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_get_input_section_alignment) (const struct ld_plugin_section section,
+                                          unsigned int *addralign);
+
+/* The linker's interface for retrieving the section size of a specific section
+   in an object.  This interface should only be invoked in the claim_file handler.
+   This function sets *SECSIZE to the ELF sh_size
+   value of the input section.  */
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_get_input_section_size) (const struct ld_plugin_section section,
+                                     uint64_t *secsize);
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_new_input_handler) (const struct ld_plugin_input_file *file);
+
+/* The linker's interface for registering the "new_input" handler. This handler
+   will be notified when a new input file has been added after the
+   all_symbols_read event, allowing the plugin to, for example, set a unique
+   segment for sections in plugin-generated input files. */
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_register_new_input) (ld_plugin_new_input_handler handler);
+
+/* The linker's interface for getting the list of wrapped symbols using the
+   --wrap option. This sets *NUM_SYMBOLS to number of wrapped symbols and
+   *WRAP_SYMBOL_LIST to the list of wrapped symbols. */
+
+typedef
+enum ld_plugin_status
+(*ld_plugin_get_wrap_symbols) (uint64_t *num_symbols,
+                               const char ***wrap_symbol_list);
+
 enum ld_plugin_level
 {
   LDPL_INFO,
@@ -353,38 +497,77 @@ enum ld_plugin_level
   LDPL_FATAL
 };
 
+/* Contract between a plug-in and a linker.  */
+
+enum linker_api_version
+{
+   /* The linker/plugin do not implement any of the API levels below, the API
+       is determined solely via the transfer vector.  */
+   LAPI_V0,
+
+   /* API level v1.  The linker provides get_symbols_v3, add_symbols_v2,
+      the plugin will use that and not any lower versions.
+      claim_file is thread-safe on the plugin side and
+      add_symbols on the linker side.  */
+   LAPI_V1
+};
+
+/* The linker's interface for API version negotiation.  A plug-in calls
+  the function (with its IDENTIFIER and VERSION), plus minimal and maximal
+  version of linker_api_version is provided.  Linker then returns selected
+  API version and provides its IDENTIFIER and VERSION.  The returned value
+  by linker must be in range [MINIMAL_API_SUPPORTED, MAXIMAL_API_SUPPORTED].
+  Identifier pointers remain valid as long as the plugin is loaded.  */
+
+typedef
+int
+(*ld_plugin_get_api_version) (const char *plugin_identifier,
+			      const char *plugin_version,
+			      int minimal_api_supported,
+			      int maximal_api_supported,
+			      const char **linker_identifier,
+			      const char **linker_version);
+
 /* Values for the tv_tag field of the transfer vector.  */
 
 enum ld_plugin_tag
 {
-  LDPT_NULL = 0,
-  LDPT_API_VERSION = 1,
-  LDPT_GOLD_VERSION = 2,
-  LDPT_LINKER_OUTPUT = 3,
-  LDPT_OPTION = 4,
-  LDPT_REGISTER_CLAIM_FILE_HOOK = 5,
-  LDPT_REGISTER_ALL_SYMBOLS_READ_HOOK = 6,
-  LDPT_REGISTER_CLEANUP_HOOK = 7,
-  LDPT_ADD_SYMBOLS = 8,
-  LDPT_GET_SYMBOLS = 9,
-  LDPT_ADD_INPUT_FILE = 10,
-  LDPT_MESSAGE = 11,
-  LDPT_GET_INPUT_FILE = 12,
-  LDPT_RELEASE_INPUT_FILE = 13,
-  LDPT_ADD_INPUT_LIBRARY = 14,
-  LDPT_OUTPUT_NAME = 15,
-  LDPT_SET_EXTRA_LIBRARY_PATH = 16,
-  LDPT_GNU_LD_VERSION = 17,
-  LDPT_GET_VIEW = 18,
-  LDPT_GET_INPUT_SECTION_COUNT = 19,
-  LDPT_GET_INPUT_SECTION_TYPE = 20,
-  LDPT_GET_INPUT_SECTION_NAME = 21,
-  LDPT_GET_INPUT_SECTION_CONTENTS = 22,
-  LDPT_UPDATE_SECTION_ORDER = 23,
-  LDPT_ALLOW_SECTION_ORDERING = 24,
-  LDPT_GET_SYMBOLS_V2 = 25,
-  LDPT_ALLOW_UNIQUE_SEGMENT_FOR_SECTIONS = 26,
-  LDPT_UNIQUE_SEGMENT_FOR_SECTIONS = 27
+  LDPT_NULL,
+  LDPT_API_VERSION,
+  LDPT_GOLD_VERSION,
+  LDPT_LINKER_OUTPUT,
+  LDPT_OPTION,
+  LDPT_REGISTER_CLAIM_FILE_HOOK,
+  LDPT_REGISTER_ALL_SYMBOLS_READ_HOOK,
+  LDPT_REGISTER_CLEANUP_HOOK,
+  LDPT_ADD_SYMBOLS,
+  LDPT_GET_SYMBOLS,
+  LDPT_ADD_INPUT_FILE,
+  LDPT_MESSAGE,
+  LDPT_GET_INPUT_FILE,
+  LDPT_RELEASE_INPUT_FILE,
+  LDPT_ADD_INPUT_LIBRARY,
+  LDPT_OUTPUT_NAME,
+  LDPT_SET_EXTRA_LIBRARY_PATH,
+  LDPT_GNU_LD_VERSION,
+  LDPT_GET_VIEW,
+  LDPT_GET_INPUT_SECTION_COUNT,
+  LDPT_GET_INPUT_SECTION_TYPE,
+  LDPT_GET_INPUT_SECTION_NAME,
+  LDPT_GET_INPUT_SECTION_CONTENTS,
+  LDPT_UPDATE_SECTION_ORDER,
+  LDPT_ALLOW_SECTION_ORDERING,
+  LDPT_GET_SYMBOLS_V2,
+  LDPT_ALLOW_UNIQUE_SEGMENT_FOR_SECTIONS,
+  LDPT_UNIQUE_SEGMENT_FOR_SECTIONS,
+  LDPT_GET_SYMBOLS_V3,
+  LDPT_GET_INPUT_SECTION_ALIGNMENT,
+  LDPT_GET_INPUT_SECTION_SIZE,
+  LDPT_REGISTER_NEW_INPUT_HOOK,
+  LDPT_GET_WRAP_SYMBOLS,
+  LDPT_ADD_SYMBOLS_V2,
+  LDPT_GET_API_VERSION,
+  LDPT_REGISTER_CLAIM_FILE_HOOK_V2
 };
 
 /* The plugin transfer vector.  */
@@ -397,6 +580,7 @@ struct ld_plugin_tv
     int tv_val;
     const char *tv_string;
     ld_plugin_register_claim_file tv_register_claim_file;
+    ld_plugin_register_claim_file_v2 tv_register_claim_file_v2;
     ld_plugin_register_all_symbols_read tv_register_all_symbols_read;
     ld_plugin_register_cleanup tv_register_cleanup;
     ld_plugin_add_symbols tv_add_symbols;
@@ -416,6 +600,11 @@ struct ld_plugin_tv
     ld_plugin_allow_section_ordering tv_allow_section_ordering;
     ld_plugin_allow_unique_segment_for_sections tv_allow_unique_segment_for_sections; 
     ld_plugin_unique_segment_for_sections tv_unique_segment_for_sections;
+    ld_plugin_get_input_section_alignment tv_get_input_section_alignment;
+    ld_plugin_get_input_section_size tv_get_input_section_size;
+    ld_plugin_register_new_input tv_register_new_input;
+    ld_plugin_get_wrap_symbols tv_get_wrap_symbols;
+    ld_plugin_get_api_version tv_get_api_version;
   } tv_u;
 };
 

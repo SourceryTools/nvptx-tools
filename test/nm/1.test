@@ -1,0 +1,99 @@
+Miscellaneous.
+
+
+RUN: rm -rf %t
+RUN: mkdir -p %t
+
+
+Assemble.
+
+RUN: mkdir %t/o
+
+RUN: %target_as_cmd -o %t/o/1-1-C.o %S/1-1-C.s
+RUN: %target_as_cmd -o %t/o/1-1-C++.o %S/1-1-C++.s
+
+RUN: %target_as_cmd -o %t/o/1-2-C.o %S/1-2-C.s
+RUN: %target_as_cmd -o %t/o/1-2-C++.o %S/1-2-C++.s
+
+
+Archive dummy 'libc.a'.
+
+RUN: mkdir %t/libc
+
+RUN: %target_ar_cmd rcs %t/libc/libc.a %S/libc/libc_a-dtoa.o %S/libc/libc_a-environ.o %S/libc/libc_a-memset.o
+
+
+Link.
+
+RUN: %target_ld_cmd -o %t/1-1-C.nvptx %t/o/1-1-C.o -L%t/libc -lc
+RUN: %target_ld_cmd -o %t/1-1-C++.nvptx %t/o/1-1-C++.o -L%t/libc -lc
+
+RUN: %target_ld_cmd -o %t/1-1,1-2-C.nvptx %t/o/1-1-C.o %t/o/1-2-C.o -L%t/libc -lc
+RUN: %target_ld_cmd -o %t/1-1,1-2-C++.nvptx %t/o/1-1-C++.o %t/o/1-2-C++.o -L%t/libc -lc
+
+
+Test.
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/o/1-1-C.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/o/1-1-C.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/o/1-1-C++.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C++.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/o/1-1-C++.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C++.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/o/1-2-C.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-2-C.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/o/1-2-C.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-2-C.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/o/1-2-C++.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-2-C++.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/o/1-2-C++.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-2-C++.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/1-1-C.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/1-1-C.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/1-1-C++.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C++.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/1-1-C++.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1-C++.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/1-1,1-2-C.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1,1-2-C.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/1-1,1-2-C.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1,1-2-C.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %t/1-1,1-2-C++.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1,1-2-C++.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %t/1-1,1-2-C++.nvptx > %t.stdout 2> %t.stderr
+RUN: cmp %S/1-1,1-2-C++.nvptx.nm.golden %t.stdout
+RUN: ! test -s %t.stderr

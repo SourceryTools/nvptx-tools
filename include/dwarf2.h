@@ -1,8 +1,6 @@
 /* Declarations and definitions of codes relating to the DWARF2 and
    DWARF3 symbolic debugging information formats.
-   Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-2023 Free Software Foundation, Inc.
 
    Written by Gary Funck (gary@intrepid.com) The Ada Joint Program
    Office (AJPO), Florida State University and Silicon Graphics Inc.
@@ -54,6 +52,10 @@
 #define DW_ATE(name, value) , name = value
 #define DW_ATE_DUP(name, value) , name = value
 #define DW_CFA(name, value) , name = value
+#define DW_CFA_DUP(name, value) , name = value
+#define DW_IDX(name, value) , name = value
+#define DW_IDX_DUP(name, value) , name = value
+#define DW_UT(name, value) , name = value
 
 #define DW_FIRST_TAG(name, value) enum dwarf_tag { \
   name = value
@@ -73,6 +75,12 @@
 #define DW_FIRST_CFA(name, value) enum dwarf_call_frame_info { \
   name = value
 #define DW_END_CFA };
+#define DW_FIRST_IDX(name, value) enum dwarf_name_index_attribute { \
+  name = value
+#define DW_END_IDX };
+#define DW_FIRST_UT(name, value) enum dwarf_unit_type { \
+  name = value
+#define DW_END_UT };
 
 #include "dwarf2.def"
 
@@ -88,6 +96,10 @@
 #undef DW_END_ATE
 #undef DW_FIRST_CFA
 #undef DW_END_CFA
+#undef DW_FIRST_IDX
+#undef DW_END_IDX
+#undef DW_FIRST_UT
+#undef DW_END_UT
 
 #undef DW_TAG
 #undef DW_TAG_DUP
@@ -99,6 +111,10 @@
 #undef DW_ATE
 #undef DW_ATE_DUP
 #undef DW_CFA
+#undef DW_CFA_DUP
+#undef DW_IDX
+#undef DW_IDX_DUP
+#undef DW_UT
 
 /* Flag that tells whether entry has a child or not.  */
 #define DW_children_no   0
@@ -176,6 +192,10 @@ enum dwarf_calling_convention
     DW_CC_normal = 0x1,
     DW_CC_program = 0x2,
     DW_CC_nocall = 0x3,
+
+    /* DWARF 5.  */
+    DW_CC_pass_by_reference = 0x4,
+    DW_CC_pass_by_value = 0x5,
 
     DW_CC_lo_user = 0x40,
     DW_CC_hi_user = 0xff,
@@ -259,20 +279,50 @@ enum dwarf_line_number_hp_sfc_ops
     DW_LNE_HP_SFC_associate = 3
   };
 
-/* Type codes for location list entries.
-   Extension for Fission.  See http://gcc.gnu.org/wiki/DebugFission.  */
+/* Content type codes in line table directory_entry_format
+   and file_name_entry_format sequences.  */
+enum dwarf_line_number_content_type
+  {
+    DW_LNCT_path = 0x1,
+    DW_LNCT_directory_index = 0x2,
+    DW_LNCT_timestamp = 0x3,
+    DW_LNCT_size = 0x4,
+    DW_LNCT_MD5 = 0x5,
+    DW_LNCT_lo_user = 0x2000,
+    DW_LNCT_hi_user = 0x3fff
+  };
 
+/* Type codes for location list entries.  */
 enum dwarf_location_list_entry_type
   {
-    DW_LLE_GNU_end_of_list_entry = 0,
-    DW_LLE_GNU_base_address_selection_entry = 1,
-    DW_LLE_GNU_start_end_entry = 2,
-    DW_LLE_GNU_start_length_entry = 3
+    DW_LLE_end_of_list = 0x00,
+    DW_LLE_base_addressx = 0x01,
+    DW_LLE_startx_endx = 0x02,
+    DW_LLE_startx_length = 0x03,
+    DW_LLE_offset_pair = 0x04,
+    DW_LLE_default_location = 0x05,
+    DW_LLE_base_address = 0x06,
+    DW_LLE_start_end = 0x07,
+    DW_LLE_start_length = 0x08,
+
+    /* <http://lists.dwarfstd.org/private.cgi/dwarf-discuss-dwarfstd.org/2017-April/004347.html>
+       has the proposal for now; only available to list members.
+
+       A (possibly updated) copy of the proposal is available at
+       <http://people.redhat.com/aoliva/papers/sfn/dwarf6-sfn-lvu.txt>.  */
+    DW_LLE_GNU_view_pair = 0x09,
+#define DW_LLE_view_pair DW_LLE_GNU_view_pair
+
+    /* Former extension for Fission.
+       See http://gcc.gnu.org/wiki/DebugFission.  */
+    DW_LLE_GNU_end_of_list_entry = 0x00,
+    DW_LLE_GNU_base_address_selection_entry = 0x01,
+    DW_LLE_GNU_start_end_entry = 0x02,
+    DW_LLE_GNU_start_length_entry = 0x03
   };
 
 #define DW_CIE_ID	  0xffffffff
 #define DW64_CIE_ID	  0xffffffffffffffffULL
-#define DW_CIE_VERSION	  1
 
 #define DW_CFA_extended   0
 
@@ -307,7 +357,32 @@ enum dwarf_source_language
     /* DWARF 4.  */
     DW_LANG_Python = 0x0014,
     /* DWARF 5.  */
+    DW_LANG_OpenCL = 0x0015,
     DW_LANG_Go = 0x0016,
+    DW_LANG_Modula3 = 0x0017,
+    DW_LANG_Haskell = 0x0018,
+    DW_LANG_C_plus_plus_03 = 0x0019,
+    DW_LANG_C_plus_plus_11 = 0x001a,
+    DW_LANG_OCaml = 0x001b,
+    DW_LANG_Rust = 0x001c,
+    DW_LANG_C11 = 0x001d,
+    DW_LANG_Swift = 0x001e,
+    DW_LANG_Julia = 0x001f,
+    DW_LANG_Dylan = 0x0020,
+    DW_LANG_C_plus_plus_14 = 0x0021,
+    DW_LANG_Fortran03 = 0x0022,
+    DW_LANG_Fortran08 = 0x0023,
+    DW_LANG_RenderScript = 0x0024,
+    DW_LANG_BLISS = 0x0025,
+    DW_LANG_Kotlin = 0x0026,
+    DW_LANG_Zig = 0x0027,
+    DW_LANG_Crystal = 0x0028,
+    DW_LANG_C_plus_plus_17 = 0x002a,
+    DW_LANG_C_plus_plus_20 = 0x002b,
+    DW_LANG_C17 = 0x002c,
+    DW_LANG_Fortran18 = 0x002d,
+    DW_LANG_Ada2005 = 0x002e,
+    DW_LANG_Ada2012 = 0x002f,
 
     DW_LANG_lo_user = 0x8000,	/* Implementation-defined range start.  */
     DW_LANG_hi_user = 0xffff,	/* Implementation-defined range start.  */
@@ -321,7 +396,10 @@ enum dwarf_source_language
     DW_LANG_HP_Basic91   = 0x8004,
     DW_LANG_HP_Pascal91  = 0x8005,
     DW_LANG_HP_IMacro    = 0x8006,
-    DW_LANG_HP_Assembler = 0x8007
+    DW_LANG_HP_Assembler = 0x8007,
+
+    /* Rust extension, but replaced in DWARF 5.  */
+    DW_LANG_Rust_old = 0x9000
   };
 
 /* Names and codes for macro information.  */
@@ -334,23 +412,60 @@ enum dwarf_macinfo_record_type
     DW_MACINFO_vendor_ext = 255
   };
 
+/* DW_TAG_defaulted/DW_TAG_GNU_defaulted attributes.  */
+enum dwarf_defaulted_attribute
+  {
+    DW_DEFAULTED_no = 0x00,
+    DW_DEFAULTED_in_class = 0x01,
+    DW_DEFAULTED_out_of_class = 0x02
+  };
+
 /* Names and codes for new style macro information.  */
 enum dwarf_macro_record_type
   {
-    DW_MACRO_GNU_define = 1,
-    DW_MACRO_GNU_undef = 2,
-    DW_MACRO_GNU_start_file = 3,
-    DW_MACRO_GNU_end_file = 4,
-    DW_MACRO_GNU_define_indirect = 5,
-    DW_MACRO_GNU_undef_indirect = 6,
-    DW_MACRO_GNU_transparent_include = 7,
+    DW_MACRO_define = 0x01,
+    DW_MACRO_undef = 0x02,
+    DW_MACRO_start_file = 0x03,
+    DW_MACRO_end_file = 0x04,
+    DW_MACRO_define_strp = 0x05,
+    DW_MACRO_undef_strp = 0x06,
+    DW_MACRO_import = 0x07,
+    DW_MACRO_define_sup = 0x08,
+    DW_MACRO_undef_sup = 0x09,
+    DW_MACRO_import_sup = 0x0a,
+    DW_MACRO_define_strx = 0x0b,
+    DW_MACRO_undef_strx = 0x0c,
+    DW_MACRO_lo_user = 0xe0,
+    DW_MACRO_hi_user = 0xff,
+
+    /* Compatibility macros for the GNU .debug_macro extension.  */
+    DW_MACRO_GNU_define = 0x01,
+    DW_MACRO_GNU_undef = 0x02,
+    DW_MACRO_GNU_start_file = 0x03,
+    DW_MACRO_GNU_end_file = 0x04,
+    DW_MACRO_GNU_define_indirect = 0x05,
+    DW_MACRO_GNU_undef_indirect = 0x06,
+    DW_MACRO_GNU_transparent_include = 0x07,
     /* Extensions for DWZ multifile.
        See http://www.dwarfstd.org/ShowIssue.php?issue=120604.1&type=open .  */
-    DW_MACRO_GNU_define_indirect_alt = 8,
-    DW_MACRO_GNU_undef_indirect_alt = 9,
-    DW_MACRO_GNU_transparent_include_alt = 10,
+    DW_MACRO_GNU_define_indirect_alt = 0x08,
+    DW_MACRO_GNU_undef_indirect_alt = 0x09,
+    DW_MACRO_GNU_transparent_include_alt = 0x0a,
     DW_MACRO_GNU_lo_user = 0xe0,
     DW_MACRO_GNU_hi_user = 0xff
+  };
+
+/* Range list entry kinds in .debug_rnglists* section.  */
+enum dwarf_range_list_entry
+  {
+    DW_RLE_end_of_list = 0x00,
+    DW_RLE_base_addressx = 0x01,
+    DW_RLE_startx_endx = 0x02,
+    DW_RLE_startx_length = 0x03,
+    DW_RLE_offset_pair = 0x04,
+    DW_RLE_base_address = 0x05,
+    DW_RLE_start_end = 0x06,
+    DW_RLE_start_length = 0x07
   };
 
 /* @@@ For use with GNU frame unwind information.  */
@@ -377,19 +492,36 @@ enum dwarf_macro_record_type
 #define DW_EH_PE_indirect	0x80
 
 /* Codes for the debug sections in a dwarf package (.dwp) file.
-   Extensions for Fission.  See http://gcc.gnu.org/wiki/DebugFissionDWP.  */
+   (From the pre-standard formats Extensions for Fission.
+   See http://gcc.gnu.org/wiki/DebugFissionDWP).  */
 enum dwarf_sect
-  {
-    DW_SECT_INFO = 1,
-    DW_SECT_TYPES = 2,
-    DW_SECT_ABBREV = 3,
-    DW_SECT_LINE = 4,
-    DW_SECT_LOC = 5,
-    DW_SECT_STR_OFFSETS = 6,
-    DW_SECT_MACINFO = 7,
-    DW_SECT_MACRO = 8,
-    DW_SECT_MAX = 8
-  };
+{
+  DW_SECT_INFO = 1,
+  DW_SECT_TYPES = 2,
+  DW_SECT_ABBREV = 3,
+  DW_SECT_LINE = 4,
+  DW_SECT_LOC = 5,
+  DW_SECT_STR_OFFSETS = 6,
+  DW_SECT_MACINFO = 7,
+  DW_SECT_MACRO = 8,
+  DW_SECT_MAX = 8
+};
+
+/* Codes for the debug sections in a dwarf package (.dwp) file.
+   (From the official DWARF v5 spec.
+   See http://dwarfstd.org/doc/DWARF5.pdf, section 7.3.5).  */
+enum dwarf_sect_v5
+{
+  DW_SECT_INFO_V5 = 1,
+  DW_SECT_RESERVED_V5 = 2,
+  DW_SECT_ABBREV_V5 = 3,
+  DW_SECT_LINE_V5 = 4,
+  DW_SECT_LOCLISTS_V5 = 5,
+  DW_SECT_STR_OFFSETS_V5 = 6,
+  DW_SECT_MACRO_V5 = 7,
+  DW_SECT_RNGLISTS_V5 = 8,
+  DW_SECT_MAX_V5 = 8
+};
 
 #ifdef __cplusplus
 extern "C" {
@@ -418,6 +550,14 @@ extern const char *get_DW_ATE_name (unsigned int enc);
 /* Return the name of a DW_CFA_ constant, or NULL if the value is not
    recognized.  */
 extern const char *get_DW_CFA_name (unsigned int opc);
+
+/* Return the name of a DW_IDX_ constant, or NULL if the value is not
+   recognized.  */
+extern const char *get_DW_IDX_name (unsigned int idx);
+
+/* Return the name of a DW_UT_ constant, or NULL if the value is not
+   recognized.  */
+extern const char *get_DW_UT_name (unsigned int ut);
 
 #ifdef __cplusplus
 }

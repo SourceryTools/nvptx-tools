@@ -33,6 +33,14 @@ config.suffixes = ['.test']
 config.ptxas = which('ptxas')
 
 
+# <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03>
+# states that "If 'PATH' is unset or is set to null, the path search is
+# implementation-defined."  To avoid that, and to avoid any potentially
+# undefined behavior when pointing to a non-existing directory, set up 'PATH'
+# pointing to a directory that doesn't contain any meaningful executable files.
+config.substitutions.append(('%empty_path', 'PATH=' + config.test_source_root))
+
+
 config.substitutions.append(('%target_ar_cmd', config.target_ar))
 
 
@@ -52,6 +60,12 @@ if config.ptxas:
 
 
 config.substitutions.append(('%target_ld_cmd', config.target_ld))
+
+
+config.substitutions.append(('%target_nm_cmd', config.target_nm))
+
+# Run with 'LC_COLLATE=C' to get deterministic output order.
+config.substitutions.append(('%env_LC_COLLATE=C_target_nm_cmd', 'env LC_COLLATE=C ' + config.target_nm))
 
 
 config.substitutions.append(('%target_ranlib_cmd', config.target_ranlib))

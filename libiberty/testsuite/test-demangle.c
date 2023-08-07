@@ -1,5 +1,5 @@
 /* Demangler test program,
-   Copyright (C) 2002, 2003, 2004 Free Software Foundation, Inc.
+   Copyright (C) 2002-2023 Free Software Foundation, Inc.
    Written by Zack Weinberg <zack@codesourcery.com
 
    This file is part of GNU libiberty.
@@ -31,6 +31,9 @@
 #endif
 #if HAVE_STDLIB_H
 # include <stdlib.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 struct line

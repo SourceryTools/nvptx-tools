@@ -36,9 +36,6 @@
 #include <errno.h>
 #include <assert.h>
 
-#define obstack_chunk_alloc malloc
-#define obstack_chunk_free free
-#include <obstack.h>
 #define HAVE_DECL_BASENAME 1
 #include <libiberty.h>
 #include <hashtab.h>
@@ -94,7 +91,9 @@ fatal_error (const char * cmsgid, ...)
   fprintf (stderr, "\n");
   va_end (ap);
 
-  unlink (outname);
+  if (outname)
+    unlink (outname);
+
   exit (1);
 }
 
@@ -193,8 +192,8 @@ typedef struct Token
   char const *ptr;
 } Token;
 
-/* Token of the preamble '.target' directive's argument.  */
-static Token *tok_preamble_target_arg;
+/* The preamble '.target' directive's argument.  */
+static char *preamble_target_arg;
 
 /* statement info */
 typedef enum Vis
@@ -508,6 +507,8 @@ write_token (FILE *out, Token const *tok)
     fputs ("\n", out);
 }
 
+static std::list<void *> heaps;
+
 static Stmt *
 alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
 {
@@ -518,6 +519,7 @@ alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
     {
       alloc = 1000;
       heap = XNEWVEC (Stmt, alloc);
+      heaps.push_back (heap);
     }
 
   Stmt *stmt = heap++;
@@ -899,10 +901,13 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
       /* An empty file isn't a valid PTX file.  */
       *verify = 0;
 
+      XDELETEVEC (input);
+
       return;
     }
 
   Token *tok = tokenize (input);
+  Token *tok_to_free = tok;
 
   /* Do minimalistic verification, so that we reliably reject (certain classes
      of) invalid input.  (If available and applicable, 'ptxas' is later used to
@@ -938,7 +943,8 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
 	i++;
       if (tok[i].kind == K_symbol)
 	{
-	  tok_preamble_target_arg = &tok[i];
+	  assert (!preamble_target_arg);
+	  preamble_target_arg = xstrndup (tok[i].ptr, tok[i].len);
 	  i++;
 	}
       else
@@ -963,11 +969,22 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
   write_stmts (out, rev_stmts (fns));
 
   htab_delete (symbol_table);
+
+  while (!heaps.empty ())
+    {
+      void *heap = heaps.front ();
+      XDELETEVEC (heap);
+      heaps.pop_front ();
+    }
+
+  XDELETEVEC (tok_to_free);
+
+  XDELETEVEC (input);
 }
 
 /* Wait for a process to finish, and exit if a nonzero status is found.  */
 
-int
+static int
 collect_wait (const char *prog, struct pex_obj *pex)
 {
   int status;
@@ -1005,11 +1022,11 @@ do_wait (const char *prog, struct pex_obj *pex)
 
 /* Execute a program, and wait for the reply.  */
 static void
-fork_execute (const char *prog, char *const *argv)
+fork_execute (const char *prog, const char *const *argv)
 {
   if (verbose)
     {
-      for (char *const *arg = argv; *arg; ++arg)
+      for (const char *const *arg = argv; *arg; ++arg)
 	{
 	  if (**arg == '\0')
 	    fprintf (stderr, " ''");
@@ -1026,17 +1043,18 @@ fork_execute (const char *prog, char *const *argv)
   int err;
   const char *errmsg;
 
-  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH, argv[0], argv, NULL,
-		    NULL, &err);
+  errmsg = pex_run (pex, PEX_LAST | PEX_SEARCH,
+		    argv[0], const_cast<char *const *>(argv),
+		    NULL, NULL, &err);
   if (errmsg != NULL)
     {
       if (err != 0)
 	{
 	  errno = err;
-	  fatal_error ("%s: %m", errmsg);
+	  fatal_error ("error trying to exec '%s': %s: %m", argv[0], errmsg);
 	}
       else
-	fatal_error ("%s", errmsg);
+	fatal_error ("error trying to exec '%s': %s", argv[0], errmsg);
     }
   do_wait (prog, pex);
 }
@@ -1240,12 +1258,11 @@ This program has absolutely no warranty.\n",
   if (verify > 0)
     {
       const char *target_arg;
-      char *target_arg_to_free = NULL;
       if (target_arg_force)
 	target_arg = target_arg_force;
       else
 	{
-	  assert (tok_preamble_target_arg);
+	  assert (preamble_target_arg);
 
 	  /* Override the default '--gpu-name' of 'ptxas': its default may not
 	     be sufficient for what is requested in the '.target' directive in
@@ -1254,9 +1271,7 @@ This program has absolutely no warranty.\n",
 	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
 
 	     In this case, use the '.target' we found in the preamble.  */
-	  target_arg = target_arg_to_free
-	    = xstrndup (tok_preamble_target_arg->ptr,
-			tok_preamble_target_arg->len);
+	  target_arg = preamble_target_arg;
 
 	  if ((strcmp ("sm_30", target_arg) == 0)
 	      || (strcmp ("sm_32", target_arg) == 0))
@@ -1284,27 +1299,26 @@ This program has absolutely no warranty.\n",
 	    }
 	}
 
-      struct obstack argv_obstack;
-      obstack_init (&argv_obstack);
-      obstack_ptr_grow (&argv_obstack, "ptxas");
-      obstack_ptr_grow (&argv_obstack, "-c");
-      obstack_ptr_grow (&argv_obstack, "-o");
-      obstack_ptr_grow (&argv_obstack, "/dev/null");
-      obstack_ptr_grow (&argv_obstack, outname);
-      obstack_ptr_grow (&argv_obstack, "--gpu-name");
-      obstack_ptr_grow (&argv_obstack, target_arg);
-      obstack_ptr_grow (&argv_obstack, "-O0");
-      obstack_ptr_grow (&argv_obstack, NULL);
-      char *const *new_argv = XOBFINISH (&argv_obstack, char *const *);
+      const char *const new_argv[] = {
+	"ptxas",
+	"-c",
+	"-o",
+	"/dev/null",
+	outname,
+	"--gpu-name",
+	target_arg,
+	"-O0",
+	NULL,
+      };
       fork_execute (new_argv[0], new_argv);
-      obstack_free (&argv_obstack, NULL);
-      free (target_arg_to_free);
     }
   else if (verify < 0)
     {
       if (verbose)
 	fprintf (stderr, "'ptxas' not available.\n");
     }
+
+  free (preamble_target_arg);
 
   return 0;
 }

@@ -1,0 +1,35 @@
+Program Instrumentation: Sanitizers
+-----------------------------------
+
+    $ ./configure CXXFLAGS='-O0 -ggdb -fsanitize=address -fsanitize=undefined'
+
+This compiles the nvptx-tools proper (but not libiberty) with the specified
+sanitizers enabled.
+
+If the 'run' test cases fail due to:
+
+    nvptx-run: cuInit failed: out of memory (CUDA_ERROR_OUT_OF_MEMORY, 2)
+
+..., per <https://github.com/google/sanitizers/issues/629>
+"asan: problem calling NVIDIA CUDA libraries" run with
+'ASAN_OPTIONS=protect_shadow_gap=false', to override the 'true' default;
+<https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags>.
+
+
+Imported Files
+--------------
+
+A number of files are imported from GCC:
+
+  - 'COPYING3'
+  - 'config.guess'
+  - 'config.sub'
+  - 'config/ChangeLog' (partial)
+  - 'config/acx.m4' (partial)
+  - 'include/'
+  - 'install-sh'
+  - 'libiberty/'
+  - 'mkinstalldirs'
+  - 'move-if-change'
+
+These correspond to GCC commit 7ff793415f55fa9a92f348fecb8c75ac8acc8b87.

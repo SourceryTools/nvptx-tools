@@ -1,0 +1,116 @@
+Test sorting options.
+
+
+Default.
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd %S/libc/libc_a-environ.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-environ.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd %S/libc/libc_a-memset.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-memset.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--reverse-sort'/'-r'.
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd --reverse-sort %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-r.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -r %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-r.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -r --reverse-sort %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-r.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -r %S/libc/libc_a-environ.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-environ.o.nm_-r.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd -r %S/libc/libc_a-memset.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-memset.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--numeric-sort'/'-n'.
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd --numeric-sort %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n --numeric-sort %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-n.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n %S/libc/libc_a-environ.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-environ.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd -n %S/libc/libc_a-memset.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-memset.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--numeric-sort'/'-n', '--reverse-sort'/'-r'.
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -n --reverse-sort %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-nr.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -nr %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-nr.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -nrnn --numeric-sort --reverse-sort -nr %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-dtoa.o.nm_-nr.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %env_LC_COLLATE=C_target_nm_cmd -nr %S/libc/libc_a-environ.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-environ.o.nm_-r.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd -nr %S/libc/libc_a-memset.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-memset.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--no-sort'/'-p'.
+
+RUN: sort < %S/libc/libc_a-dtoa.o.nm.golden > %t.libc_a-dtoa.o.nm.golden.sorted
+
+RUN: %target_nm_cmd --no-sort %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: sort < %t.stdout > %t.stdout.sorted
+RUN: cmp %t.libc_a-dtoa.o.nm.golden.sorted %t.stdout.sorted
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd -p %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: sort < %t.stdout > %t.stdout.sorted
+RUN: cmp %t.libc_a-dtoa.o.nm.golden.sorted %t.stdout.sorted
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd --no-sort -p %S/libc/libc_a-dtoa.o > %t.stdout 2> %t.stderr
+RUN: sort < %t.stdout > %t.stdout.sorted
+RUN: cmp %t.libc_a-dtoa.o.nm.golden.sorted %t.stdout.sorted
+RUN: ! test -s %t.stderr
+
+RUN: sort < %S/libc/libc_a-environ.o.nm.golden > %t.libc_a-environ.o.nm.golden.sorted
+
+RUN: %target_nm_cmd -p %S/libc/libc_a-environ.o > %t.stdout 2> %t.stderr
+RUN: sort < %t.stdout > %t.stdout.sorted
+RUN: cmp %t.libc_a-environ.o.nm.golden.sorted %t.stdout.sorted
+RUN: ! test -s %t.stderr
+
+RUN: %target_nm_cmd -p %S/libc/libc_a-memset.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/libc/libc_a-memset.o.nm.golden %t.stdout
+RUN: ! test -s %t.stderr

@@ -1,6 +1,5 @@
 /* Demangler for g++ V3 ABI.
-   Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
-   Free Software Foundation, Inc.
+   Copyright (C) 2003-2023 Free Software Foundation, Inc.
    Written by Ian Lance Taylor <ian@wasabisystems.com>.
 
    This file is part of the libiberty library, which is part of GCC.
@@ -31,7 +30,7 @@
 
 /* This code implements a demangler for the g++ V3 ABI.  The ABI is
    described on this web page:
-       http://www.codesourcery.com/cxx-abi/abi.html#mangling
+       https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling
 
    This code was written while looking at the demangler written by
    Alex Samuel <samuel@codesourcery.com>.
@@ -93,7 +92,11 @@
    CP_DEMANGLE_DEBUG
       If defined, turns on debugging mode, which prints information on
       stdout about the mangled string.  This is not generally useful.
-*/
+
+   CHECK_DEMANGLER
+      If defined, additional sanity checks will be performed.  It will
+      cause some slowdown, but will allow to catch out-of-bound access
+      errors earlier.  This macro is intended for testing and debugging.  */
 
 #if defined (_AIX) && !defined (__GNUC__)
  #pragma alloca
@@ -123,6 +126,13 @@ extern char *alloca ();
 #  endif /* __GNUC__ */
 # endif /* alloca */
 #endif /* HAVE_ALLOCA_H */
+
+#ifdef HAVE_LIMITS_H
+#include <limits.h>
+#endif
+#ifndef INT_MAX
+# define INT_MAX       (int)(((unsigned int) ~0) >> 1)          /* 0x7FFFFFFF */ 
+#endif
 
 #include "ansidecl.h"
 #include "libiberty.h"
@@ -162,10 +172,10 @@ static struct demangle_component *d_mangled_name (struct d_info *, int);
 static struct demangle_component *d_type (struct d_info *);
 
 #define cplus_demangle_print d_print
-static char *d_print (int, const struct demangle_component *, int, size_t *);
+static char *d_print (int, struct demangle_component *, int, size_t *);
 
 #define cplus_demangle_print_callback d_print_callback
-static int d_print_callback (int, const struct demangle_component *,
+static int d_print_callback (int, struct demangle_component *,
                              demangle_callbackref, void *);
 
 #define cplus_demangle_init_info d_init_info
@@ -182,9 +192,9 @@ static void d_init_info (const char *, int, size_t, struct d_info *);
 #else
 #ifdef __STDC__
 #ifdef __STDC_VERSION__
-#if __STDC_VERSION__ >= 199901L
+#if __STDC_VERSION__ >= 199901L && !__STDC_NO_VLA__
 #define CP_DYNAMIC_ARRAYS
-#endif /* __STDC__VERSION >= 199901L */
+#endif /* __STDC_VERSION__ >= 199901L && !__STDC_NO_VLA__ */
 #endif /* defined (__STDC_VERSION__) */
 #endif /* defined (__STDC__) */
 #endif /* ! defined (__GNUC__) */
@@ -254,7 +264,7 @@ struct d_print_mod
      in which they appeared in the mangled string.  */
   struct d_print_mod *next;
   /* The modifier.  */
-  const struct demangle_component *mod;
+  struct demangle_component *mod;
   /* Whether this modifier was printed.  */
   int printed;
   /* The list of templates which applies to this modifier.  */
@@ -274,6 +284,43 @@ struct d_growable_string
   /* Set to 1 if we had a memory allocation failure.  */
   int allocation_failure;
 };
+
+/* Stack of components, innermost first, used to avoid loops.  */
+
+struct d_component_stack
+{
+  /* This component.  */
+  const struct demangle_component *dc;
+  /* This component's parent.  */
+  const struct d_component_stack *parent;
+};
+
+/* A demangle component and some scope captured when it was first
+   traversed.  */
+
+struct d_saved_scope
+{
+  /* The component whose scope this is.  */
+  const struct demangle_component *container;
+  /* The list of templates, if any, that was current when this
+     scope was captured.  */
+  struct d_print_template *templates;
+};
+
+/* Checkpoint structure to allow backtracking.  This holds copies
+   of the fields of struct d_info that need to be restored
+   if a trial parse needs to be backtracked over.  */
+
+struct d_info_checkpoint
+{
+  const char *n;
+  int next_comp;
+  int next_sub;
+  int expansion;
+};
+
+/* Maximum number of times d_print_comp may be called recursively.  */
+#define MAX_RECURSION_COUNT 1024
 
 enum { D_PRINT_BUFFER_LENGTH = 256 };
 struct d_print_info
@@ -297,11 +344,33 @@ struct d_print_info
   struct d_print_mod *modifiers;
   /* Set to 1 if we saw a demangling error.  */
   int demangle_failure;
+  /* Number of times d_print_comp was recursively called.  Should not
+     be bigger than MAX_RECURSION_COUNT.  */
+  int recursion;
+  /* 1 more than the number of explicit template parms of a lambda.  Template
+     parm references >= are actually 'auto'.  */
+  int lambda_tpl_parms;
   /* The current index into any template argument packs we are using
-     for printing.  */
+     for printing, or -1 to print the whole pack.  */
   int pack_index;
   /* Number of d_print_flush calls so far.  */
   unsigned long int flush_count;
+  /* Stack of components, innermost first, used to avoid loops.  */
+  const struct d_component_stack *component_stack;
+  /* Array of saved scopes for evaluating substitutions.  */
+  struct d_saved_scope *saved_scopes;
+  /* Index of the next unused saved scope in the above array.  */
+  int next_saved_scope;
+  /* Number of saved scopes in the above array.  */
+  int num_saved_scopes;
+  /* Array of templates for saving into scopes.  */
+  struct d_print_template *copy_templates;
+  /* Index of the next unused copy template in the above array.  */
+  int next_copy_template;
+  /* Number of copy templates in the above array.  */
+  int num_copy_templates;
+  /* The nearest enclosing template, if any.  */
+  const struct demangle_component *current_template;
 };
 
 #ifdef CP_DEMANGLE_DEBUG
@@ -343,7 +412,7 @@ d_make_dtor (struct d_info *, enum gnu_v3_dtor_kinds,
              struct demangle_component *);
 
 static struct demangle_component *
-d_make_template_param (struct d_info *, long);
+d_make_template_param (struct d_info *, int);
 
 static struct demangle_component *
 d_make_sub (struct d_info *, const char *, int);
@@ -356,23 +425,28 @@ is_ctor_dtor_or_conversion (struct demangle_component *);
 
 static struct demangle_component *d_encoding (struct d_info *, int);
 
-static struct demangle_component *d_name (struct d_info *);
+static struct demangle_component *d_name (struct d_info *, int substable);
 
 static struct demangle_component *d_nested_name (struct d_info *);
 
-static struct demangle_component *d_prefix (struct d_info *);
+static int d_maybe_module_name (struct d_info *, struct demangle_component **);
 
-static struct demangle_component *d_unqualified_name (struct d_info *);
+static struct demangle_component *d_prefix (struct d_info *, int);
+
+static struct demangle_component *d_unqualified_name (struct d_info *,
+	struct demangle_component *scope, struct demangle_component *module);
 
 static struct demangle_component *d_source_name (struct d_info *);
 
-static long d_number (struct d_info *);
+static int d_number (struct d_info *);
 
 static struct demangle_component *d_identifier (struct d_info *, int);
 
 static struct demangle_component *d_operator_name (struct d_info *);
 
 static struct demangle_component *d_special_name (struct d_info *);
+
+static struct demangle_component *d_parmlist (struct d_info *);
 
 static int d_call_offset (struct d_info *, int);
 
@@ -391,7 +465,7 @@ static struct demangle_component *
 d_bare_function_type (struct d_info *, int);
 
 static struct demangle_component *
-d_class_enum_type (struct d_info *);
+d_class_enum_type (struct d_info *, int);
 
 static struct demangle_component *d_array_type (struct d_info *);
 
@@ -404,6 +478,7 @@ static struct demangle_component *
 d_template_param (struct d_info *);
 
 static struct demangle_component *d_template_args (struct d_info *);
+static struct demangle_component *d_template_args_1 (struct d_info *);
 
 static struct demangle_component *
 d_template_arg (struct d_info *);
@@ -415,6 +490,10 @@ static struct demangle_component *d_expr_primary (struct d_info *);
 static struct demangle_component *d_local_name (struct d_info *);
 
 static int d_discriminator (struct d_info *);
+
+static struct demangle_component *d_template_parm (struct d_info *, int *bad);
+
+static struct demangle_component *d_template_head (struct d_info *, int *bad);
 
 static struct demangle_component *d_lambda (struct d_info *);
 
@@ -428,6 +507,10 @@ d_add_substitution (struct d_info *, struct demangle_component *);
 
 static struct demangle_component *d_substitution (struct d_info *, int);
 
+static void d_checkpoint (struct d_info *, struct d_info_checkpoint *);
+
+static void d_backtrack (struct d_info *, struct d_info_checkpoint *);
+
 static void d_growable_string_init (struct d_growable_string *, size_t);
 
 static inline void
@@ -440,7 +523,8 @@ static void
 d_growable_string_callback_adapter (const char *, size_t, void *);
 
 static void
-d_print_init (struct d_print_info *, demangle_callbackref, void *);
+d_print_init (struct d_print_info *, demangle_callbackref, void *,
+	      struct demangle_component *);
 
 static inline void d_print_error (struct d_print_info *);
 
@@ -458,7 +542,7 @@ static inline void d_append_string (struct d_print_info *, const char *);
 static inline char d_last_char (struct d_print_info *);
 
 static void
-d_print_comp (struct d_print_info *, int, const struct demangle_component *);
+d_print_comp (struct d_print_info *, int, struct demangle_component *);
 
 static void
 d_print_java_identifier (struct d_print_info *, const char *, int);
@@ -467,27 +551,56 @@ static void
 d_print_mod_list (struct d_print_info *, int, struct d_print_mod *, int);
 
 static void
-d_print_mod (struct d_print_info *, int, const struct demangle_component *);
+d_print_mod (struct d_print_info *, int, struct demangle_component *);
 
 static void
 d_print_function_type (struct d_print_info *, int,
-                       const struct demangle_component *,
+                       struct demangle_component *,
                        struct d_print_mod *);
 
 static void
 d_print_array_type (struct d_print_info *, int,
-                    const struct demangle_component *,
+                    struct demangle_component *,
                     struct d_print_mod *);
 
 static void
-d_print_expr_op (struct d_print_info *, int, const struct demangle_component *);
+d_print_expr_op (struct d_print_info *, int, struct demangle_component *);
 
-static void
-d_print_cast (struct d_print_info *, int, const struct demangle_component *);
+static void d_print_cast (struct d_print_info *, int,
+			  struct demangle_component *);
+static void d_print_conversion (struct d_print_info *, int,
+				struct demangle_component *);
 
 static int d_demangle_callback (const char *, int,
                                 demangle_callbackref, void *);
 static char *d_demangle (const char *, int, size_t *);
+
+#define FNQUAL_COMPONENT_CASE				\
+    case DEMANGLE_COMPONENT_RESTRICT_THIS:		\
+    case DEMANGLE_COMPONENT_VOLATILE_THIS:		\
+    case DEMANGLE_COMPONENT_CONST_THIS:			\
+    case DEMANGLE_COMPONENT_REFERENCE_THIS:		\
+    case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:	\
+    case DEMANGLE_COMPONENT_TRANSACTION_SAFE:		\
+    case DEMANGLE_COMPONENT_NOEXCEPT:			\
+    case DEMANGLE_COMPONENT_THROW_SPEC
+
+/* True iff TYPE is a demangling component representing a
+   function-type-qualifier.  */
+
+static int
+is_fnqual_component_type (enum demangle_component_type type)
+{
+  switch (type)
+    {
+    FNQUAL_COMPONENT_CASE:
+      return 1;
+    default:
+      break;
+    }
+  return 0;
+}
+
 
 #ifdef CP_DEMANGLE_DEBUG
 
@@ -519,6 +632,12 @@ d_dump (struct demangle_component *dc, int indent)
     case DEMANGLE_COMPONENT_TEMPLATE_PARAM:
       printf ("template parameter %ld\n", dc->u.s_number.number);
       return;
+    case DEMANGLE_COMPONENT_TPARM_OBJ:
+      printf ("template parameter object\n");
+      break;
+    case DEMANGLE_COMPONENT_FUNCTION_PARAM:
+      printf ("function parameter %ld\n", dc->u.s_number.number);
+      return;
     case DEMANGLE_COMPONENT_CTOR:
       printf ("constructor %d\n", (int) dc->u.s_ctor.kind);
       d_dump (dc->u.s_ctor.name, indent + 2);
@@ -532,6 +651,13 @@ d_dump (struct demangle_component *dc, int indent)
       return;
     case DEMANGLE_COMPONENT_BUILTIN_TYPE:
       printf ("builtin type %s\n", dc->u.s_builtin.type->name);
+      return;
+    case DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE:
+      {
+	char suffix[2] = { dc->u.s_extended_builtin.type->suffix, 0 };
+	printf ("builtin type %s%d%s\n", dc->u.s_extended_builtin.type->name,
+		dc->u.s_extended_builtin.type->arg, suffix);
+      }
       return;
     case DEMANGLE_COMPONENT_OPERATOR:
       printf ("operator %s\n", dc->u.s_operator.op->name);
@@ -623,6 +749,9 @@ d_dump (struct demangle_component *dc, int indent)
     case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
       printf ("rvalue reference this\n");
       break;
+    case DEMANGLE_COMPONENT_TRANSACTION_SAFE:
+      printf ("transaction_safe this\n");
+      break;
     case DEMANGLE_COMPONENT_VENDOR_TYPE_QUAL:
       printf ("vendor type qualifier\n");
       break;
@@ -653,9 +782,6 @@ d_dump (struct demangle_component *dc, int indent)
     case DEMANGLE_COMPONENT_PTRMEM_TYPE:
       printf ("pointer to member type\n");
       break;
-    case DEMANGLE_COMPONENT_FIXED_TYPE:
-      printf ("fixed-point type\n");
-      break;
     case DEMANGLE_COMPONENT_ARGLIST:
       printf ("argument list\n");
       break;
@@ -667,6 +793,9 @@ d_dump (struct demangle_component *dc, int indent)
       break;
     case DEMANGLE_COMPONENT_CAST:
       printf ("cast\n");
+      break;
+    case DEMANGLE_COMPONENT_CONVERSION:
+      printf ("conversion operator\n");
       break;
     case DEMANGLE_COMPONENT_NULLARY:
       printf ("nullary operator\n");
@@ -695,6 +824,9 @@ d_dump (struct demangle_component *dc, int indent)
     case DEMANGLE_COMPONENT_LITERAL_NEG:
       printf ("negative literal\n");
       break;
+    case DEMANGLE_COMPONENT_VENDOR_EXPR:
+      printf ("vendor expression\n");
+      break;
     case DEMANGLE_COMPONENT_JAVA_RESOURCE:
       printf ("java resource\n");
       break;
@@ -703,6 +835,9 @@ d_dump (struct demangle_component *dc, int indent)
       break;
     case DEMANGLE_COMPONENT_CHARACTER:
       printf ("character '%c'\n",  dc->u.s_character.character);
+      return;
+    case DEMANGLE_COMPONENT_NUMBER:
+      printf ("number %ld\n", dc->u.s_number.number);
       return;
     case DEMANGLE_COMPONENT_DECLTYPE:
       printf ("decltype\n");
@@ -738,8 +873,10 @@ CP_STATIC_IF_GLIBCPP_V3
 int
 cplus_demangle_fill_name (struct demangle_component *p, const char *s, int len)
 {
-  if (p == NULL || s == NULL || len == 0)
+  if (p == NULL || s == NULL || len <= 0)
     return 0;
+  p->d_printing = 0;
+  p->d_counting = 0;
   p->type = DEMANGLE_COMPONENT_NAME;
   p->u.s_name.s = s;
   p->u.s_name.len = len;
@@ -755,6 +892,8 @@ cplus_demangle_fill_extended_operator (struct demangle_component *p, int args,
 {
   if (p == NULL || args < 0 || name == NULL)
     return 0;
+  p->d_printing = 0;
+  p->d_counting = 0;
   p->type = DEMANGLE_COMPONENT_EXTENDED_OPERATOR;
   p->u.s_extended_operator.args = args;
   p->u.s_extended_operator.name = name;
@@ -774,6 +913,8 @@ cplus_demangle_fill_ctor (struct demangle_component *p,
       || (int) kind < gnu_v3_complete_object_ctor
       || (int) kind > gnu_v3_object_ctor_group)
     return 0;
+  p->d_printing = 0;
+  p->d_counting = 0;
   p->type = DEMANGLE_COMPONENT_CTOR;
   p->u.s_ctor.kind = kind;
   p->u.s_ctor.name = name;
@@ -793,6 +934,8 @@ cplus_demangle_fill_dtor (struct demangle_component *p,
       || (int) kind < gnu_v3_deleting_dtor
       || (int) kind > gnu_v3_object_dtor_group)
     return 0;
+  p->d_printing = 0;
+  p->d_counting = 0;
   p->type = DEMANGLE_COMPONENT_DTOR;
   p->u.s_dtor.kind = kind;
   p->u.s_dtor.name = name;
@@ -809,6 +952,8 @@ d_make_empty (struct d_info *di)
   if (di->next_comp >= di->num_comps)
     return NULL;
   p = &di->comps[di->next_comp];
+  p->d_printing = 0;
+  p->d_counting = 0;
   ++di->next_comp;
   return p;
 }
@@ -843,9 +988,11 @@ d_make_comp (struct d_info *di, enum demangle_component_type type,
     case DEMANGLE_COMPONENT_TRINARY_ARG1:
     case DEMANGLE_COMPONENT_LITERAL:
     case DEMANGLE_COMPONENT_LITERAL_NEG:
+    case DEMANGLE_COMPONENT_VENDOR_EXPR:
     case DEMANGLE_COMPONENT_COMPOUND_NAME:
     case DEMANGLE_COMPONENT_VECTOR_TYPE:
     case DEMANGLE_COMPONENT_CLONE:
+    case DEMANGLE_COMPONENT_MODULE_ENTITY:
       if (left == NULL || right == NULL)
 	return NULL;
       break;
@@ -874,6 +1021,7 @@ d_make_comp (struct d_info *di, enum demangle_component_type type,
     case DEMANGLE_COMPONENT_IMAGINARY:
     case DEMANGLE_COMPONENT_VENDOR_TYPE:
     case DEMANGLE_COMPONENT_CAST:
+    case DEMANGLE_COMPONENT_CONVERSION:
     case DEMANGLE_COMPONENT_JAVA_RESOURCE:
     case DEMANGLE_COMPONENT_DECLTYPE:
     case DEMANGLE_COMPONENT_PACK_EXPANSION:
@@ -881,6 +1029,13 @@ d_make_comp (struct d_info *di, enum demangle_component_type type,
     case DEMANGLE_COMPONENT_GLOBAL_DESTRUCTORS:
     case DEMANGLE_COMPONENT_NULLARY:
     case DEMANGLE_COMPONENT_TRINARY_ARG2:
+    case DEMANGLE_COMPONENT_TPARM_OBJ:
+    case DEMANGLE_COMPONENT_STRUCTURED_BINDING:
+    case DEMANGLE_COMPONENT_MODULE_INIT:
+    case DEMANGLE_COMPONENT_TEMPLATE_HEAD:
+    case DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM:
+    case DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM:
+    case DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM:
       if (left == NULL)
 	return NULL;
       break;
@@ -889,6 +1044,8 @@ d_make_comp (struct d_info *di, enum demangle_component_type type,
 	 empty.  */
     case DEMANGLE_COMPONENT_ARRAY_TYPE:
     case DEMANGLE_COMPONENT_INITIALIZER_LIST:
+    case DEMANGLE_COMPONENT_MODULE_NAME:
+    case DEMANGLE_COMPONENT_MODULE_PARTITION:
       if (right == NULL)
 	return NULL;
       break;
@@ -899,13 +1056,10 @@ d_make_comp (struct d_info *di, enum demangle_component_type type,
     case DEMANGLE_COMPONENT_RESTRICT:
     case DEMANGLE_COMPONENT_VOLATILE:
     case DEMANGLE_COMPONENT_CONST:
-    case DEMANGLE_COMPONENT_RESTRICT_THIS:
-    case DEMANGLE_COMPONENT_VOLATILE_THIS:
-    case DEMANGLE_COMPONENT_CONST_THIS:
-    case DEMANGLE_COMPONENT_REFERENCE_THIS:
-    case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
     case DEMANGLE_COMPONENT_ARGLIST:
     case DEMANGLE_COMPONENT_TEMPLATE_ARGLIST:
+    case DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM:
+    FNQUAL_COMPONENT_CASE:
       break;
 
       /* Other types should not be seen here.  */
@@ -962,6 +1116,28 @@ d_make_builtin_type (struct d_info *di,
     {
       p->type = DEMANGLE_COMPONENT_BUILTIN_TYPE;
       p->u.s_builtin.type = type;
+    }
+  return p;
+}
+
+/* Add a new extended builtin type component.  */
+
+static struct demangle_component *
+d_make_extended_builtin_type (struct d_info *di,
+			      const struct demangle_builtin_type_info *type,
+			      short arg, char suffix)
+{
+  struct demangle_component *p;
+
+  if (type == NULL)
+    return NULL;
+  p = d_make_empty (di);
+  if (p != NULL)
+    {
+      p->type = DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE;
+      p->u.s_extended_builtin.type = type;
+      p->u.s_extended_builtin.arg = arg;
+      p->u.s_extended_builtin.suffix = suffix;
     }
   return p;
 }
@@ -1041,7 +1217,7 @@ d_make_dtor (struct d_info *di, enum gnu_v3_dtor_kinds kind,
 /* Add a new template parameter.  */
 
 static struct demangle_component *
-d_make_template_param (struct d_info *di, long i)
+d_make_template_param (struct d_info *di, int i)
 {
   struct demangle_component *p;
 
@@ -1057,7 +1233,7 @@ d_make_template_param (struct d_info *di, long i)
 /* Add a new function parameter.  */
 
 static struct demangle_component *
-d_make_function_param (struct d_info *di, long i)
+d_make_function_param (struct d_info *di, int i)
 {
   struct demangle_component *p;
 
@@ -1137,13 +1313,11 @@ has_return_type (struct demangle_component *dc)
     {
     default:
       return 0;
+    case DEMANGLE_COMPONENT_LOCAL_NAME:
+      return has_return_type (d_right (dc));
     case DEMANGLE_COMPONENT_TEMPLATE:
       return ! is_ctor_dtor_or_conversion (d_left (dc));
-    case DEMANGLE_COMPONENT_RESTRICT_THIS:
-    case DEMANGLE_COMPONENT_VOLATILE_THIS:
-    case DEMANGLE_COMPONENT_CONST_THIS:
-    case DEMANGLE_COMPONENT_REFERENCE_THIS:
-    case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
+    FNQUAL_COMPONENT_CASE:
       return has_return_type (d_left (dc));
     }
 }
@@ -1165,7 +1339,7 @@ is_ctor_dtor_or_conversion (struct demangle_component *dc)
       return is_ctor_dtor_or_conversion (d_right (dc));
     case DEMANGLE_COMPONENT_CTOR:
     case DEMANGLE_COMPONENT_DTOR:
-    case DEMANGLE_COMPONENT_CAST:
+    case DEMANGLE_COMPONENT_CONVERSION:
       return 1;
     }
 }
@@ -1183,54 +1357,66 @@ static struct demangle_component *
 d_encoding (struct d_info *di, int top_level)
 {
   char peek = d_peek_char (di);
+  struct demangle_component *dc;
 
   if (peek == 'G' || peek == 'T')
-    return d_special_name (di);
+    dc = d_special_name (di);
   else
     {
-      struct demangle_component *dc;
+      dc = d_name (di, 0);
 
-      dc = d_name (di);
-
-      if (dc != NULL && top_level && (di->options & DMGL_PARAMS) == 0)
+      if (!dc)
+	/* Failed already.  */;
+      else if (top_level && (di->options & DMGL_PARAMS) == 0)
 	{
 	  /* Strip off any initial CV-qualifiers, as they really apply
 	     to the `this' parameter, and they were not output by the
 	     v2 demangler without DMGL_PARAMS.  */
-	  while (dc->type == DEMANGLE_COMPONENT_RESTRICT_THIS
-		 || dc->type == DEMANGLE_COMPONENT_VOLATILE_THIS
-		 || dc->type == DEMANGLE_COMPONENT_CONST_THIS
-		 || dc->type == DEMANGLE_COMPONENT_REFERENCE_THIS
-		 || dc->type == DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS)
+	  while (is_fnqual_component_type (dc->type))
 	    dc = d_left (dc);
 
 	  /* If the top level is a DEMANGLE_COMPONENT_LOCAL_NAME, then
-	     there may be CV-qualifiers on its right argument which
+	     there may be function-qualifiers on its right argument which
 	     really apply here; this happens when parsing a class
 	     which is local to a function.  */
 	  if (dc->type == DEMANGLE_COMPONENT_LOCAL_NAME)
 	    {
-	      struct demangle_component *dcr;
+	      while (d_right (dc) != NULL
+		     && is_fnqual_component_type (d_right (dc)->type))
+		d_right (dc) = d_left (d_right (dc));
 
-	      dcr = d_right (dc);
-	      while (dcr->type == DEMANGLE_COMPONENT_RESTRICT_THIS
-		     || dcr->type == DEMANGLE_COMPONENT_VOLATILE_THIS
-		     || dcr->type == DEMANGLE_COMPONENT_CONST_THIS
-		     || dcr->type == DEMANGLE_COMPONENT_REFERENCE_THIS
-		     || dcr->type == DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS)
-		dcr = d_left (dcr);
-	      dc->u.s_binary.right = dcr;
+	      if (d_right (dc) == NULL)
+		dc = NULL;
 	    }
-
-	  return dc;
 	}
+      else
+	{
+	  peek = d_peek_char (di);
+	  if (peek != '\0' && peek != 'E')
+	    {
+	      struct demangle_component *ftype;
 
-      peek = d_peek_char (di);
-      if (dc == NULL || peek == '\0' || peek == 'E')
-	return dc;
-      return d_make_comp (di, DEMANGLE_COMPONENT_TYPED_NAME, dc,
-			  d_bare_function_type (di, has_return_type (dc)));
+	      ftype = d_bare_function_type (di, has_return_type (dc));
+	      if (ftype)
+		{
+		  /* If this is a non-top-level local-name, clear the
+		     return type, so it doesn't confuse the user by
+		     being confused with the return type of whaever
+		     this is nested within.  */
+		  if (!top_level && dc->type == DEMANGLE_COMPONENT_LOCAL_NAME
+		      && ftype->type == DEMANGLE_COMPONENT_FUNCTION_TYPE)
+		    d_left (ftype) = NULL;
+
+		  dc = d_make_comp (di, DEMANGLE_COMPONENT_TYPED_NAME,
+				    dc, ftype);
+		}
+	      else
+		dc = NULL;
+	    }
+	}
     }
+
+  return dc;
 }
 
 /* <tagged-name> ::= <name> B <source-name> */
@@ -1238,7 +1424,12 @@ d_encoding (struct d_info *di, int top_level)
 static struct demangle_component *
 d_abi_tags (struct d_info *di, struct demangle_component *dc)
 {
+  struct demangle_component *hold_last_name;
   char peek;
+
+  /* Preserve the last name, so the ABI tag doesn't clobber it.  */
+  hold_last_name = di->last_name;
+
   while (peek = d_peek_char (di),
 	 peek == 'B')
     {
@@ -1247,6 +1438,9 @@ d_abi_tags (struct d_info *di, struct demangle_component *dc)
       tag = d_source_name (di);
       dc = d_make_comp (di, DEMANGLE_COMPONENT_TAGGED_NAME, dc, tag);
     }
+
+  di->last_name = hold_last_name;
+
   return dc;
 }
 
@@ -1263,80 +1457,74 @@ d_abi_tags (struct d_info *di, struct demangle_component *dc)
 */
 
 static struct demangle_component *
-d_name (struct d_info *di)
+d_name (struct d_info *di, int substable)
 {
   char peek = d_peek_char (di);
-  struct demangle_component *dc;
+  struct demangle_component *dc = NULL;
+  struct demangle_component *module = NULL;
+  int subst = 0;
 
   switch (peek)
     {
     case 'N':
-      return d_nested_name (di);
+      dc = d_nested_name (di);
+      break;
 
     case 'Z':
-      return d_local_name (di);
+      dc = d_local_name (di);
+      break;
 
-    case 'L':
     case 'U':
-      return d_unqualified_name (di);
+      dc = d_unqualified_name (di, NULL, NULL);
+      break;
 
     case 'S':
       {
-	int subst;
-
-	if (d_peek_next_char (di) != 't')
-	  {
-	    dc = d_substitution (di, 0);
-	    subst = 1;
-	  }
-	else
+	if (d_peek_next_char (di) == 't')
 	  {
 	    d_advance (di, 2);
-	    dc = d_make_comp (di, DEMANGLE_COMPONENT_QUAL_NAME,
-			      d_make_name (di, "std", 3),
-			      d_unqualified_name (di));
+	    dc = d_make_name (di, "std", 3);
 	    di->expansion += 3;
-	    subst = 0;
 	  }
 
-	if (d_peek_char (di) != 'I')
+	if (d_peek_char (di) == 'S')
 	  {
-	    /* The grammar does not permit this case to occur if we
-	       called d_substitution() above (i.e., subst == 1).  We
-	       don't bother to check.  */
-	  }
-	else
-	  {
-	    /* This is <template-args>, which means that we just saw
-	       <unscoped-template-name>, which is a substitution
-	       candidate if we didn't just get it from a
-	       substitution.  */
-	    if (! subst)
+	    module = d_substitution (di, 0);
+	    if (!module)
+	      return NULL;
+	    if (!(module->type == DEMANGLE_COMPONENT_MODULE_NAME
+		  || module->type == DEMANGLE_COMPONENT_MODULE_PARTITION))
 	      {
-		if (! d_add_substitution (di, dc))
+		if (dc)
 		  return NULL;
+		subst = 1;
+		dc = module;
+		module = NULL;
 	      }
-	    dc = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, dc,
-			      d_template_args (di));
 	  }
-
-	return dc;
       }
+      /* FALLTHROUGH */
 
+    case 'L':
     default:
-      dc = d_unqualified_name (di);
+      if (!subst)
+	dc = d_unqualified_name (di, dc, module);
       if (d_peek_char (di) == 'I')
 	{
 	  /* This is <template-args>, which means that we just saw
 	     <unscoped-template-name>, which is a substitution
 	     candidate.  */
-	  if (! d_add_substitution (di, dc))
+	  if (!subst && !d_add_substitution (di, dc))
 	    return NULL;
 	  dc = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, dc,
 			    d_template_args (di));
+	  subst = 0;
 	}
-      return dc;
+      break;
     }
+  if (substable && !subst && !d_add_substitution (di, dc))
+    return NULL;
+  return dc;
 }
 
 /* <nested-name> ::= N [<CV-qualifiers>] [<ref-qualifier>] <prefix> <unqualified-name> E
@@ -1361,7 +1549,7 @@ d_nested_name (struct d_info *di)
      once we have something to attach it to.  */
   rqual = d_ref_qualifier (di, NULL);
 
-  *pret = d_prefix (di);
+  *pret = d_prefix (di, 1);
   if (*pret == NULL)
     return NULL;
 
@@ -1387,103 +1575,141 @@ d_nested_name (struct d_info *di)
    <template-prefix> ::= <prefix> <(template) unqualified-name>
                      ::= <template-param>
                      ::= <substitution>
-*/
+
+   SUBST is true if we should add substitutions (as normal), false
+   if not (in an unresolved-name).  */
 
 static struct demangle_component *
-d_prefix (struct d_info *di)
+d_prefix (struct d_info *di, int substable)
 {
   struct demangle_component *ret = NULL;
 
-  while (1)
+  for (;;)
     {
-      char peek;
-      enum demangle_component_type comb_type;
-      struct demangle_component *dc;
-
-      peek = d_peek_char (di);
-      if (peek == '\0')
-	return NULL;
+      char peek = d_peek_char (di);
 
       /* The older code accepts a <local-name> here, but I don't see
 	 that in the grammar.  The older code does not accept a
 	 <template-param> here.  */
 
-      comb_type = DEMANGLE_COMPONENT_QUAL_NAME;
-      if (peek == 'D')
+      if (peek == 'D'
+	  && (d_peek_next_char (di) == 'T'
+	      || d_peek_next_char (di) == 't'))
 	{
-	  char peek2 = d_peek_next_char (di);
-	  if (peek2 == 'T' || peek2 == 't')
-	    /* Decltype.  */
-	    dc = cplus_demangle_type (di);
-	  else
-	    /* Destructor name.  */
-	    dc = d_unqualified_name (di);
+	  /* Decltype.  */
+	  if (ret)
+	    return NULL;
+	  ret = cplus_demangle_type (di);
 	}
-      else if (IS_DIGIT (peek)
-	  || IS_LOWER (peek)
-	  || peek == 'C'
-	  || peek == 'U'
-	  || peek == 'L')
-	dc = d_unqualified_name (di);
-      else if (peek == 'S')
-	dc = d_substitution (di, 1);
       else if (peek == 'I')
 	{
 	  if (ret == NULL)
 	    return NULL;
-	  comb_type = DEMANGLE_COMPONENT_TEMPLATE;
-	  dc = d_template_args (di);
+	  struct demangle_component *dc = d_template_args (di);
+	  if (!dc)
+	    return NULL;
+	  ret = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, ret, dc);
 	}
       else if (peek == 'T')
-	dc = d_template_param (di);
-      else if (peek == 'E')
-	return ret;
+	{
+	  if (ret)
+	    return NULL;
+	  ret = d_template_param (di);
+	}
       else if (peek == 'M')
 	{
-	  /* Initializer scope for a lambda.  We don't need to represent
-	     this; the normal code will just treat the variable as a type
-	     scope, which gives appropriate output.  */
-	  if (ret == NULL)
-	    return NULL;
+	  /* Initializer scope for a lambda.  We already added it as a
+  	     substitution candidate, don't do that again.  */
 	  d_advance (di, 1);
 	  continue;
 	}
       else
-	return NULL;
-
-      if (ret == NULL)
-	ret = dc;
-      else
-	ret = d_make_comp (di, comb_type, ret, dc);
-
-      if (peek != 'S' && d_peek_char (di) != 'E')
 	{
-	  if (! d_add_substitution (di, ret))
-	    return NULL;
+	  struct demangle_component *module = NULL;
+	  if (peek == 'S')
+	    {
+	      module = d_substitution (di, 1);
+	      if (!module)
+		return NULL;
+	      if (!(module->type == DEMANGLE_COMPONENT_MODULE_NAME
+		    || module->type == DEMANGLE_COMPONENT_MODULE_PARTITION))
+		{
+		  if (ret)
+		    return NULL;
+		  ret = module;
+		  continue;
+		}
+	    }
+	  ret = d_unqualified_name (di, ret, module);
 	}
+
+      if (!ret)
+	break;
+
+      if (d_peek_char (di) == 'E')
+	break;
+
+      if (substable && !d_add_substitution (di, ret))
+	return NULL;
     }
+
+  return ret;
 }
 
-/* <unqualified-name> ::= <operator-name>
-                      ::= <ctor-dtor-name>
-                      ::= <source-name>
-		      ::= <local-source-name> 
+static int
+d_maybe_module_name (struct d_info *di, struct demangle_component **name)
+{
+  while (d_peek_char (di) == 'W')
+    {
+      d_advance (di, 1);
+      enum demangle_component_type code = DEMANGLE_COMPONENT_MODULE_NAME;
+      if (d_peek_char (di) == 'P')
+	{
+	  code = DEMANGLE_COMPONENT_MODULE_PARTITION;
+	  d_advance (di, 1);
+	}
 
-    <local-source-name>	::= L <source-name> <discriminator>
+      *name = d_make_comp (di, code, *name, d_source_name (di));
+      if (!*name)
+	return 0;
+      if (!d_add_substitution (di, *name))
+	return 0;
+    }
+  return 1;
+}
+
+/* <unqualified-name> ::= [<module-name>] <operator-name> [<abi-tags>]
+                      ::= [<module-name>] <ctor-dtor-name> [<abi-tags>]
+                      ::= [<module-name>] <source-name> [<abi-tags>]
+		      ::= [<module-name>] <local-source-name>  [<abi-tags>]
+                      ::= [<module-name>] DC <source-name>+ E [<abi-tags>]
+    <local-source-name>	::= L <source-name> <discriminator> [<abi-tags>]
 */
 
 static struct demangle_component *
-d_unqualified_name (struct d_info *di)
+d_unqualified_name (struct d_info *di, struct demangle_component *scope,
+		    struct demangle_component *module)
 {
   struct demangle_component *ret;
   char peek;
+
+  if (!d_maybe_module_name (di, &module))
+    return NULL;
 
   peek = d_peek_char (di);
   if (IS_DIGIT (peek))
     ret = d_source_name (di);
   else if (IS_LOWER (peek))
     {
+      int was_expr = di->is_expression;
+      if (peek == 'o' && d_peek_next_char (di) == 'n')
+	{
+	  d_advance (di, 2);
+	  /* Treat cv as naming a conversion operator.  */
+	  di->is_expression = 0;
+	}
       ret = d_operator_name (di);
+      di->is_expression = was_expr;
       if (ret != NULL && ret->type == DEMANGLE_COMPONENT_OPERATOR)
 	{
 	  di->expansion += sizeof "operator" + ret->u.s_operator.op->len - 2;
@@ -1491,6 +1717,28 @@ d_unqualified_name (struct d_info *di)
 	    ret = d_make_comp (di, DEMANGLE_COMPONENT_UNARY, ret,
 			       d_source_name (di));
 	}
+    }
+  else if (peek == 'D' && d_peek_next_char (di) == 'C')
+    {
+      // structured binding
+      d_advance (di, 2);
+      struct demangle_component *prev = NULL;
+      do
+	{
+	  struct demangle_component *next = 
+	    d_make_comp (di, DEMANGLE_COMPONENT_STRUCTURED_BINDING,
+			 d_source_name (di), NULL);
+	  if (prev)
+	    d_right (prev) = next;
+	  else
+	    ret = next;
+	  prev = next;
+	}
+      while (prev && d_peek_char (di) != 'E');
+      if (prev)
+	d_advance (di, 1);
+      else
+	ret = NULL;
     }
   else if (peek == 'C' || peek == 'D')
     ret = d_ctor_dtor_name (di);
@@ -1521,8 +1769,13 @@ d_unqualified_name (struct d_info *di)
   else
     return NULL;
 
+  if (module)
+    ret = d_make_comp (di, DEMANGLE_COMPONENT_MODULE_ENTITY, ret, module);
   if (d_peek_char (di) == 'B')
     ret = d_abi_tags (di, ret);
+  if (scope)
+    ret = d_make_comp (di, DEMANGLE_COMPONENT_QUAL_NAME, scope, ret);
+
   return ret;
 }
 
@@ -1531,7 +1784,7 @@ d_unqualified_name (struct d_info *di)
 static struct demangle_component *
 d_source_name (struct d_info *di)
 {
-  long len;
+  int len;
   struct demangle_component *ret;
 
   len = d_number (di);
@@ -1544,12 +1797,12 @@ d_source_name (struct d_info *di)
 
 /* number ::= [n] <(non-negative decimal integer)>  */
 
-static long
+static int
 d_number (struct d_info *di)
 {
   int negative;
   char peek;
-  long ret;
+  int ret;
 
   negative = 0;
   peek = d_peek_char (di);
@@ -1569,7 +1822,9 @@ d_number (struct d_info *di)
 	    ret = - ret;
 	  return ret;
 	}
-      ret = ret * 10 + peek - '0';
+      if (ret > ((INT_MAX - (peek - '0')) / 10))
+        return -1;
+      ret = ret * 10 + (peek - '0');
       d_advance (di, 1);
       peek = d_peek_char (di);
     }
@@ -1649,22 +1904,30 @@ const struct demangle_operator_info cplus_demangle_operators[] =
   { "ad", NL ("&"),         1 },
   { "an", NL ("&"),         2 },
   { "at", NL ("alignof "),   1 },
+  { "aw", NL ("co_await "), 1 },
   { "az", NL ("alignof "),   1 },
   { "cc", NL ("const_cast"), 2 },
   { "cl", NL ("()"),        2 },
   { "cm", NL (","),         2 },
   { "co", NL ("~"),         1 },
   { "dV", NL ("/="),        2 },
+  { "dX", NL ("[...]="),     3 }, /* [expr...expr] = expr */
   { "da", NL ("delete[] "), 1 },
   { "dc", NL ("dynamic_cast"), 2 },
   { "de", NL ("*"),         1 },
+  { "di", NL ("="),         2 }, /* .name = expr */
   { "dl", NL ("delete "),   1 },
   { "ds", NL (".*"),        2 },
   { "dt", NL ("."),         2 },
   { "dv", NL ("/"),         2 },
+  { "dx", NL ("]="),        2 }, /* [expr] = expr */
   { "eO", NL ("^="),        2 },
   { "eo", NL ("^"),         2 },
   { "eq", NL ("=="),        2 },
+  { "fL", NL ("..."),       3 },
+  { "fR", NL ("..."),       3 },
+  { "fl", NL ("..."),       2 },
+  { "fr", NL ("..."),       2 },
   { "ge", NL (">="),        2 },
   { "gs", NL ("::"),	    1 },
   { "gt", NL (">"),         2 },
@@ -1684,6 +1947,7 @@ const struct demangle_operator_info cplus_demangle_operators[] =
   { "ng", NL ("-"),         1 },
   { "nt", NL ("!"),         1 },
   { "nw", NL ("new"),       3 },
+  { "nx", NL ("noexcept"),  1 },
   { "oR", NL ("|="),        2 },
   { "oo", NL ("||"),        2 },
   { "or", NL ("|"),         2 },
@@ -1699,7 +1963,10 @@ const struct demangle_operator_info cplus_demangle_operators[] =
   { "rc", NL ("reinterpret_cast"), 2 },
   { "rm", NL ("%"),         2 },
   { "rs", NL (">>"),        2 },
+  { "sP", NL ("sizeof..."), 1 },
+  { "sZ", NL ("sizeof..."), 1 },
   { "sc", NL ("static_cast"), 2 },
+  { "ss", NL ("<=>"),       2 },
   { "st", NL ("sizeof "),   1 },
   { "sz", NL ("sizeof "),   1 },
   { "tr", NL ("throw"),     0 },
@@ -1718,8 +1985,20 @@ d_operator_name (struct d_info *di)
   if (c1 == 'v' && IS_DIGIT (c2))
     return d_make_extended_operator (di, c2 - '0', d_source_name (di));
   else if (c1 == 'c' && c2 == 'v')
-    return d_make_comp (di, DEMANGLE_COMPONENT_CAST,
-			cplus_demangle_type (di), NULL);
+    {
+      struct demangle_component *type;
+      int was_conversion = di->is_conversion;
+      struct demangle_component *res;
+
+      di->is_conversion = ! di->is_expression;
+      type = cplus_demangle_type (di);
+      if (di->is_conversion)
+	res = d_make_comp (di, DEMANGLE_COMPONENT_CONVERSION, type, NULL);
+      else
+	res = d_make_comp (di, DEMANGLE_COMPONENT_CAST, type, NULL);
+      di->is_conversion = was_conversion;
+      return res;
+    }
   else
     {
       /* LOW is the inclusive lower bound.  */
@@ -1769,7 +2048,7 @@ d_java_resource (struct d_info *di)
 {
   struct demangle_component *p = NULL;
   struct demangle_component *next = NULL;
-  long len, i;
+  int len, i;
   char c;
   const char *str;
 
@@ -1851,6 +2130,7 @@ d_java_resource (struct d_info *di)
                   ::= TT <type>
                   ::= TI <type>
                   ::= TS <type>
+		  ::= TA <template-arg>
                   ::= GV <(object) name>
                   ::= T <call-offset> <(base) encoding>
                   ::= Tc <call-offset> <call-offset> <(base) encoding>
@@ -1911,7 +2191,7 @@ d_special_name (struct d_info *di)
 	case 'C':
 	  {
 	    struct demangle_component *derived_type;
-	    long offset;
+	    int offset;
 	    struct demangle_component *base_type;
 
 	    derived_type = cplus_demangle_type (di);
@@ -1937,11 +2217,15 @@ d_special_name (struct d_info *di)
 
 	case 'H':
 	  return d_make_comp (di, DEMANGLE_COMPONENT_TLS_INIT,
-			      d_name (di), NULL);
+			      d_name (di, 0), NULL);
 
 	case 'W':
 	  return d_make_comp (di, DEMANGLE_COMPONENT_TLS_WRAPPER,
-			      d_name (di), NULL);
+			      d_name (di, 0), NULL);
+
+	case 'A':
+	  return d_make_comp (di, DEMANGLE_COMPONENT_TPARM_OBJ,
+			      d_template_arg (di), NULL);
 
 	default:
 	  return NULL;
@@ -1952,11 +2236,12 @@ d_special_name (struct d_info *di)
       switch (d_next_char (di))
 	{
 	case 'V':
-	  return d_make_comp (di, DEMANGLE_COMPONENT_GUARD, d_name (di), NULL);
+	  return d_make_comp (di, DEMANGLE_COMPONENT_GUARD,
+			      d_name (di, 0), NULL);
 
 	case 'R':
 	  {
-	    struct demangle_component *name = d_name (di);
+	    struct demangle_component *name = d_name (di, 0);
 	    return d_make_comp (di, DEMANGLE_COMPONENT_REFTEMP, name,
 				d_number_component (di));
 	  }
@@ -1965,6 +2250,14 @@ d_special_name (struct d_info *di)
 	  return d_make_comp (di, DEMANGLE_COMPONENT_HIDDEN_ALIAS,
 			      d_encoding (di, 0), NULL);
 
+	case 'I':
+	  {
+	    struct demangle_component *module = NULL;
+	    if (!d_maybe_module_name (di, &module) || !module)
+	      return NULL;
+	    return d_make_comp (di, DEMANGLE_COMPONENT_MODULE_INIT,
+				module, NULL);
+	  }
 	case 'T':
 	  switch (d_next_char (di))
 	    {
@@ -2053,6 +2346,13 @@ d_ctor_dtor_name (struct d_info *di)
     case 'C':
       {
 	enum gnu_v3_ctor_kinds kind;
+	int inheriting = 0;
+
+	if (d_peek_next_char (di) == 'I')
+	  {
+	    inheriting = 1;
+	    d_advance (di, 1);
+	  }
 
 	switch (d_peek_next_char (di))
 	  {
@@ -2065,13 +2365,21 @@ d_ctor_dtor_name (struct d_info *di)
 	  case '3':
 	    kind = gnu_v3_complete_object_allocating_ctor;
 	    break;
+          case '4':
+	    kind = gnu_v3_unified_ctor;
+	    break;
 	  case '5':
 	    kind = gnu_v3_object_ctor_group;
 	    break;
 	  default:
 	    return NULL;
 	  }
+
 	d_advance (di, 2);
+
+	if (inheriting)
+	  cplus_demangle_type (di);
+
 	return d_make_ctor (di, kind, di->last_name);
       }
 
@@ -2090,6 +2398,10 @@ d_ctor_dtor_name (struct d_info *di)
 	  case '2':
 	    kind = gnu_v3_base_object_dtor;
 	    break;
+          /*  digit '3' is not used */
+	  case '4':
+	    kind = gnu_v3_unified_dtor;
+	    break;
 	  case '5':
 	    kind = gnu_v3_object_dtor_group;
 	    break;
@@ -2103,6 +2415,24 @@ d_ctor_dtor_name (struct d_info *di)
     default:
       return NULL;
     }
+}
+
+/* True iff we're looking at an order-insensitive type-qualifier, including
+   function-type-qualifiers.  */
+
+static int
+next_is_type_qual (struct d_info *di)
+{
+  char peek = d_peek_char (di);
+  if (peek == 'r' || peek == 'V' || peek == 'K')
+    return 1;
+  if (peek == 'D')
+    {
+      peek = d_peek_next_char (di);
+      if (peek == 'x' || peek == 'o' || peek == 'O' || peek == 'w')
+	return 1;
+    }
+  return 0;
 }
 
 /* <type> ::= <builtin-type>
@@ -2161,10 +2491,13 @@ cplus_demangle_builtin_types[D_BUILTIN_TYPE_COUNT] =
   /* 27 */ { NL ("decimal64"),	NL ("decimal64"),	D_PRINT_DEFAULT },
   /* 28 */ { NL ("decimal128"),	NL ("decimal128"),	D_PRINT_DEFAULT },
   /* 29 */ { NL ("half"),	NL ("half"),		D_PRINT_FLOAT },
-  /* 30 */ { NL ("char16_t"),	NL ("char16_t"),	D_PRINT_DEFAULT },
-  /* 31 */ { NL ("char32_t"),	NL ("char32_t"),	D_PRINT_DEFAULT },
-  /* 32 */ { NL ("decltype(nullptr)"),	NL ("decltype(nullptr)"),
+  /* 30 */ { NL ("char8_t"),	NL ("char8_t"),		D_PRINT_DEFAULT },
+  /* 31 */ { NL ("char16_t"),	NL ("char16_t"),	D_PRINT_DEFAULT },
+  /* 32 */ { NL ("char32_t"),	NL ("char32_t"),	D_PRINT_DEFAULT },
+  /* 33 */ { NL ("decltype(nullptr)"),	NL ("decltype(nullptr)"),
 	     D_PRINT_DEFAULT },
+  /* 34 */ { NL ("_Float"),	NL ("_Float"),		D_PRINT_FLOAT },
+  /* 35 */ { NL ("std::bfloat16_t"), NL ("std::bfloat16_t"), D_PRINT_FLOAT },
 };
 
 CP_STATIC_IF_GLIBCPP_V3
@@ -2190,8 +2523,7 @@ cplus_demangle_type (struct d_info *di)
      __vector, and it treats it as order-sensitive when mangling
      names.  */
 
-  peek = d_peek_char (di);
-  if (peek == 'r' || peek == 'V' || peek == 'K')
+  if (next_is_type_qual (di))
     {
       struct demangle_component **pret;
 
@@ -2226,6 +2558,7 @@ cplus_demangle_type (struct d_info *di)
 
   can_subst = 1;
 
+  peek = d_peek_char (di);
   switch (peek)
     {
     case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
@@ -2249,13 +2582,6 @@ cplus_demangle_type (struct d_info *di)
       ret = d_function_type (di);
       break;
 
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-    case 'N':
-    case 'Z':
-      ret = d_class_enum_type (di);
-      break;
-
     case 'A':
       ret = d_array_type (di);
       break;
@@ -2268,47 +2594,62 @@ cplus_demangle_type (struct d_info *di)
       ret = d_template_param (di);
       if (d_peek_char (di) == 'I')
 	{
-	  /* This is <template-template-param> <template-args>.  The
-	     <template-template-param> part is a substitution
+	  /* This may be <template-template-param> <template-args>.
+	     If this is the type for a conversion operator, we can
+	     have a <template-template-param> here only by following
+	     a derivation like this:
+
+	     <nested-name>
+	     -> <template-prefix> <template-args>
+	     -> <prefix> <template-unqualified-name> <template-args>
+	     -> <unqualified-name> <template-unqualified-name> <template-args>
+	     -> <source-name> <template-unqualified-name> <template-args>
+	     -> <source-name> <operator-name> <template-args>
+	     -> <source-name> cv <type> <template-args>
+	     -> <source-name> cv <template-template-param> <template-args> <template-args>
+
+	     where the <template-args> is followed by another.
+	     Otherwise, we must have a derivation like this:
+
+	     <nested-name>
+	     -> <template-prefix> <template-args>
+	     -> <prefix> <template-unqualified-name> <template-args>
+	     -> <unqualified-name> <template-unqualified-name> <template-args>
+	     -> <source-name> <template-unqualified-name> <template-args>
+	     -> <source-name> <operator-name> <template-args>
+	     -> <source-name> cv <type> <template-args>
+	     -> <source-name> cv <template-param> <template-args>
+
+	     where we need to leave the <template-args> to be processed
+	     by d_prefix (following the <template-prefix>).
+
+	     The <template-template-param> part is a substitution
 	     candidate.  */
-	  if (! d_add_substitution (di, ret))
-	    return NULL;
-	  ret = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, ret,
-			     d_template_args (di));
-	}
-      break;
-
-    case 'S':
-      /* If this is a special substitution, then it is the start of
-	 <class-enum-type>.  */
-      {
-	char peek_next;
-
-	peek_next = d_peek_next_char (di);
-	if (IS_DIGIT (peek_next)
-	    || peek_next == '_'
-	    || IS_UPPER (peek_next))
-	  {
-	    ret = d_substitution (di, 0);
-	    /* The substituted name may have been a template name and
-	       may be followed by tepmlate args.  */
-	    if (d_peek_char (di) == 'I')
+	  if (! di->is_conversion)
+	    {
+	      if (! d_add_substitution (di, ret))
+		return NULL;
 	      ret = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, ret,
 				 d_template_args (di));
-	    else
-	      can_subst = 0;
-	  }
-	else
-	  {
-	    ret = d_class_enum_type (di);
-	    /* If the substitution was a complete type, then it is not
-	       a new substitution candidate.  However, if the
-	       substitution was followed by template arguments, then
-	       the whole thing is a substitution candidate.  */
-	    if (ret != NULL && ret->type == DEMANGLE_COMPONENT_SUB_STD)
-	      can_subst = 0;
-	  }
-      }
+	    }
+	  else
+	    {
+	      struct demangle_component *args;
+	      struct d_info_checkpoint checkpoint;
+
+	      d_checkpoint (di, &checkpoint);
+	      args = d_template_args (di);
+	      if (d_peek_char (di) == 'I')
+		{
+		  if (! d_add_substitution (di, ret))
+		    return NULL;
+		  ret = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, ret,
+				     args);
+		}
+	      else
+		d_backtrack (di, &checkpoint);
+	    }
+	}
       break;
 
     case 'O':
@@ -2344,6 +2685,9 @@ cplus_demangle_type (struct d_info *di)
     case 'U':
       d_advance (di, 1);
       ret = d_source_name (di);
+      if (d_peek_char (di) == 'I')
+	ret = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, ret,
+			   d_template_args (di));
       ret = d_make_comp (di, DEMANGLE_COMPONENT_VENDOR_TYPE_QUAL,
 			 cplus_demangle_type (di), ret);
       break;
@@ -2375,7 +2719,11 @@ cplus_demangle_type (struct d_info *di)
 	  /* auto */
 	  ret = d_make_name (di, "auto", 4);
 	  break;
-	  
+	case 'c':
+	  /* decltype(auto) */
+	  ret = d_make_name (di, "decltype(auto)", 14);
+	  break;
+
 	case 'f':
 	  /* 32-bit decimal floating point */
 	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[26]);
@@ -2396,31 +2744,54 @@ cplus_demangle_type (struct d_info *di)
 	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[29]);
 	  di->expansion += ret->u.s_builtin.type->len;
 	  break;
+	case 'u':
+	  /* char8_t */
+	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[30]);
+	  di->expansion += ret->u.s_builtin.type->len;
+	  break;
 	case 's':
 	  /* char16_t */
-	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[30]);
+	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[31]);
 	  di->expansion += ret->u.s_builtin.type->len;
 	  break;
 	case 'i':
 	  /* char32_t */
-	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[31]);
+	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[32]);
 	  di->expansion += ret->u.s_builtin.type->len;
 	  break;
 
 	case 'F':
-	  /* Fixed point types. DF<int bits><length><fract bits><sat>  */
-	  ret = d_make_empty (di);
-	  ret->type = DEMANGLE_COMPONENT_FIXED_TYPE;
-	  if ((ret->u.s_fixed.accum = IS_DIGIT (d_peek_char (di))))
-	    /* For demangling we don't care about the bits.  */
-	    d_number (di);
-	  ret->u.s_fixed.length = cplus_demangle_type (di);
-	  if (ret->u.s_fixed.length == NULL)
-	    return NULL;
-	  d_number (di);
-	  peek = d_next_char (di);
-	  ret->u.s_fixed.sat = (peek == 's');
-	  break;
+	  /* DF<number>_ - _Float<number>.
+	     DF<number>x - _Float<number>x
+	     DF16b - std::bfloat16_t.  */
+	  {
+	    int arg = d_number (di);
+	    char buf[12];
+	    char suffix = 0;
+	    if (d_peek_char (di) == 'b')
+	      {
+		if (arg != 16)
+		  return NULL;
+		d_advance (di, 1);
+		ret = d_make_builtin_type (di,
+					   &cplus_demangle_builtin_types[35]);
+		di->expansion += ret->u.s_builtin.type->len;
+		break;
+	      }
+	    if (d_peek_char (di) == 'x')
+	      suffix = 'x';
+	    if (!suffix && d_peek_char (di) != '_')
+	      return NULL;
+	    ret
+	      = d_make_extended_builtin_type (di,
+					      &cplus_demangle_builtin_types[34],
+					      arg, suffix);
+	    d_advance (di, 1);
+	    sprintf (buf, "%d", arg);
+	    di->expansion += ret->u.s_extended_builtin.type->len
+			     + strlen (buf) + (suffix != 0);
+	    break;
+	  }
 
 	case 'v':
 	  ret = d_vector_type (di);
@@ -2429,7 +2800,7 @@ cplus_demangle_type (struct d_info *di)
 
         case 'n':
           /* decltype(nullptr) */
-	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[32]);
+	  ret = d_make_builtin_type (di, &cplus_demangle_builtin_types[33]);
 	  di->expansion += ret->u.s_builtin.type->len;
 	  break;
 
@@ -2439,7 +2810,7 @@ cplus_demangle_type (struct d_info *di)
       break;
 
     default:
-      return NULL;
+      return d_class_enum_type (di, 1);
     }
 
   if (can_subst)
@@ -2451,7 +2822,7 @@ cplus_demangle_type (struct d_info *di)
   return ret;
 }
 
-/* <CV-qualifiers> ::= [r] [V] [K]  */
+/* <CV-qualifiers> ::= [r] [V] [K] [Dx] */
 
 static struct demangle_component **
 d_cv_qualifiers (struct d_info *di,
@@ -2462,9 +2833,10 @@ d_cv_qualifiers (struct d_info *di,
 
   pstart = pret;
   peek = d_peek_char (di);
-  while (peek == 'r' || peek == 'V' || peek == 'K')
+  while (next_is_type_qual (di))
     {
       enum demangle_component_type t;
+      struct demangle_component *right = NULL;
 
       d_advance (di, 1);
       if (peek == 'r')
@@ -2481,15 +2853,50 @@ d_cv_qualifiers (struct d_info *di,
 	       : DEMANGLE_COMPONENT_VOLATILE);
 	  di->expansion += sizeof "volatile";
 	}
-      else
+      else if (peek == 'K')
 	{
 	  t = (member_fn
 	       ? DEMANGLE_COMPONENT_CONST_THIS
 	       : DEMANGLE_COMPONENT_CONST);
 	  di->expansion += sizeof "const";
 	}
+      else
+	{
+	  peek = d_next_char (di);
+	  if (peek == 'x')
+	    {
+	      t = DEMANGLE_COMPONENT_TRANSACTION_SAFE;
+	      di->expansion += sizeof "transaction_safe";
+	    }
+	  else if (peek == 'o'
+		   || peek == 'O')
+	    {
+	      t = DEMANGLE_COMPONENT_NOEXCEPT;
+	      di->expansion += sizeof "noexcept";
+	      if (peek == 'O')
+		{
+		  right = d_expression (di);
+		  if (right == NULL)
+		    return NULL;
+		  if (! d_check_char (di, 'E'))
+		    return NULL;
+		}
+	    }
+	  else if (peek == 'w')
+	    {
+	      t = DEMANGLE_COMPONENT_THROW_SPEC;
+	      di->expansion += sizeof "throw";
+	      right = d_parmlist (di);
+	      if (right == NULL)
+		return NULL;
+	      if (! d_check_char (di, 'E'))
+		return NULL;
+	    }
+	  else
+	    return NULL;
+	}
 
-      *pret = d_make_comp (di, t, NULL, NULL);
+      *pret = d_make_comp (di, t, NULL, right);
       if (*pret == NULL)
 	return NULL;
       pret = &d_left (*pret);
@@ -2553,26 +2960,40 @@ d_ref_qualifier (struct d_info *di, struct demangle_component *sub)
   return ret;
 }
 
-/* <function-type> ::= F [Y] <bare-function-type> [<ref-qualifier>] E  */
+/* <function-type> ::= F [Y] <bare-function-type> [<ref-qualifier>] [T] E  */
 
 static struct demangle_component *
 d_function_type (struct d_info *di)
 {
-  struct demangle_component *ret;
+  struct demangle_component *ret = NULL;
 
-  if (! d_check_char (di, 'F'))
-    return NULL;
-  if (d_peek_char (di) == 'Y')
+  if ((di->options & DMGL_NO_RECURSE_LIMIT) == 0)
     {
-      /* Function has C linkage.  We don't print this information.
-	 FIXME: We should print it in verbose mode.  */
-      d_advance (di, 1);
-    }
-  ret = d_bare_function_type (di, 1);
-  ret = d_ref_qualifier (di, ret);
+      if (di->recursion_level > DEMANGLE_RECURSION_LIMIT)
+	/* FIXME: There ought to be a way to report
+	   that the recursion limit has been reached.  */
+	return NULL;
 
-  if (! d_check_char (di, 'E'))
-    return NULL;
+      di->recursion_level ++;
+    }
+
+  if (d_check_char (di, 'F'))
+    {
+      if (d_peek_char (di) == 'Y')
+	{
+	  /* Function has C linkage.  We don't print this information.
+	     FIXME: We should print it in verbose mode.  */
+	  d_advance (di, 1);
+	}
+      ret = d_bare_function_type (di, 1);
+      ret = d_ref_qualifier (di, ret);
+      
+      if (! d_check_char (di, 'E'))
+	ret = NULL;
+    }
+
+  if ((di->options & DMGL_NO_RECURSE_LIMIT) == 0)
+    di->recursion_level --;
   return ret;
 }
 
@@ -2662,9 +3083,9 @@ d_bare_function_type (struct d_info *di, int has_return_type)
 /* <class-enum-type> ::= <name>  */
 
 static struct demangle_component *
-d_class_enum_type (struct d_info *di)
+d_class_enum_type (struct d_info *di, int substable)
 {
-  return d_name (di);
+  return d_name (di, substable);
 }
 
 /* <array-type> ::= A <(positive dimension) number> _ <(element) type>
@@ -2779,10 +3200,10 @@ d_pointer_to_member_type (struct d_info *di)
 
 /* <non-negative number> _ */
 
-static long
+static int
 d_compact_number (struct d_info *di)
 {
-  long num;
+  int num;
   if (d_peek_char (di) == '_')
     num = 0;
   else if (d_peek_char (di) == 'n')
@@ -2790,7 +3211,7 @@ d_compact_number (struct d_info *di)
   else
     num = d_number (di) + 1;
 
-  if (! d_check_char (di, '_'))
+  if (num < 0 || ! d_check_char (di, '_'))
     return -1;
   return num;
 }
@@ -2802,7 +3223,7 @@ d_compact_number (struct d_info *di)
 static struct demangle_component *
 d_template_param (struct d_info *di)
 {
-  long param;
+  int param;
 
   if (! d_check_char (di, 'T'))
     return NULL;
@@ -2810,8 +3231,6 @@ d_template_param (struct d_info *di)
   param = d_compact_number (di);
   if (param < 0)
     return NULL;
-
-  ++di->did_subs;
 
   return d_make_template_param (di, param);
 }
@@ -2821,6 +3240,19 @@ d_template_param (struct d_info *di)
 static struct demangle_component *
 d_template_args (struct d_info *di)
 {
+  if (d_peek_char (di) != 'I'
+      && d_peek_char (di) != 'J')
+    return NULL;
+  d_advance (di, 1);
+
+  return d_template_args_1 (di);
+}
+
+/* <template-arg>* E  */
+
+static struct demangle_component *
+d_template_args_1 (struct d_info *di)
+{
   struct demangle_component *hold_last_name;
   struct demangle_component *al;
   struct demangle_component **pal;
@@ -2829,11 +3261,6 @@ d_template_args (struct d_info *di)
      clobber it, as that would give us the wrong name for a subsequent
      constructor or destructor.  */
   hold_last_name = di->last_name;
-
-  if (d_peek_char (di) != 'I'
-      && d_peek_char (di) != 'J')
-    return NULL;
-  d_advance (di, 1);
 
   if (d_peek_char (di) == 'E')
     {
@@ -2949,19 +3376,70 @@ op_is_new_cast (struct demangle_component *op)
 	      || code[0] == 'c' || code[0] == 'r'));
 }
 
+/*   <unresolved-name> ::= [gs] <base-unresolved-name> # x or (with "gs") ::x
+       ::= sr <unresolved-type> <base-unresolved-name> # T::x / decltype(p)::x
+       # T::N::x /decltype(p)::N::x
+       ::= srN <unresolved-type> <unresolved-qualifier-level>+ E <base-unresolved-name>
+       # A::x, N::y, A<T>::z; "gs" means leading "::"
+       ::= [gs] sr <unresolved-qualifier-level>+ E <base-unresolved-name>
+
+     "gs" is handled elsewhere, as a unary operator.  */
+
+static struct demangle_component *
+d_unresolved_name (struct d_info *di)
+{
+  struct demangle_component *type;
+  struct demangle_component *name;
+  char peek;
+
+  /* Consume the "sr".  */
+  d_advance (di, 2);
+
+  peek = d_peek_char (di);
+  if (di->unresolved_name_state
+      && (IS_DIGIT (peek)
+	  || IS_LOWER (peek)
+	  || peek == 'C'
+	  || peek == 'U'
+	  || peek == 'L'))
+    {
+      /* The third production is ambiguous with the old unresolved-name syntax
+	 of <type> <base-unresolved-name>; in the old mangling, A::x was mangled
+	 as sr1A1x, now sr1AE1x.  So we first try to demangle using the new
+	 mangling, then with the old if that fails.  */
+      di->unresolved_name_state = -1;
+      type = d_prefix (di, 0);
+      if (d_peek_char (di) == 'E')
+	d_advance (di, 1);
+    }
+  else
+    type = cplus_demangle_type (di);
+  name = d_unqualified_name (di, type, NULL);
+  if (d_peek_char (di) == 'I')
+    name = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, name,
+			d_template_args (di));
+  return name;
+}
+
 /* <expression> ::= <(unary) operator-name> <expression>
                 ::= <(binary) operator-name> <expression> <expression>
                 ::= <(trinary) operator-name> <expression> <expression> <expression>
 		::= cl <expression>+ E
                 ::= st <type>
                 ::= <template-param>
-                ::= sr <type> <unqualified-name>
-                ::= sr <type> <unqualified-name> <template-args>
+		::= u <source-name> <template-arg>* E # vendor extended expression
+		::= <unresolved-name>
                 ::= <expr-primary>
+
+  <braced-expression> ::= <expression>
+		      ::= di <field source-name> <braced-expression>	# .name = expr
+		      ::= dx <index expression> <braced-expression>	# [expr] = expr
+		      ::= dX <range begin expression> <range end expression> <braced-expression>
+									# [expr ... expr] = expr
 */
 
 static struct demangle_component *
-d_expression (struct d_info *di)
+d_expression_1 (struct d_info *di)
 {
   char peek;
 
@@ -2971,25 +3449,12 @@ d_expression (struct d_info *di)
   else if (peek == 'T')
     return d_template_param (di);
   else if (peek == 's' && d_peek_next_char (di) == 'r')
-    {
-      struct demangle_component *type;
-      struct demangle_component *name;
-
-      d_advance (di, 2);
-      type = cplus_demangle_type (di);
-      name = d_unqualified_name (di);
-      if (d_peek_char (di) != 'I')
-	return d_make_comp (di, DEMANGLE_COMPONENT_QUAL_NAME, type, name);
-      else
-	return d_make_comp (di, DEMANGLE_COMPONENT_QUAL_NAME, type,
-			    d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE, name,
-					 d_template_args (di)));
-    }
+    return d_unresolved_name (di);
   else if (peek == 's' && d_peek_next_char (di) == 'p')
     {
       d_advance (di, 2);
       return d_make_comp (di, DEMANGLE_COMPONENT_PACK_EXPANSION,
-			  d_expression (di), NULL);
+			  d_expression_1 (di), NULL);
     }
   else if (peek == 'f' && d_peek_next_char (di) == 'p')
     {
@@ -3004,9 +3469,10 @@ d_expression (struct d_info *di)
 	}
       else
 	{
-	  index = d_compact_number (di) + 1;
-	  if (index == 0)
+	  index = d_compact_number (di);
+	  if (index == INT_MAX || index == -1)
 	    return NULL;
+	  index++;
 	}
       return d_make_function_param (di, index);
     }
@@ -3021,7 +3487,7 @@ d_expression (struct d_info *di)
 	/* operator-function-id, i.e. operator+(t).  */
 	d_advance (di, 2);
 
-      name = d_unqualified_name (di);
+      name = d_unqualified_name (di, NULL, NULL);
       if (name == NULL)
 	return NULL;
       if (d_peek_char (di) == 'I')
@@ -3035,11 +3501,22 @@ d_expression (struct d_info *di)
     {
       /* Brace-enclosed initializer list, untyped or typed.  */
       struct demangle_component *type = NULL;
+      d_advance (di, 2);
       if (peek == 't')
 	type = cplus_demangle_type (di);
-      d_advance (di, 2);
+      if (!d_peek_char (di) || !d_peek_next_char (di))
+	return NULL;
       return d_make_comp (di, DEMANGLE_COMPONENT_INITIALIZER_LIST,
 			  type, d_exprlist (di, 'E'));
+    }
+  else if (peek == 'u')
+    {
+      /* A vendor extended expression.  */
+      struct demangle_component *name, *args;
+      d_advance (di, 1);
+      name = d_source_name (di);
+      args = d_template_args_1 (di);
+      return d_make_comp (di, DEMANGLE_COMPONENT_VENDOR_EXPR, name, args);
     }
   else
     {
@@ -3093,39 +3570,57 @@ d_expression (struct d_info *di)
 	    if (op->type == DEMANGLE_COMPONENT_CAST
 		&& d_check_char (di, '_'))
 	      operand = d_exprlist (di, 'E');
+	    else if (code && !strcmp (code, "sP"))
+	      operand = d_template_args_1 (di);
 	    else
-	      operand = d_expression (di);
+	      operand = d_expression_1 (di);
 
 	    if (suffix)
 	      /* Indicate the suffix variant for d_print_comp.  */
-	      return d_make_comp (di, DEMANGLE_COMPONENT_UNARY, op,
-				  d_make_comp (di,
-					       DEMANGLE_COMPONENT_BINARY_ARGS,
-					       operand, operand));
-	    else
-	      return d_make_comp (di, DEMANGLE_COMPONENT_UNARY, op,
-				  operand);
+	      operand = d_make_comp (di, DEMANGLE_COMPONENT_BINARY_ARGS,
+				     operand, operand);
+
+	    return d_make_comp (di, DEMANGLE_COMPONENT_UNARY, op, operand);
 	  }
 	case 2:
 	  {
 	    struct demangle_component *left;
 	    struct demangle_component *right;
 
+	    if (code == NULL)
+	      return NULL;
 	    if (op_is_new_cast (op))
 	      left = cplus_demangle_type (di);
+	    else if (code[0] == 'f')
+	      /* fold-expression.  */
+	      left = d_operator_name (di);
+	    else if (!strcmp (code, "di"))
+	      left = d_unqualified_name (di, NULL, NULL);
 	    else
-	      left = d_expression (di);
+	      left = d_expression_1 (di);
 	    if (!strcmp (code, "cl"))
 	      right = d_exprlist (di, 'E');
 	    else if (!strcmp (code, "dt") || !strcmp (code, "pt"))
 	      {
-		right = d_unqualified_name (di);
-		if (d_peek_char (di) == 'I')
-		  right = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE,
-				       right, d_template_args (di));
+		peek = d_peek_char (di);
+		/* These codes start a qualified name.  */
+		if ((peek == 'g' && d_peek_next_char (di) == 's')
+		    || (peek == 's' && d_peek_next_char (di) == 'r'))
+		  right = d_expression_1 (di);
+		else
+		  {
+		    /* Otherwise it's an unqualified name.  We use
+		       d_unqualified_name rather than d_expression_1 here for
+		       old mangled names that didn't add 'on' before operator
+		       names.  */
+		    right = d_unqualified_name (di, NULL, NULL);
+		    if (d_peek_char (di) == 'I')
+		      right = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE,
+					   right, d_template_args (di));
+		  }
 	      }
 	    else
-	      right = d_expression (di);
+	      right = d_expression_1 (di);
 
 	    return d_make_comp (di, DEMANGLE_COMPONENT_BINARY, op,
 				d_make_comp (di,
@@ -3138,12 +3633,26 @@ d_expression (struct d_info *di)
 	    struct demangle_component *second;
 	    struct demangle_component *third;
 
-	    if (!strcmp (code, "qu"))
+	    if (code == NULL)
+	      return NULL;
+	    else if (!strcmp (code, "qu")
+		     || !strcmp (code, "dX"))
 	      {
 		/* ?: expression.  */
-		first = d_expression (di);
-		second = d_expression (di);
-		third = d_expression (di);
+		first = d_expression_1 (di);
+		second = d_expression_1 (di);
+		third = d_expression_1 (di);
+		if (third == NULL)
+		  return NULL;
+	      }
+	    else if (code[0] == 'f')
+	      {
+		/* fold-expression.  */
+		first = d_operator_name (di);
+		second = d_expression_1 (di);
+		third = d_expression_1 (di);
+		if (third == NULL)
+		  return NULL;
 	      }
 	    else if (code[0] == 'n')
 	      {
@@ -3167,7 +3676,7 @@ d_expression (struct d_info *di)
 		else if (d_peek_char (di) == 'i'
 			 && d_peek_next_char (di) == 'l')
 		  /* initializer-list.  */
-		  third = d_expression (di);
+		  third = d_expression_1 (di);
 		else
 		  return NULL;
 	      }
@@ -3185,6 +3694,18 @@ d_expression (struct d_info *di)
 	  return NULL;
 	}
     }
+}
+
+static struct demangle_component *
+d_expression (struct d_info *di)
+{
+  struct demangle_component *ret;
+  int was_expression = di->is_expression;
+
+  di->is_expression = 1;
+  ret = d_expression_1 (di);
+  di->is_expression = was_expression;
+  return ret;
 }
 
 /* <expr-primary> ::= L <type> <(value) number> E
@@ -3218,6 +3739,17 @@ d_expr_primary (struct d_info *di)
       if (type->type == DEMANGLE_COMPONENT_BUILTIN_TYPE
 	  && type->u.s_builtin.type->print != D_PRINT_DEFAULT)
 	di->expansion -= type->u.s_builtin.type->len;
+
+      if (type->type == DEMANGLE_COMPONENT_BUILTIN_TYPE
+	  && strcmp (type->u.s_builtin.type->name,
+		     cplus_demangle_builtin_types[33].name) == 0)
+	{
+	  if (d_peek_char (di) == 'E')
+	    {
+	      d_advance (di, 1);
+	      return type;
+	    }
+	}
 
       /* Rather than try to interpret the literal value, we just
 	 collect it as a string.  Note that it's possible to have a
@@ -3259,11 +3791,14 @@ static struct demangle_component *
 d_local_name (struct d_info *di)
 {
   struct demangle_component *function;
+  struct demangle_component *name;
 
   if (! d_check_char (di, 'Z'))
     return NULL;
 
   function = d_encoding (di, 0);
+  if (!function)
+    return NULL;
 
   if (! d_check_char (di, 'E'))
     return NULL;
@@ -3273,13 +3808,10 @@ d_local_name (struct d_info *di)
       d_advance (di, 1);
       if (! d_discriminator (di))
 	return NULL;
-      return d_make_comp (di, DEMANGLE_COMPONENT_LOCAL_NAME, function,
-			  d_make_name (di, "string literal",
-				       sizeof "string literal" - 1));
+      name = d_make_name (di, "string literal", sizeof "string literal" - 1);
     }
   else
     {
-      struct demangle_component *name;
       int num = -1;
 
       if (d_peek_char (di) == 'd')
@@ -3291,25 +3823,38 @@ d_local_name (struct d_info *di)
 	    return NULL;
 	}
 
-      name = d_name (di);
-      if (name)
-	switch (name->type)
-	  {
-	    /* Lambdas and unnamed types have internal discriminators.  */
-	  case DEMANGLE_COMPONENT_LAMBDA:
-	  case DEMANGLE_COMPONENT_UNNAMED_TYPE:
-	    break;
-	  default:
-	    if (! d_discriminator (di))
-	      return NULL;
-	  }
+      name = d_name (di, 0);
+
+      if (name
+	  /* Lambdas and unnamed types have internal discriminators
+	     and are not functions.  */
+	  && name->type != DEMANGLE_COMPONENT_LAMBDA
+	  && name->type != DEMANGLE_COMPONENT_UNNAMED_TYPE)
+	{
+	  /* Read and ignore an optional discriminator.  */
+	  if (! d_discriminator (di))
+	    return NULL;
+	}
+
       if (num >= 0)
 	name = d_make_default_arg (di, num, name);
-      return d_make_comp (di, DEMANGLE_COMPONENT_LOCAL_NAME, function, name);
     }
+
+  /* Elide the return type of the containing function so as to not
+     confuse the user thinking it is the return type of whatever local
+     function we might be containing.  */
+  if (function->type == DEMANGLE_COMPONENT_TYPED_NAME
+      && d_right (function)->type == DEMANGLE_COMPONENT_FUNCTION_TYPE)
+    d_left (d_right (function)) = NULL;
+
+  return d_make_comp (di, DEMANGLE_COMPONENT_LOCAL_NAME, function, name);
 }
 
-/* <discriminator> ::= _ <(non-negative) number>
+/* <discriminator> ::= _ <number>    # when number < 10
+                   ::= __ <number> _ # when number >= 10
+
+   <discriminator> ::= _ <number>    # when number >=10
+   is also accepted to support gcc versions that wrongly mangled that way.
 
    We demangle the discriminator, but we don't print it out.  FIXME:
    We should print it out in verbose mode.  */
@@ -3317,52 +3862,151 @@ d_local_name (struct d_info *di)
 static int
 d_discriminator (struct d_info *di)
 {
-  long discrim;
+  int discrim, num_underscores = 1;
 
   if (d_peek_char (di) != '_')
     return 1;
   d_advance (di, 1);
+  if (d_peek_char (di) == '_')
+    {
+      ++num_underscores;
+      d_advance (di, 1);
+    }
+
   discrim = d_number (di);
   if (discrim < 0)
     return 0;
+  if (num_underscores > 1 && discrim >= 10)
+    {
+      if (d_peek_char (di) == '_')
+	d_advance (di, 1);
+      else
+	return 0;
+    }
+
   return 1;
 }
 
-/* <closure-type-name> ::= Ul <lambda-sig> E [ <nonnegative number> ] _ */
+/* <template-parm> ::= Ty
+                   ::= Tn <type>
+		   ::= Tt <template-head> E
+		   ::= Tp <template-parm>  */
+
+static struct demangle_component *
+d_template_parm (struct d_info *di, int *bad)
+{
+  if (d_peek_char (di) != 'T')
+    return NULL;
+
+  struct demangle_component *op;
+  enum demangle_component_type kind;
+  switch (d_peek_next_char (di))
+    {
+    default:
+      return NULL;
+
+    case 'p': /* Pack  */
+      d_advance (di, 2);
+      op = d_template_parm (di, bad);
+      kind = DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM;
+      if (!op)
+	{
+	  *bad = 1;
+	  return NULL;
+	}
+      break;
+
+    case 'y': /* Typename  */
+      d_advance (di, 2);
+      op = NULL;
+      kind = DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM;
+      break;
+
+    case 'n': /* Non-Type  */
+      d_advance (di, 2);
+      op = cplus_demangle_type (di);
+      kind = DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM;
+      if (!op)
+	{
+	  *bad = 1;
+	  return NULL;
+	}
+      break;
+
+    case 't': /* Template */
+      d_advance (di, 2);
+      op = d_template_head (di, bad);
+      kind = DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM;
+      if (!op || !d_check_char (di, 'E'))
+	{
+	  *bad = 1;
+	  return NULL;
+	}
+    }
+
+  return d_make_comp (di, kind, op, NULL);
+}
+
+/* <template-head> ::= <template-head>? <template-parm>  */
+
+static struct demangle_component *
+d_template_head (struct d_info *di, int *bad)
+{
+  struct demangle_component *res = NULL, **slot = &res;
+  struct demangle_component *op;
+
+  while ((op = d_template_parm (di, bad)))
+    {
+      *slot = op;
+      slot = &d_right (op);
+    }
+
+  /* Wrap it in a template head, to make concatenating with any parm list, and
+     printing simpler.  */
+  if (res)
+    res = d_make_comp (di, DEMANGLE_COMPONENT_TEMPLATE_HEAD, res, NULL);
+
+  return res;
+}
+
+/* <closure-type-name> ::= Ul <template-head>? <lambda-sig> E [ <nonnegative number> ] _ */
 
 static struct demangle_component *
 d_lambda (struct d_info *di)
 {
-  struct demangle_component *tl;
-  struct demangle_component *ret;
-  int num;
-
   if (! d_check_char (di, 'U'))
     return NULL;
   if (! d_check_char (di, 'l'))
     return NULL;
 
-  tl = d_parmlist (di);
+  int bad = 0;
+  struct demangle_component *head = d_template_head (di, &bad);
+  if (bad)
+    return NULL;
+
+  struct demangle_component *tl = d_parmlist (di);
   if (tl == NULL)
     return NULL;
+  if (head)
+    {
+      d_right (head) = tl;
+      tl = head;
+    }
 
   if (! d_check_char (di, 'E'))
     return NULL;
 
-  num = d_compact_number (di);
+  int num = d_compact_number (di);
   if (num < 0)
     return NULL;
 
-  ret = d_make_empty (di);
+  struct demangle_component *ret = d_make_empty (di);
   if (ret)
     {
       ret->type = DEMANGLE_COMPONENT_LAMBDA;
       ret->u.s_unary_num.sub = tl;
       ret->u.s_unary_num.num = num;
     }
-
-  if (! d_add_substitution (di, ret))
-    return NULL;
 
   return ret;
 }
@@ -3373,7 +4017,7 @@ static struct demangle_component *
 d_unnamed_type (struct d_info *di)
 {
   struct demangle_component *ret;
-  long num;
+  int num;
 
   if (! d_check_char (di, 'U'))
     return NULL;
@@ -3407,10 +4051,11 @@ d_clone_suffix (struct d_info *di, struct demangle_component *encoding)
   const char *pend = suffix;
   struct demangle_component *n;
 
-  if (*pend == '.' && (IS_LOWER (pend[1]) || pend[1] == '_'))
+  if (*pend == '.' && (IS_LOWER (pend[1]) || IS_DIGIT (pend[1])
+		       || pend[1] == '_'))
     {
       pend += 2;
-      while (IS_LOWER (*pend) || *pend == '_')
+      while (IS_LOWER (*pend) || IS_DIGIT (*pend) || *pend == '_')
 	++pend;
     }
   while (*pend == '.' && IS_DIGIT (pend[1]))
@@ -3521,8 +4166,6 @@ d_substitution (struct d_info *di, int prefix)
       if (id >= (unsigned int) di->next_sub)
 	return NULL;
 
-      ++di->did_subs;
-
       return di->subs[id];
     }
   else
@@ -3549,6 +4192,7 @@ d_substitution (struct d_info *di, int prefix)
 	    {
 	      const char *s;
 	      int len;
+	      struct demangle_component *dc;
 
 	      if (p->set_last_name != NULL)
 		di->last_name = d_make_sub (di, p->set_last_name,
@@ -3564,12 +4208,39 @@ d_substitution (struct d_info *di, int prefix)
 		  len = p->simple_len;
 		}
 	      di->expansion += len;
-	      return d_make_sub (di, s, len);
+	      dc = d_make_sub (di, s, len);
+	      if (d_peek_char (di) == 'B')
+		{
+		  /* If there are ABI tags on the abbreviation, it becomes
+		     a substitution candidate.  */
+		  dc = d_abi_tags (di, dc);
+		  if (! d_add_substitution (di, dc))
+		    return NULL;
+		}
+	      return dc;
 	    }
 	}
 
       return NULL;
     }
+}
+
+static void
+d_checkpoint (struct d_info *di, struct d_info_checkpoint *checkpoint)
+{
+  checkpoint->n = di->n;
+  checkpoint->next_comp = di->next_comp;
+  checkpoint->next_sub = di->next_sub;
+  checkpoint->expansion = di->expansion;
+}
+
+static void
+d_backtrack (struct d_info *di, struct d_info_checkpoint *checkpoint)
+{
+  di->n = checkpoint->n;
+  di->next_comp = checkpoint->next_comp;
+  di->next_sub = checkpoint->next_sub;
+  di->expansion = checkpoint->expansion;
 }
 
 /* Initialize a growable string.  */
@@ -3648,11 +4319,161 @@ d_growable_string_callback_adapter (const char *s, size_t l, void *opaque)
   d_growable_string_append_buffer (dgs, s, l);
 }
 
+/* Walk the tree, counting the number of templates encountered, and
+   the number of times a scope might be saved.  These counts will be
+   used to allocate data structures for d_print_comp, so the logic
+   here must mirror the logic d_print_comp will use.  It is not
+   important that the resulting numbers are exact, so long as they
+   are larger than the actual numbers encountered.  */
+
+static void
+d_count_templates_scopes (struct d_print_info *dpi,
+			  struct demangle_component *dc)
+{
+  if (dc == NULL || dc->d_counting > 1 || dpi->recursion > MAX_RECURSION_COUNT)
+    return;
+
+  ++ dc->d_counting;
+
+  switch (dc->type)
+    {
+    case DEMANGLE_COMPONENT_NAME:
+    case DEMANGLE_COMPONENT_TEMPLATE_PARAM:
+    case DEMANGLE_COMPONENT_FUNCTION_PARAM:
+    case DEMANGLE_COMPONENT_SUB_STD:
+    case DEMANGLE_COMPONENT_BUILTIN_TYPE:
+    case DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE:
+    case DEMANGLE_COMPONENT_OPERATOR:
+    case DEMANGLE_COMPONENT_CHARACTER:
+    case DEMANGLE_COMPONENT_NUMBER:
+    case DEMANGLE_COMPONENT_UNNAMED_TYPE:
+    case DEMANGLE_COMPONENT_STRUCTURED_BINDING:
+    case DEMANGLE_COMPONENT_MODULE_NAME:
+    case DEMANGLE_COMPONENT_MODULE_PARTITION:
+    case DEMANGLE_COMPONENT_MODULE_INIT:
+    case DEMANGLE_COMPONENT_FIXED_TYPE:
+    case DEMANGLE_COMPONENT_TEMPLATE_HEAD:
+    case DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM:
+    case DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM:
+    case DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM:
+    case DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM:
+      break;
+
+    case DEMANGLE_COMPONENT_TEMPLATE:
+      dpi->num_copy_templates++;
+      goto recurse_left_right;
+
+    case DEMANGLE_COMPONENT_REFERENCE:
+    case DEMANGLE_COMPONENT_RVALUE_REFERENCE:
+      if (d_left (dc)->type == DEMANGLE_COMPONENT_TEMPLATE_PARAM)
+	dpi->num_saved_scopes++;
+      goto recurse_left_right;
+
+    case DEMANGLE_COMPONENT_QUAL_NAME:
+    case DEMANGLE_COMPONENT_LOCAL_NAME:
+    case DEMANGLE_COMPONENT_TYPED_NAME:
+    case DEMANGLE_COMPONENT_VTABLE:
+    case DEMANGLE_COMPONENT_VTT:
+    case DEMANGLE_COMPONENT_CONSTRUCTION_VTABLE:
+    case DEMANGLE_COMPONENT_TYPEINFO:
+    case DEMANGLE_COMPONENT_TYPEINFO_NAME:
+    case DEMANGLE_COMPONENT_TYPEINFO_FN:
+    case DEMANGLE_COMPONENT_THUNK:
+    case DEMANGLE_COMPONENT_VIRTUAL_THUNK:
+    case DEMANGLE_COMPONENT_COVARIANT_THUNK:
+    case DEMANGLE_COMPONENT_JAVA_CLASS:
+    case DEMANGLE_COMPONENT_GUARD:
+    case DEMANGLE_COMPONENT_TLS_INIT:
+    case DEMANGLE_COMPONENT_TLS_WRAPPER:
+    case DEMANGLE_COMPONENT_REFTEMP:
+    case DEMANGLE_COMPONENT_HIDDEN_ALIAS:
+    case DEMANGLE_COMPONENT_RESTRICT:
+    case DEMANGLE_COMPONENT_VOLATILE:
+    case DEMANGLE_COMPONENT_CONST:
+    case DEMANGLE_COMPONENT_RESTRICT_THIS:
+    case DEMANGLE_COMPONENT_VOLATILE_THIS:
+    case DEMANGLE_COMPONENT_CONST_THIS:
+    case DEMANGLE_COMPONENT_REFERENCE_THIS:
+    case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
+    case DEMANGLE_COMPONENT_TRANSACTION_SAFE:
+    case DEMANGLE_COMPONENT_NOEXCEPT:
+    case DEMANGLE_COMPONENT_THROW_SPEC:
+    case DEMANGLE_COMPONENT_VENDOR_TYPE_QUAL:
+    case DEMANGLE_COMPONENT_POINTER:
+    case DEMANGLE_COMPONENT_COMPLEX:
+    case DEMANGLE_COMPONENT_IMAGINARY:
+    case DEMANGLE_COMPONENT_VENDOR_TYPE:
+    case DEMANGLE_COMPONENT_FUNCTION_TYPE:
+    case DEMANGLE_COMPONENT_ARRAY_TYPE:
+    case DEMANGLE_COMPONENT_PTRMEM_TYPE:
+    case DEMANGLE_COMPONENT_VECTOR_TYPE:
+    case DEMANGLE_COMPONENT_ARGLIST:
+    case DEMANGLE_COMPONENT_TEMPLATE_ARGLIST:
+    case DEMANGLE_COMPONENT_TPARM_OBJ:
+    case DEMANGLE_COMPONENT_INITIALIZER_LIST:
+    case DEMANGLE_COMPONENT_CAST:
+    case DEMANGLE_COMPONENT_CONVERSION:
+    case DEMANGLE_COMPONENT_NULLARY:
+    case DEMANGLE_COMPONENT_UNARY:
+    case DEMANGLE_COMPONENT_BINARY:
+    case DEMANGLE_COMPONENT_BINARY_ARGS:
+    case DEMANGLE_COMPONENT_TRINARY:
+    case DEMANGLE_COMPONENT_TRINARY_ARG1:
+    case DEMANGLE_COMPONENT_TRINARY_ARG2:
+    case DEMANGLE_COMPONENT_LITERAL:
+    case DEMANGLE_COMPONENT_LITERAL_NEG:
+    case DEMANGLE_COMPONENT_VENDOR_EXPR:
+    case DEMANGLE_COMPONENT_JAVA_RESOURCE:
+    case DEMANGLE_COMPONENT_COMPOUND_NAME:
+    case DEMANGLE_COMPONENT_DECLTYPE:
+    case DEMANGLE_COMPONENT_TRANSACTION_CLONE:
+    case DEMANGLE_COMPONENT_NONTRANSACTION_CLONE:
+    case DEMANGLE_COMPONENT_PACK_EXPANSION:
+    case DEMANGLE_COMPONENT_TAGGED_NAME:
+    case DEMANGLE_COMPONENT_CLONE:
+    recurse_left_right:
+      /* PR 89394 - Check for too much recursion.  */
+      if (dpi->recursion > DEMANGLE_RECURSION_LIMIT)
+	/* FIXME: There ought to be a way to report to the
+	   user that the recursion limit has been reached.  */
+	return;
+
+      ++ dpi->recursion;
+      d_count_templates_scopes (dpi, d_left (dc));
+      d_count_templates_scopes (dpi, d_right (dc));
+      -- dpi->recursion;
+      break;
+
+    case DEMANGLE_COMPONENT_CTOR:
+      d_count_templates_scopes (dpi, dc->u.s_ctor.name);
+      break;
+
+    case DEMANGLE_COMPONENT_DTOR:
+      d_count_templates_scopes (dpi, dc->u.s_dtor.name);
+      break;
+
+    case DEMANGLE_COMPONENT_EXTENDED_OPERATOR:
+      d_count_templates_scopes (dpi, dc->u.s_extended_operator.name);
+      break;
+
+    case DEMANGLE_COMPONENT_GLOBAL_CONSTRUCTORS:
+    case DEMANGLE_COMPONENT_GLOBAL_DESTRUCTORS:
+    case DEMANGLE_COMPONENT_MODULE_ENTITY:
+      d_count_templates_scopes (dpi, d_left (dc));
+      break;
+
+    case DEMANGLE_COMPONENT_LAMBDA:
+    case DEMANGLE_COMPONENT_DEFAULT_ARG:
+      d_count_templates_scopes (dpi, dc->u.s_unary_num.sub);
+      break;
+    }
+}
+
 /* Initialize a print information structure.  */
 
 static void
 d_print_init (struct d_print_info *dpi, demangle_callbackref callback,
-	      void *opaque)
+	      void *opaque, struct demangle_component *dc)
 {
   dpi->len = 0;
   dpi->last_char = '\0';
@@ -3665,6 +4486,28 @@ d_print_init (struct d_print_info *dpi, demangle_callbackref callback,
   dpi->opaque = opaque;
 
   dpi->demangle_failure = 0;
+  dpi->recursion = 0;
+  dpi->lambda_tpl_parms = 0;
+
+  dpi->component_stack = NULL;
+
+  dpi->saved_scopes = NULL;
+  dpi->next_saved_scope = 0;
+  dpi->num_saved_scopes = 0;
+
+  dpi->copy_templates = NULL;
+  dpi->next_copy_template = 0;
+  dpi->num_copy_templates = 0;
+
+  d_count_templates_scopes (dpi, dc);
+  /* If we did not reach the recursion limit, then reset the
+     current recursion value back to 0, so that we can print
+     the templates.  */
+  if (dpi->recursion < DEMANGLE_RECURSION_LIMIT)
+    dpi->recursion = 0;
+  dpi->num_copy_templates *= dpi->num_saved_scopes;
+
+  dpi->current_template = NULL;
 }
 
 /* Indicate that an error occurred during printing, and test for error.  */
@@ -3720,10 +4563,10 @@ d_append_string (struct d_print_info *dpi, const char *s)
 }
 
 static inline void
-d_append_num (struct d_print_info *dpi, long l)
+d_append_num (struct d_print_info *dpi, int l)
 {
   char buf[25];
-  sprintf (buf,"%ld", l);
+  sprintf (buf,"%d", l);
   d_append_string (dpi, buf);
 }
 
@@ -3745,14 +4588,33 @@ d_last_char (struct d_print_info *dpi)
 CP_STATIC_IF_GLIBCPP_V3
 int
 cplus_demangle_print_callback (int options,
-                               const struct demangle_component *dc,
+                               struct demangle_component *dc,
                                demangle_callbackref callback, void *opaque)
 {
   struct d_print_info dpi;
 
-  d_print_init (&dpi, callback, opaque);
+  d_print_init (&dpi, callback, opaque, dc);
 
-  d_print_comp (&dpi, options, dc);
+  {
+#ifdef CP_DYNAMIC_ARRAYS
+    /* Avoid zero-length VLAs, which are prohibited by the C99 standard
+       and flagged as errors by Address Sanitizer.  */
+    __extension__ struct d_saved_scope scopes[(dpi.num_saved_scopes > 0)
+                                              ? dpi.num_saved_scopes : 1];
+    __extension__ struct d_print_template temps[(dpi.num_copy_templates > 0)
+                                                ? dpi.num_copy_templates : 1];
+
+    dpi.saved_scopes = scopes;
+    dpi.copy_templates = temps;
+#else
+    dpi.saved_scopes = alloca (dpi.num_saved_scopes
+			       * sizeof (*dpi.saved_scopes));
+    dpi.copy_templates = alloca (dpi.num_copy_templates
+				 * sizeof (*dpi.copy_templates));
+#endif
+
+    d_print_comp (&dpi, options, dc);
+  }
 
   d_print_flush (&dpi);
 
@@ -3769,7 +4631,7 @@ cplus_demangle_print_callback (int options,
 
 CP_STATIC_IF_GLIBCPP_V3
 char *
-cplus_demangle_print (int options, const struct demangle_component *dc,
+cplus_demangle_print (int options, struct demangle_component *dc,
                       int estimate, size_t *palc)
 {
   struct d_growable_string dgs;
@@ -3790,12 +4652,16 @@ cplus_demangle_print (int options, const struct demangle_component *dc,
 }
 
 /* Returns the I'th element of the template arglist ARGS, or NULL on
-   failure.  */
+   failure.  If I is negative, return the entire arglist.  */
 
 static struct demangle_component *
 d_index_template_argument (struct demangle_component *args, int i)
 {
   struct demangle_component *a;
+
+  if (i < 0)
+    /* Print the whole argument pack.  */
+    return args;
 
   for (a = args;
        a != NULL;
@@ -3857,10 +4723,13 @@ d_find_pack (struct d_print_info *dpi,
     case DEMANGLE_COMPONENT_TAGGED_NAME:
     case DEMANGLE_COMPONENT_OPERATOR:
     case DEMANGLE_COMPONENT_BUILTIN_TYPE:
+    case DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE:
     case DEMANGLE_COMPONENT_SUB_STD:
     case DEMANGLE_COMPONENT_CHARACTER:
     case DEMANGLE_COMPONENT_FUNCTION_PARAM:
     case DEMANGLE_COMPONENT_UNNAMED_TYPE:
+    case DEMANGLE_COMPONENT_DEFAULT_ARG:
+    case DEMANGLE_COMPONENT_NUMBER:
       return NULL;
 
     case DEMANGLE_COMPONENT_EXTENDED_OPERATOR:
@@ -3893,12 +4762,36 @@ d_pack_length (const struct demangle_component *dc)
   return count;
 }
 
+/* Returns the number of template args in DC, expanding any pack expansions
+   found there.  */
+
+static int
+d_args_length (struct d_print_info *dpi, const struct demangle_component *dc)
+{
+  int count = 0;
+  for (; dc && dc->type == DEMANGLE_COMPONENT_TEMPLATE_ARGLIST;
+       dc = d_right (dc))
+    {
+      struct demangle_component *elt = d_left (dc);
+      if (elt == NULL)
+	break;
+      if (elt->type == DEMANGLE_COMPONENT_PACK_EXPANSION)
+	{
+	  struct demangle_component *a = d_find_pack (dpi, d_left (elt));
+	  count += d_pack_length (a);
+	}
+      else
+	++count;
+    }
+  return count;
+}
+
 /* DC is a component of a mangled expression.  Print it, wrapped in parens
    if needed.  */
 
 static void
 d_print_subexpr (struct d_print_info *dpi, int options,
-		 const struct demangle_component *dc)
+		 struct demangle_component *dc)
 {
   int simple = 0;
   if (dc->type == DEMANGLE_COMPONENT_NAME
@@ -3913,15 +4806,227 @@ d_print_subexpr (struct d_print_info *dpi, int options,
     d_append_char (dpi, ')');
 }
 
+/* Save the current scope.  */
+
+static void
+d_save_scope (struct d_print_info *dpi,
+	      const struct demangle_component *container)
+{
+  struct d_saved_scope *scope;
+  struct d_print_template *src, **link;
+
+  if (dpi->next_saved_scope >= dpi->num_saved_scopes)
+    {
+      d_print_error (dpi);
+      return;
+    }
+  scope = &dpi->saved_scopes[dpi->next_saved_scope];
+  dpi->next_saved_scope++;
+
+  scope->container = container;
+  link = &scope->templates;
+
+  for (src = dpi->templates; src != NULL; src = src->next)
+    {
+      struct d_print_template *dst;
+
+      if (dpi->next_copy_template >= dpi->num_copy_templates)
+	{
+	  d_print_error (dpi);
+	  return;
+	}
+      dst = &dpi->copy_templates[dpi->next_copy_template];
+      dpi->next_copy_template++;
+
+      dst->template_decl = src->template_decl;
+      *link = dst;
+      link = &dst->next;
+    }
+
+  *link = NULL;
+}
+
+/* Attempt to locate a previously saved scope.  Returns NULL if no
+   corresponding saved scope was found.  */
+
+static struct d_saved_scope *
+d_get_saved_scope (struct d_print_info *dpi,
+		   const struct demangle_component *container)
+{
+  int i;
+
+  for (i = 0; i < dpi->next_saved_scope; i++)
+    if (dpi->saved_scopes[i].container == container)
+      return &dpi->saved_scopes[i];
+
+  return NULL;
+}
+
+/* If DC is a C++17 fold-expression, print it and return true; otherwise
+   return false.  */
+
+static int
+d_maybe_print_fold_expression (struct d_print_info *dpi, int options,
+			       struct demangle_component *dc)
+{
+  struct demangle_component *ops, *operator_, *op1, *op2;
+  int save_idx;
+
+  const char *fold_code = d_left (dc)->u.s_operator.op->code;
+  if (fold_code[0] != 'f')
+    return 0;
+
+  ops = d_right (dc);
+  operator_ = d_left (ops);
+  op1 = d_right (ops);
+  op2 = 0;
+  if (op1->type == DEMANGLE_COMPONENT_TRINARY_ARG2)
+    {
+      op2 = d_right (op1);
+      op1 = d_left (op1);
+    }
+
+  /* Print the whole pack.  */
+  save_idx = dpi->pack_index;
+  dpi->pack_index = -1;
+
+  switch (fold_code[1])
+    {
+      /* Unary left fold, (... + X).  */
+    case 'l':
+      d_append_string (dpi, "(...");
+      d_print_expr_op (dpi, options, operator_);
+      d_print_subexpr (dpi, options, op1);
+      d_append_char (dpi, ')');
+      break;
+
+      /* Unary right fold, (X + ...).  */
+    case 'r':
+      d_append_char (dpi, '(');
+      d_print_subexpr (dpi, options, op1);
+      d_print_expr_op (dpi, options, operator_);
+      d_append_string (dpi, "...)");
+      break;
+
+      /* Binary left fold, (42 + ... + X).  */
+    case 'L':
+      /* Binary right fold, (X + ... + 42).  */
+    case 'R':
+      d_append_char (dpi, '(');
+      d_print_subexpr (dpi, options, op1);
+      d_print_expr_op (dpi, options, operator_);
+      d_append_string (dpi, "...");
+      d_print_expr_op (dpi, options, operator_);
+      d_print_subexpr (dpi, options, op2);
+      d_append_char (dpi, ')');
+      break;
+    }
+
+  dpi->pack_index = save_idx;
+  return 1;
+}
+
+/* True iff DC represents a C99-style designated initializer.  */
+
+static int
+is_designated_init (struct demangle_component *dc)
+{
+  if (dc->type != DEMANGLE_COMPONENT_BINARY
+      && dc->type != DEMANGLE_COMPONENT_TRINARY)
+    return 0;
+
+  struct demangle_component *op = d_left (dc);
+  const char *code = op->u.s_operator.op->code;
+  return (code[0] == 'd'
+	  && (code[1] == 'i' || code[1] == 'x' || code[1] == 'X'));
+}
+
+/* If DC represents a C99-style designated initializer, print it and return
+   true; otherwise, return false.  */
+
+static int
+d_maybe_print_designated_init (struct d_print_info *dpi, int options,
+			       struct demangle_component *dc)
+{
+  if (!is_designated_init (dc))
+    return 0;
+
+  const char *code = d_left (dc)->u.s_operator.op->code;
+
+  struct demangle_component *operands = d_right (dc);
+  struct demangle_component *op1 = d_left (operands);
+  struct demangle_component *op2 = d_right (operands);
+
+  if (code[1] == 'i')
+    d_append_char (dpi, '.');
+  else
+    d_append_char (dpi, '[');
+
+  d_print_comp (dpi, options, op1);
+  if (code[1] == 'X')
+    {
+      d_append_string (dpi, " ... ");
+      d_print_comp (dpi, options, d_left (op2));
+      op2 = d_right (op2);
+    }
+  if (code[1] != 'i')
+    d_append_char (dpi, ']');
+  if (is_designated_init (op2))
+    {
+      /* Don't put '=' or '(' between chained designators.  */
+      d_print_comp (dpi, options, op2);
+    }
+  else
+    {
+      d_append_char (dpi, '=');
+      d_print_subexpr (dpi, options, op2);
+    }
+  return 1;
+}
+
+static void
+d_print_lambda_parm_name (struct d_print_info *dpi, int type, unsigned index)
+{
+  const char *str;
+  switch (type)
+    {
+    default:
+      dpi->demangle_failure = 1;
+      str = "";
+      break;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM:
+      str = "$T";
+      break;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM:
+      str = "$N";
+      break;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM:
+      str = "$TT";
+      break;
+    }
+  d_append_string (dpi, str);
+  d_append_num (dpi, index);
+}
+
 /* Subroutine to handle components.  */
 
 static void
-d_print_comp (struct d_print_info *dpi, int options,
-              const struct demangle_component *dc)
+d_print_comp_inner (struct d_print_info *dpi, int options,
+		    struct demangle_component *dc)
 {
   /* Magic variable to let reference smashing skip over the next modifier
      without needing to modify *dc.  */
-  const struct demangle_component *mod_inner = NULL;
+  struct demangle_component *mod_inner = NULL;
+
+  /* Variable used to store the current templates while a previously
+     captured scope is used.  */
+  struct d_print_template *saved_templates;
+
+  /* Nonzero if templates have been stored in the above variable.  */
+  int need_template_restore = 0;
 
   if (dc == NULL)
     {
@@ -3945,6 +5050,38 @@ d_print_comp (struct d_print_info *dpi, int options,
       d_append_string (dpi, "[abi:");
       d_print_comp (dpi, options, d_right (dc));
       d_append_char (dpi, ']');
+      return;
+
+    case DEMANGLE_COMPONENT_STRUCTURED_BINDING:
+      d_append_char (dpi, '[');
+      for (;;)
+	{
+	  d_print_comp (dpi, options, d_left (dc));
+	  dc = d_right (dc);
+	  if (!dc)
+	    break;
+	  d_append_string (dpi, ", ");
+	}
+      d_append_char (dpi, ']');
+      return;
+
+    case DEMANGLE_COMPONENT_MODULE_ENTITY:
+      d_print_comp (dpi, options, d_left (dc));
+      d_append_char (dpi, '@');
+      d_print_comp (dpi, options, d_right (dc));
+      return;
+
+    case DEMANGLE_COMPONENT_MODULE_NAME:
+    case DEMANGLE_COMPONENT_MODULE_PARTITION:
+      {
+	if (d_left (dc))
+	  d_print_comp (dpi, options, d_left (dc));
+	char c = dc->type == DEMANGLE_COMPONENT_MODULE_PARTITION
+	  ? ':' : d_left (dc) ? '.' : 0;
+	if (c)
+	  d_append_char (dpi, c);
+	d_print_comp (dpi, options, d_right (dc));
+      }
       return;
 
     case DEMANGLE_COMPONENT_QUAL_NAME:
@@ -3997,11 +5134,7 @@ d_print_comp (struct d_print_info *dpi, int options,
 	    adpm[i].templates = dpi->templates;
 	    ++i;
 
-	    if (typed_name->type != DEMANGLE_COMPONENT_RESTRICT_THIS
-		&& typed_name->type != DEMANGLE_COMPONENT_VOLATILE_THIS
-		&& typed_name->type != DEMANGLE_COMPONENT_CONST_THIS
-		&& typed_name->type != DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS
-		&& typed_name->type != DEMANGLE_COMPONENT_REFERENCE_THIS)
+	    if (!is_fnqual_component_type (typed_name->type))
 	      break;
 
 	    typed_name = d_left (typed_name);
@@ -4013,32 +5146,17 @@ d_print_comp (struct d_print_info *dpi, int options,
 	    return;
 	  }
 
-	/* If typed_name is a template, then it applies to the
-	   function type as well.  */
-	if (typed_name->type == DEMANGLE_COMPONENT_TEMPLATE)
-	  {
-	    dpt.next = dpi->templates;
-	    dpi->templates = &dpt;
-	    dpt.template_decl = typed_name;
-	  }
-
 	/* If typed_name is a DEMANGLE_COMPONENT_LOCAL_NAME, then
 	   there may be CV-qualifiers on its right argument which
-	   really apply here; this happens when parsing a class which
+	   really apply here; this happens when parsing a class that
 	   is local to a function.  */
 	if (typed_name->type == DEMANGLE_COMPONENT_LOCAL_NAME)
 	  {
-	    struct demangle_component *local_name;
-
-	    local_name = d_right (typed_name);
-	    if (local_name->type == DEMANGLE_COMPONENT_DEFAULT_ARG)
-	      local_name = local_name->u.s_unary_num.sub;
-	    while (local_name->type == DEMANGLE_COMPONENT_RESTRICT_THIS
-		   || local_name->type == DEMANGLE_COMPONENT_VOLATILE_THIS
-		   || local_name->type == DEMANGLE_COMPONENT_CONST_THIS
-		   || local_name->type == DEMANGLE_COMPONENT_REFERENCE_THIS
-		   || (local_name->type
-		       == DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS))
+	    typed_name = d_right (typed_name);
+	    if (typed_name->type == DEMANGLE_COMPONENT_DEFAULT_ARG)
+	      typed_name = typed_name->u.s_unary_num.sub;
+	    while (typed_name != NULL
+		   && is_fnqual_component_type (typed_name->type))
 	      {
 		if (i >= sizeof adpm / sizeof adpm[0])
 		  {
@@ -4050,13 +5168,27 @@ d_print_comp (struct d_print_info *dpi, int options,
 		adpm[i].next = &adpm[i - 1];
 		dpi->modifiers = &adpm[i];
 
-		adpm[i - 1].mod = local_name;
+		adpm[i - 1].mod = typed_name;
 		adpm[i - 1].printed = 0;
 		adpm[i - 1].templates = dpi->templates;
 		++i;
 
-		local_name = d_left (local_name);
+		typed_name = d_left (typed_name);
 	      }
+	    if (typed_name == NULL)
+	      {
+		d_print_error (dpi);
+		return;
+	      }
+	  }
+
+	/* If typed_name is a template, then it applies to the
+	   function type as well.  */
+	if (typed_name->type == DEMANGLE_COMPONENT_TEMPLATE)
+	  {
+	    dpt.next = dpi->templates;
+	    dpi->templates = &dpt;
+	    dpt.template_decl = typed_name;
 	  }
 
 	d_print_comp (dpi, options, d_right (dc));
@@ -4085,6 +5217,12 @@ d_print_comp (struct d_print_info *dpi, int options,
       {
 	struct d_print_mod *hold_dpm;
 	struct demangle_component *dcl;
+	const struct demangle_component *hold_current;
+
+	/* This template may need to be referenced by a cast operator
+	   contained in its subtree.  */
+	hold_current = dpi->current_template;
+	dpi->current_template = dc;
 
 	/* Don't push modifiers into a template definition.  Doing so
 	   could give the wrong definition for a template argument.
@@ -4121,38 +5259,66 @@ d_print_comp (struct d_print_info *dpi, int options,
           }
 
 	dpi->modifiers = hold_dpm;
+	dpi->current_template = hold_current;
 
 	return;
       }
 
     case DEMANGLE_COMPONENT_TEMPLATE_PARAM:
-      {
-	struct d_print_template *hold_dpt;
-	struct demangle_component *a = d_lookup_template_argument (dpi, dc);
+      if (dpi->lambda_tpl_parms > dc->u.s_number.number + 1)
+	{
+	  const struct demangle_component *a
+	    = d_left (dpi->templates->template_decl);
+	  unsigned c;
+	  for (c = dc->u.s_number.number; a && c; c--)
+	    a = d_right (a);
+	  if (a && a->type == DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM)
+	    a = d_left (a);
+	  if (!a)
+	    dpi->demangle_failure = 1;
+	  else
+	    d_print_lambda_parm_name (dpi, a->type, dc->u.s_number.number);
+	}
+      else if (dpi->lambda_tpl_parms)
+	{
+	  /* Show the template parm index, as that's how g++ displays
+	     these, and future proofs us against potential
+	     '[]<typename T> (T *a, T *b) {...}'.  */
+	  d_append_buffer (dpi, "auto:", 5);
+	  d_append_num (dpi, dc->u.s_number.number + 1);
+	}
+      else
+	{
+	  struct d_print_template *hold_dpt;
+	  struct demangle_component *a = d_lookup_template_argument (dpi, dc);
 
-	if (a && a->type == DEMANGLE_COMPONENT_TEMPLATE_ARGLIST)
-	  a = d_index_template_argument (a, dpi->pack_index);
+	  if (a && a->type == DEMANGLE_COMPONENT_TEMPLATE_ARGLIST)
+	    a = d_index_template_argument (a, dpi->pack_index);
 
-	if (a == NULL)
-	  {
-	    d_print_error (dpi);
-	    return;
-	  }
+	  if (a == NULL)
+	    {
+	      d_print_error (dpi);
+	      return;
+	    }
 
-	/* While processing this parameter, we need to pop the list of
-	   templates.  This is because the template parameter may
-	   itself be a reference to a parameter of an outer
-	   template.  */
+	  /* While processing this parameter, we need to pop the list
+	     of templates.  This is because the template parameter may
+	     itself be a reference to a parameter of an outer
+	     template.  */
 
-	hold_dpt = dpi->templates;
-	dpi->templates = hold_dpt->next;
+	  hold_dpt = dpi->templates;
+	  dpi->templates = hold_dpt->next;
 
-	d_print_comp (dpi, options, a);
+	  d_print_comp (dpi, options, a);
 
-	dpi->templates = hold_dpt;
+	  dpi->templates = hold_dpt;
+	}
+      return;
 
-	return;
-      }
+    case DEMANGLE_COMPONENT_TPARM_OBJ:
+      d_append_string (dpi, "template parameter object for ");
+      d_print_comp (dpi, options, d_left (dc));
+      return;
 
     case DEMANGLE_COMPONENT_CTOR:
       d_print_comp (dpi, options, dc->u.s_ctor.name);
@@ -4161,6 +5327,11 @@ d_print_comp (struct d_print_info *dpi, int options,
     case DEMANGLE_COMPONENT_DTOR:
       d_append_char (dpi, '~');
       d_print_comp (dpi, options, dc->u.s_dtor.name);
+      return;
+
+    case DEMANGLE_COMPONENT_MODULE_INIT:
+      d_append_string (dpi, "initializer for module ");
+      d_print_comp (dpi, options, d_left (dc));
       return;
 
     case DEMANGLE_COMPONENT_VTABLE:
@@ -4288,15 +5459,60 @@ d_print_comp (struct d_print_info *dpi, int options,
     case DEMANGLE_COMPONENT_RVALUE_REFERENCE:
       {
 	/* Handle reference smashing: & + && = &.  */
-	const struct demangle_component *sub = d_left (dc);
-	if (sub->type == DEMANGLE_COMPONENT_TEMPLATE_PARAM)
+	struct demangle_component *sub = d_left (dc);
+	if (!dpi->lambda_tpl_parms
+	    && sub->type == DEMANGLE_COMPONENT_TEMPLATE_PARAM)
 	  {
-	    struct demangle_component *a = d_lookup_template_argument (dpi, sub);
+	    struct d_saved_scope *scope = d_get_saved_scope (dpi, sub);
+	    struct demangle_component *a;
+
+	    if (scope == NULL)
+	      {
+		/* This is the first time SUB has been traversed.
+		   We need to capture the current templates so
+		   they can be restored if SUB is reentered as a
+		   substitution.  */
+		d_save_scope (dpi, sub);
+		if (d_print_saw_error (dpi))
+		  return;
+	      }
+	    else
+	      {
+		const struct d_component_stack *dcse;
+		int found_self_or_parent = 0;
+
+		/* This traversal is reentering SUB as a substition.
+		   If we are not beneath SUB or DC in the tree then we
+		   need to restore SUB's template stack temporarily.  */
+		for (dcse = dpi->component_stack; dcse != NULL;
+		     dcse = dcse->parent)
+		  {
+		    if (dcse->dc == sub
+			|| (dcse->dc == dc
+			    && dcse != dpi->component_stack))
+		      {
+			found_self_or_parent = 1;
+			break;
+		      }
+		  }
+
+		if (!found_self_or_parent)
+		  {
+		    saved_templates = dpi->templates;
+		    dpi->templates = scope->templates;
+		    need_template_restore = 1;
+		  }
+	      }
+
+	    a = d_lookup_template_argument (dpi, sub);
 	    if (a && a->type == DEMANGLE_COMPONENT_TEMPLATE_ARGLIST)
 	      a = d_index_template_argument (a, dpi->pack_index);
 
 	    if (a == NULL)
 	      {
+		if (need_template_restore)
+		  dpi->templates = saved_templates;
+
 		d_print_error (dpi);
 		return;
 	      }
@@ -4312,15 +5528,11 @@ d_print_comp (struct d_print_info *dpi, int options,
       }
       /* Fall through.  */
 
-    case DEMANGLE_COMPONENT_RESTRICT_THIS:
-    case DEMANGLE_COMPONENT_VOLATILE_THIS:
-    case DEMANGLE_COMPONENT_CONST_THIS:
-    case DEMANGLE_COMPONENT_REFERENCE_THIS:
-    case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
     case DEMANGLE_COMPONENT_VENDOR_TYPE_QUAL:
     case DEMANGLE_COMPONENT_POINTER:
     case DEMANGLE_COMPONENT_COMPLEX:
     case DEMANGLE_COMPONENT_IMAGINARY:
+    FNQUAL_COMPONENT_CASE:
     modifier:
       {
 	/* We keep a list of modifiers on the stack.  */
@@ -4344,6 +5556,9 @@ d_print_comp (struct d_print_info *dpi, int options,
 
 	dpi->modifiers = dpm.next;
 
+	if (need_template_restore)
+	  dpi->templates = saved_templates;
+
 	return;
       }
 
@@ -4354,6 +5569,14 @@ d_print_comp (struct d_print_info *dpi, int options,
       else
 	d_append_buffer (dpi, dc->u.s_builtin.type->java_name,
 			 dc->u.s_builtin.type->java_len);
+      return;
+
+    case DEMANGLE_COMPONENT_EXTENDED_BUILTIN_TYPE:
+      d_append_buffer (dpi, dc->u.s_extended_builtin.type->name,
+		       dc->u.s_extended_builtin.type->len);
+      d_append_num (dpi, dc->u.s_extended_builtin.arg);
+      if (dc->u.s_extended_builtin.suffix)
+	d_append_buffer (dpi, &dc->u.s_extended_builtin.suffix, 1);
       return;
 
     case DEMANGLE_COMPONENT_VENDOR_TYPE:
@@ -4494,22 +5717,6 @@ d_print_comp (struct d_print_info *dpi, int options,
 	return;
       }
 
-    case DEMANGLE_COMPONENT_FIXED_TYPE:
-      if (dc->u.s_fixed.sat)
-	d_append_string (dpi, "_Sat ");
-      /* Don't print "int _Accum".  */
-      if (dc->u.s_fixed.length->u.s_builtin.type
-	  != &cplus_demangle_builtin_types['i'-'a'])
-	{
-	  d_print_comp (dpi, options, dc->u.s_fixed.length);
-	  d_append_char (dpi, ' ');
-	}
-      if (dc->u.s_fixed.accum)
-	d_append_string (dpi, "_Accum");
-      else
-	d_append_string (dpi, "_Fract");
-      return;
-
     case DEMANGLE_COMPONENT_ARGLIST:
     case DEMANGLE_COMPONENT_TEMPLATE_ARGLIST:
       if (d_left (dc) != NULL)
@@ -4567,9 +5774,9 @@ d_print_comp (struct d_print_info *dpi, int options,
       d_print_comp (dpi, options, dc->u.s_extended_operator.name);
       return;
 
-    case DEMANGLE_COMPONENT_CAST:
+    case DEMANGLE_COMPONENT_CONVERSION:
       d_append_string (dpi, "operator ");
-      d_print_cast (dpi, options, dc);
+      d_print_conversion (dpi, options, dc);
       return;
 
     case DEMANGLE_COMPONENT_NULLARY:
@@ -4604,6 +5811,21 @@ d_print_comp (struct d_print_info *dpi, int options,
 	      }
 	  }
 
+	/* For sizeof..., just print the pack length.  */
+	if (code && !strcmp (code, "sZ"))
+	  {
+	    struct demangle_component *a = d_find_pack (dpi, operand);
+	    int len = d_pack_length (a);
+	    d_append_num (dpi, len);
+	    return;
+	  }
+	else if (code && !strcmp (code, "sP"))
+	  {
+	    int len = d_args_length (dpi, operand);
+	    d_append_num (dpi, len);
+	    return;
+	  }
+
 	if (op->type != DEMANGLE_COMPONENT_CAST)
 	  d_print_expr_op (dpi, options, op);
 	else
@@ -4615,8 +5837,8 @@ d_print_comp (struct d_print_info *dpi, int options,
 	if (code && !strcmp (code, "gs"))
 	  /* Avoid parens after '::'.  */
 	  d_print_comp (dpi, options, operand);
-	else if (code && !strcmp (code, "st"))
-	  /* Always print parens for sizeof (type).  */
+	else if (code && (!strcmp (code, "st") || !strcmp (code, "nx")))
+	  /* Always print parens for sizeof (type) and noexcept(expr).  */
 	  {
 	    d_append_char (dpi, '(');
 	    d_print_comp (dpi, options, operand);
@@ -4644,6 +5866,12 @@ d_print_comp (struct d_print_info *dpi, int options,
 	  d_append_char (dpi, ')');
 	  return;
 	}
+
+      if (d_maybe_print_fold_expression (dpi, options, dc))
+	return;
+
+      if (d_maybe_print_designated_init (dpi, options, dc))
+	return;
 
       /* We wrap an expression which uses the greater-than operator in
 	 an extra layer of parens so that it does not get confused
@@ -4700,6 +5928,10 @@ d_print_comp (struct d_print_info *dpi, int options,
 	  d_print_error (dpi);
 	  return;
 	}
+      if (d_maybe_print_fold_expression (dpi, options, dc))
+	return;
+      if (d_maybe_print_designated_init (dpi, options, dc))
+	return;
       {
 	struct demangle_component *op = d_left (dc);
 	struct demangle_component *first = d_left (d_right (dc));
@@ -4819,6 +6051,13 @@ d_print_comp (struct d_print_info *dpi, int options,
       }
       return;
 
+    case DEMANGLE_COMPONENT_VENDOR_EXPR:
+      d_print_comp (dpi, options, d_left (dc));
+      d_append_char (dpi, '(');
+      d_print_comp (dpi, options, d_right (dc));
+      d_append_char (dpi, ')');
+      return;
+
     case DEMANGLE_COMPONENT_NUMBER:
       d_append_num (dpi, dc->u.s_number.number);
       return;
@@ -4845,9 +6084,10 @@ d_print_comp (struct d_print_info *dpi, int options,
 
     case DEMANGLE_COMPONENT_PACK_EXPANSION:
       {
-	int len;
-	int i;
-	struct demangle_component *a = d_find_pack (dpi, d_left (dc));
+	struct demangle_component *a = NULL;
+
+	if (!dpi->lambda_tpl_parms)
+	  a = d_find_pack (dpi, d_left (dc));
 	if (a == NULL)
 	  {
 	    /* d_find_pack won't find anything if the only packs involved
@@ -4855,17 +6095,20 @@ d_print_comp (struct d_print_info *dpi, int options,
 	       case, just print the pattern and "...".  */
 	    d_print_subexpr (dpi, options, d_left (dc));
 	    d_append_string (dpi, "...");
-	    return;
 	  }
-
-	len = d_pack_length (a);
-	dc = d_left (dc);
-	for (i = 0; i < len; ++i)
+	else
 	  {
-	    dpi->pack_index = i;
-	    d_print_comp (dpi, options, dc);
-	    if (i < len-1)
-	      d_append_string (dpi, ", ");
+	    int len = d_pack_length (a);
+	    int i;
+
+	    dc = d_left (dc);
+	    for (i = 0; i < len; ++i)
+	      {
+		if (i)
+		  d_append_string (dpi, ", ");
+		dpi->pack_index = i;
+		d_print_comp (dpi, options, dc);
+	      }
 	  }
       }
       return;
@@ -4895,11 +6138,50 @@ d_print_comp (struct d_print_info *dpi, int options,
       return;
 
     case DEMANGLE_COMPONENT_LAMBDA:
-      d_append_string (dpi, "{lambda(");
-      d_print_comp (dpi, options, dc->u.s_unary_num.sub);
-      d_append_string (dpi, ")#");
-      d_append_num (dpi, dc->u.s_unary_num.num + 1);
-      d_append_char (dpi, '}');
+      {
+	d_append_string (dpi, "{lambda");
+	struct demangle_component *parms = dc->u.s_unary_num.sub;
+	struct d_print_template dpt;
+	/* Generic lambda auto parms are mangled as the (synthedic) template
+	   type parm they are.  We need to tell the printer that (a) we're in
+	   a lambda, and (b) the number of synthetic parms.  */
+	int saved_tpl_parms = dpi->lambda_tpl_parms;
+	dpi->lambda_tpl_parms = 0;
+	/* Hang any lambda head as-if template args.  */
+	dpt.template_decl = NULL;
+	dpt.next = dpi->templates;
+	dpi->templates = &dpt;
+	if (parms && parms->type == DEMANGLE_COMPONENT_TEMPLATE_HEAD)
+	  {
+	    dpt.template_decl = parms;
+
+	    d_append_char (dpi, '<');
+	    struct demangle_component *parm;
+	    for (parm = d_left (parms); parm; parm = d_right (parm))
+	      {
+		if (dpi->lambda_tpl_parms++)
+		  d_append_string (dpi, ", ");
+		d_print_comp (dpi, options, parm);
+		d_append_char (dpi, ' ');
+		if (parm->type == DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM)
+		  parm = d_left (parm);
+		d_print_lambda_parm_name (dpi, parm->type,
+					  dpi->lambda_tpl_parms - 1);
+	      }
+	    d_append_char (dpi, '>');
+
+	    parms = d_right (parms);
+	  }
+	dpi->lambda_tpl_parms++;
+
+	d_append_char (dpi, '(');
+	d_print_comp (dpi, options, parms);
+	dpi->lambda_tpl_parms = saved_tpl_parms;
+	dpi->templates = dpt.next;
+	d_append_string (dpi, ")#");
+	d_append_num (dpi, dc->u.s_unary_num.num + 1);
+	d_append_char (dpi, '}');
+      }
       return;
 
     case DEMANGLE_COMPONENT_UNNAMED_TYPE:
@@ -4915,10 +6197,69 @@ d_print_comp (struct d_print_info *dpi, int options,
       d_append_char (dpi, ']');
       return;
 
+    case DEMANGLE_COMPONENT_TEMPLATE_HEAD:
+      {
+	d_append_char (dpi, '<');
+	int count = 0;
+	struct demangle_component *parm;
+	for (parm = d_left (dc); parm; parm = d_right (parm))
+	  {
+	    if (count++)
+	      d_append_string (dpi, ", ");
+	    d_print_comp (dpi, options, parm);
+	  }
+	d_append_char (dpi, '>');
+      }
+      return;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_TYPE_PARM:
+      d_append_string (dpi, "typename");
+      return;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_NON_TYPE_PARM:
+      d_print_comp (dpi, options, d_left (dc));
+      return;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_TEMPLATE_PARM:
+      d_append_string (dpi, "template");
+      d_print_comp (dpi, options, d_left (dc));
+      d_append_string (dpi, " class");
+      return;
+
+    case DEMANGLE_COMPONENT_TEMPLATE_PACK_PARM:
+      d_print_comp (dpi, options, d_left (dc));
+      d_append_string (dpi, "...");
+      return;
+
     default:
       d_print_error (dpi);
       return;
     }
+}
+
+static void
+d_print_comp (struct d_print_info *dpi, int options,
+	      struct demangle_component *dc)
+{
+  struct d_component_stack self;
+  if (dc == NULL || dc->d_printing > 1 || dpi->recursion > MAX_RECURSION_COUNT)
+    {
+      d_print_error (dpi);
+      return;
+    }
+
+  dc->d_printing++;
+  dpi->recursion++;
+
+  self.dc = dc;
+  self.parent = dpi->component_stack;
+  dpi->component_stack = &self;
+
+  d_print_comp_inner (dpi, options, dc);
+
+  dpi->component_stack = self.parent;
+  dc->d_printing--;
+  dpi->recursion--;
 }
 
 /* Print a Java dentifier.  For Java we try to handle encoded extended
@@ -4987,12 +6328,7 @@ d_print_mod_list (struct d_print_info *dpi, int options,
 
   if (mods->printed
       || (! suffix
-	  && (mods->mod->type == DEMANGLE_COMPONENT_RESTRICT_THIS
-	      || mods->mod->type == DEMANGLE_COMPONENT_VOLATILE_THIS
-	      || mods->mod->type == DEMANGLE_COMPONENT_CONST_THIS
-	      || mods->mod->type == DEMANGLE_COMPONENT_REFERENCE_THIS
-	      || (mods->mod->type
-		  == DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS))))
+	  && (is_fnqual_component_type (mods->mod->type))))
     {
       d_print_mod_list (dpi, options, mods->next, suffix);
       return;
@@ -5045,11 +6381,7 @@ d_print_mod_list (struct d_print_info *dpi, int options,
 	  dc = dc->u.s_unary_num.sub;
 	}
 
-      while (dc->type == DEMANGLE_COMPONENT_RESTRICT_THIS
-	     || dc->type == DEMANGLE_COMPONENT_VOLATILE_THIS
-	     || dc->type == DEMANGLE_COMPONENT_CONST_THIS
-	     || dc->type == DEMANGLE_COMPONENT_REFERENCE_THIS
-	     || dc->type == DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS)
+      while (is_fnqual_component_type (dc->type))
 	dc = d_left (dc);
 
       d_print_comp (dpi, options, dc);
@@ -5069,7 +6401,7 @@ d_print_mod_list (struct d_print_info *dpi, int options,
 
 static void
 d_print_mod (struct d_print_info *dpi, int options,
-             const struct demangle_component *mod)
+             struct demangle_component *mod)
 {
   switch (mod->type)
     {
@@ -5085,6 +6417,27 @@ d_print_mod (struct d_print_info *dpi, int options,
     case DEMANGLE_COMPONENT_CONST_THIS:
       d_append_string (dpi, " const");
       return;
+    case DEMANGLE_COMPONENT_TRANSACTION_SAFE:
+      d_append_string (dpi, " transaction_safe");
+      return;
+    case DEMANGLE_COMPONENT_NOEXCEPT:
+      d_append_string (dpi, " noexcept");
+      if (d_right (mod))
+	{
+	  d_append_char (dpi, '(');
+	  d_print_comp (dpi, options, d_right (mod));
+	  d_append_char (dpi, ')');
+	}
+      return;
+    case DEMANGLE_COMPONENT_THROW_SPEC:
+      d_append_string (dpi, " throw");
+      if (d_right (mod))
+	{
+	  d_append_char (dpi, '(');
+	  d_print_comp (dpi, options, d_right (mod));
+	  d_append_char (dpi, ')');
+	}
+      return;
     case DEMANGLE_COMPONENT_VENDOR_TYPE_QUAL:
       d_append_char (dpi, ' ');
       d_print_comp (dpi, options, d_right (mod));
@@ -5097,19 +6450,21 @@ d_print_mod (struct d_print_info *dpi, int options,
     case DEMANGLE_COMPONENT_REFERENCE_THIS:
       /* For the ref-qualifier, put a space before the &.  */
       d_append_char (dpi, ' ');
+      /* FALLTHRU */
     case DEMANGLE_COMPONENT_REFERENCE:
       d_append_char (dpi, '&');
       return;
     case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
       d_append_char (dpi, ' ');
+      /* FALLTHRU */
     case DEMANGLE_COMPONENT_RVALUE_REFERENCE:
       d_append_string (dpi, "&&");
       return;
     case DEMANGLE_COMPONENT_COMPLEX:
-      d_append_string (dpi, "complex ");
+      d_append_string (dpi, " _Complex");
       return;
     case DEMANGLE_COMPONENT_IMAGINARY:
-      d_append_string (dpi, "imaginary ");
+      d_append_string (dpi, " _Imaginary");
       return;
     case DEMANGLE_COMPONENT_PTRMEM_TYPE:
       if (d_last_char (dpi) != '(')
@@ -5138,7 +6493,7 @@ d_print_mod (struct d_print_info *dpi, int options,
 
 static void
 d_print_function_type (struct d_print_info *dpi, int options,
-                       const struct demangle_component *dc,
+                       struct demangle_component *dc,
                        struct d_print_mod *mods)
 {
   int need_paren;
@@ -5170,11 +6525,7 @@ d_print_function_type (struct d_print_info *dpi, int options,
 	  need_space = 1;
 	  need_paren = 1;
 	  break;
-	case DEMANGLE_COMPONENT_RESTRICT_THIS:
-	case DEMANGLE_COMPONENT_VOLATILE_THIS:
-	case DEMANGLE_COMPONENT_CONST_THIS:
-	case DEMANGLE_COMPONENT_REFERENCE_THIS:
-	case DEMANGLE_COMPONENT_RVALUE_REFERENCE_THIS:
+	FNQUAL_COMPONENT_CASE:
 	  break;
 	default:
 	  break;
@@ -5220,7 +6571,7 @@ d_print_function_type (struct d_print_info *dpi, int options,
 
 static void
 d_print_array_type (struct d_print_info *dpi, int options,
-                    const struct demangle_component *dc,
+                    struct demangle_component *dc,
                     struct d_print_mod *mods)
 {
   int need_space;
@@ -5274,7 +6625,7 @@ d_print_array_type (struct d_print_info *dpi, int options,
 
 static void
 d_print_expr_op (struct d_print_info *dpi, int options,
-                 const struct demangle_component *dc)
+                 struct demangle_component *dc)
 {
   if (dc->type == DEMANGLE_COMPONENT_OPERATOR)
     d_append_buffer (dpi, dc->u.s_operator.op->name,
@@ -5287,43 +6638,32 @@ d_print_expr_op (struct d_print_info *dpi, int options,
 
 static void
 d_print_cast (struct d_print_info *dpi, int options,
-              const struct demangle_component *dc)
+	      struct demangle_component *dc)
 {
-  if (d_left (dc)->type != DEMANGLE_COMPONENT_TEMPLATE)
-    d_print_comp (dpi, options, d_left (dc));
-  else
+  d_print_comp (dpi, options, d_left (dc));
+}
+
+/* Print a conversion operator.  */
+
+static void
+d_print_conversion (struct d_print_info *dpi, int options,
+		    struct demangle_component *dc)
+{
+  struct d_print_template dpt;
+
+  /* For a conversion operator, we need the template parameters from
+     the enclosing template in scope for processing the type.  */
+  if (dpi->current_template != NULL)
     {
-      struct d_print_mod *hold_dpm;
-      struct d_print_template dpt;
-
-      /* It appears that for a templated cast operator, we need to put
-	 the template parameters in scope for the operator name, but
-	 not for the parameters.  The effect is that we need to handle
-	 the template printing here.  */
-
-      hold_dpm = dpi->modifiers;
-      dpi->modifiers = NULL;
-
       dpt.next = dpi->templates;
       dpi->templates = &dpt;
-      dpt.template_decl = d_left (dc);
-
-      d_print_comp (dpi, options, d_left (d_left (dc)));
-
-      dpi->templates = dpt.next;
-
-      if (d_last_char (dpi) == '<')
-	d_append_char (dpi, ' ');
-      d_append_char (dpi, '<');
-      d_print_comp (dpi, options, d_right (d_left (dc)));
-      /* Avoid generating two consecutive '>' characters, to avoid
-	 the C++ syntactic ambiguity.  */
-      if (d_last_char (dpi) == '>')
-	d_append_char (dpi, ' ');
-      d_append_char (dpi, '>');
-
-      dpi->modifiers = hold_dpm;
+      dpt.template_decl = dpi->current_template;
     }
+
+  d_print_comp (dpi, options, d_left (dc));
+
+  if (dpi->current_template != NULL)
+    dpi->templates = dpt.next;
 }
 
 /* Initialize the information structure we use to pass around
@@ -5340,21 +6680,23 @@ cplus_demangle_init_info (const char *mangled, int options, size_t len,
 
   di->n = mangled;
 
-  /* We can not need more components than twice the number of chars in
+  /* We cannot need more components than twice the number of chars in
      the mangled string.  Most components correspond directly to
      chars, but the ARGLIST types are exceptions.  */
   di->num_comps = 2 * len;
   di->next_comp = 0;
 
-  /* Similarly, we can not need more substitutions than there are
+  /* Similarly, we cannot need more substitutions than there are
      chars in the mangled string.  */
   di->num_subs = len;
   di->next_sub = 0;
-  di->did_subs = 0;
 
   di->last_name = NULL;
 
   di->expansion = 0;
+  di->is_expression = 0;
+  di->is_conversion = 0;
+  di->recursion_level = 0;
 }
 
 /* Internal implementation for the demangler.  If MANGLED is a g++ v3 ABI
@@ -5392,7 +6734,24 @@ d_demangle_callback (const char *mangled, int options,
       type = DCT_TYPE;
     }
 
+  di.unresolved_name_state = 1;
+
+ again:
   cplus_demangle_init_info (mangled, options, strlen (mangled), &di);
+
+  /* PR 87675 - Check for a mangled string that is so long
+     that we do not have enough stack space to demangle it.  */
+  if (((options & DMGL_NO_RECURSE_LIMIT) == 0)
+      /* This check is a bit arbitrary, since what we really want to do is to
+	 compare the sizes of the di.comps and di.subs arrays against the
+	 amount of stack space remaining.  But there is no portable way to do
+	 this, so instead we use the recursion limit as a guide to the maximum
+	 size of the arrays.  */
+      && (unsigned long) di.num_comps > DEMANGLE_RECURSION_LIMIT)
+    {
+      /* FIXME: We need a way to indicate that a stack limit has been reached.  */
+      return 0;
+    }
 
   {
 #ifdef CP_DYNAMIC_ARRAYS
@@ -5425,6 +6784,8 @@ d_demangle_callback (const char *mangled, int options,
 			  NULL);
 	d_advance (&di, strlen (d_str (&di)));
 	break;
+      default:
+	abort (); /* We have listed all the cases.  */
       }
 
     /* If DMGL_PARAMS is set, then if we didn't consume the entire
@@ -5433,6 +6794,13 @@ d_demangle_callback (const char *mangled, int options,
        parameters.  */
     if (((options & DMGL_PARAMS) != 0) && d_peek_char (&di) != '\0')
       dc = NULL;
+
+    /* See discussion in d_unresolved_name.  */
+    if (dc == NULL && di.unresolved_name_state == -1)
+      {
+	di.unresolved_name_state = 0;
+	goto again;
+      }
 
 #ifdef CP_DEMANGLE_DEBUG
     d_dump (dc, 0);

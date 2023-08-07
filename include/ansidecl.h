@@ -1,7 +1,5 @@
-/* ANSI and traditional C compatability macros
-   Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2006, 2007, 2009, 2010
-   Free Software Foundation, Inc.
+/* Compiler compatibility macros
+   Copyright (C) 1991-2023 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
 This program is free software; you can redistribute it and/or modify
@@ -18,99 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
 
-/* ANSI and traditional C compatibility macros
-
-   ANSI C is assumed if __STDC__ is #defined.
-
-   Macro		ANSI C definition	Traditional C definition
-   -----		---- - ----------	----------- - ----------
-   ANSI_PROTOTYPES	1			not defined
-   PTR			`void *'		`char *'
-   PTRCONST		`void *const'		`char *'
-   LONG_DOUBLE		`long double'		`double'
-   const		not defined		`'
-   volatile		not defined		`'
-   signed		not defined		`'
-   VA_START(ap, var)	va_start(ap, var)	va_start(ap)
-
-   Note that it is safe to write "void foo();" indicating a function
-   with no return value, in all K+R compilers we have been able to test.
-
-   For declaring functions with prototypes, we also provide these:
-
-   PARAMS ((prototype))
-   -- for functions which take a fixed number of arguments.  Use this
-   when declaring the function.  When defining the function, write a
-   K+R style argument list.  For example:
-
-	char *strcpy PARAMS ((char *dest, char *source));
-	...
-	char *
-	strcpy (dest, source)
-	     char *dest;
-	     char *source;
-	{ ... }
-
-
-   VPARAMS ((prototype, ...))
-   -- for functions which take a variable number of arguments.  Use
-   PARAMS to declare the function, VPARAMS to define it.  For example:
-
-	int printf PARAMS ((const char *format, ...));
-	...
-	int
-	printf VPARAMS ((const char *format, ...))
-	{
-	   ...
-	}
-
-   For writing functions which take variable numbers of arguments, we
-   also provide the VA_OPEN, VA_CLOSE, and VA_FIXEDARG macros.  These
-   hide the differences between K+R <varargs.h> and C89 <stdarg.h> more
-   thoroughly than the simple VA_START() macro mentioned above.
-
-   VA_OPEN and VA_CLOSE are used *instead of* va_start and va_end.
-   Immediately after VA_OPEN, put a sequence of VA_FIXEDARG calls
-   corresponding to the list of fixed arguments.  Then use va_arg
-   normally to get the variable arguments, or pass your va_list object
-   around.  You do not declare the va_list yourself; VA_OPEN does it
-   for you.
-
-   Here is a complete example:
-
-	int
-	printf VPARAMS ((const char *format, ...))
-	{
-	   int result;
-
-	   VA_OPEN (ap, format);
-	   VA_FIXEDARG (ap, const char *, format);
-
-	   result = vfprintf (stdout, format, ap);
-	   VA_CLOSE (ap);
-
-	   return result;
-	}
-
-
-   You can declare variables either before or after the VA_OPEN,
-   VA_FIXEDARG sequence.  Also, VA_OPEN and VA_CLOSE are the beginning
-   and end of a block.  They must appear at the same nesting level,
-   and any variables declared after VA_OPEN go out of scope at
-   VA_CLOSE.  Unfortunately, with a K+R compiler, that includes the
-   argument list.  You can have multiple instances of VA_OPEN/VA_CLOSE
-   pairs in a single function in case you need to traverse the
-   argument list more than once.
-
-   For ease of writing code which uses GCC extensions but needs to be
+/* For ease of writing code which uses GCC extensions but needs to be
    portable to other compilers, we provide the GCC_VERSION macro that
    simplifies testing __GNUC__ and __GNUC_MINOR__ together, and various
    wrappers around __attribute__.  Also, __extension__ will be #defined
-   to nothing if it doesn't work.  See below.
-
-   This header also defines a lot of obsolete macros:
-   CONST, VOLATILE, SIGNED, PROTO, EXFUN, DEFUN, DEFUN_VOID,
-   AND, DOTS, NOARGS.  Don't use them.  */
+   to nothing if it doesn't work.  See below.  */
 
 #ifndef	_ANSIDECL_H
 #define _ANSIDECL_H	1
@@ -141,44 +51,10 @@ So instead we use the macro below and test it against specific values.  */
 #define GCC_VERSION (__GNUC__ * 1000 + __GNUC_MINOR__)
 #endif /* GCC_VERSION */
 
-#if defined (__STDC__) || defined(__cplusplus) || defined (_AIX) || (defined (__mips) && defined (_SYSTYPE_SVR4)) || defined(_WIN32)
-/* All known AIX compilers implement these things (but don't always
-   define __STDC__).  The RISC/OS MIPS compiler defines these things
-   in SVR4 mode, but does not define __STDC__.  */
-/* eraxxon@alumni.rice.edu: The Compaq C++ compiler, unlike many other
-   C++ compilers, does not define __STDC__, though it acts as if this
-   was so. (Verified versions: 5.7, 6.2, 6.3, 6.5) */
-
-#define ANSI_PROTOTYPES	1
-#define PTR		void *
-#define PTRCONST	void *const
-#define LONG_DOUBLE	long double
-
-/* PARAMS is often defined elsewhere (e.g. by libintl.h), so wrap it in
-   a #ifndef.  */
-#ifndef PARAMS
-#define PARAMS(ARGS)		ARGS
-#endif
-
-#define VPARAMS(ARGS)		ARGS
-#define VA_START(VA_LIST, VAR)	va_start(VA_LIST, VAR)
-
-/* variadic function helper macros */
-/* "struct Qdmy" swallows the semicolon after VA_OPEN/VA_FIXEDARG's
-   use without inhibiting further decls and without declaring an
-   actual variable.  */
-#define VA_OPEN(AP, VAR)	{ va_list AP; va_start(AP, VAR); { struct Qdmy
-#define VA_CLOSE(AP)		} va_end(AP); }
-#define VA_FIXEDARG(AP, T, N)	struct Qdmy
- 
-#undef const
-#undef volatile
-#undef signed
-
 /* inline requires special treatment; it's in C99, and GCC >=2.7 supports
    it too, but it's not in C89.  */
 #undef inline
-#if __STDC_VERSION__ >= 199901L || defined(__cplusplus) || (defined(__SUNPRO_C) && defined(__C99FEATURES__))
+#if (!defined(__cplusplus) && __STDC_VERSION__ >= 199901L) || defined(__cplusplus) || (defined(__SUNPRO_C) && defined(__C99FEATURES__))
 /* it's a keyword */
 #else
 # if GCC_VERSION >= 2007
@@ -187,62 +63,6 @@ So instead we use the macro below and test it against specific values.  */
 #  define inline  /* nothing */
 # endif
 #endif
-
-/* These are obsolete.  Do not use.  */
-#ifndef IN_GCC
-#define CONST		const
-#define VOLATILE	volatile
-#define SIGNED		signed
-
-#define PROTO(type, name, arglist)	type name arglist
-#define EXFUN(name, proto)		name proto
-#define DEFUN(name, arglist, args)	name(args)
-#define DEFUN_VOID(name)		name(void)
-#define AND		,
-#define DOTS		, ...
-#define NOARGS		void
-#endif /* ! IN_GCC */
-
-#else	/* Not ANSI C.  */
-
-#undef  ANSI_PROTOTYPES
-#define PTR		char *
-#define PTRCONST	PTR
-#define LONG_DOUBLE	double
-
-#define PARAMS(args)		()
-#define VPARAMS(args)		(va_alist) va_dcl
-#define VA_START(va_list, var)	va_start(va_list)
-
-#define VA_OPEN(AP, VAR)		{ va_list AP; va_start(AP); { struct Qdmy
-#define VA_CLOSE(AP)			} va_end(AP); }
-#define VA_FIXEDARG(AP, TYPE, NAME)	TYPE NAME = va_arg(AP, TYPE)
-
-/* some systems define these in header files for non-ansi mode */
-#undef const
-#undef volatile
-#undef signed
-#undef inline
-#define const
-#define volatile
-#define signed
-#define inline
-
-#ifndef IN_GCC
-#define CONST
-#define VOLATILE
-#define SIGNED
-
-#define PROTO(type, name, arglist)	type name ()
-#define EXFUN(name, proto)		name()
-#define DEFUN(name, arglist, args)	name arglist args;
-#define DEFUN_VOID(name)		name()
-#define AND		;
-#define DOTS
-#define NOARGS
-#endif /* ! IN_GCC */
-
-#endif	/* ANSI C.  */
 
 /* Define macros for some gcc attributes.  This permits us to use the
    macros freely, and know that they will come into play for the
@@ -310,6 +130,15 @@ So instead we use the macro below and test it against specific values.  */
 #  define ATTRIBUTE_NONNULL(m)
 # endif /* GNUC >= 3.3 */
 #endif /* ATTRIBUTE_NONNULL */
+
+/* Attribute `returns_nonnull' was valid as of gcc 4.9.  */
+#ifndef ATTRIBUTE_RETURNS_NONNULL
+# if (GCC_VERSION >= 4009)
+#  define ATTRIBUTE_RETURNS_NONNULL __attribute__ ((__returns_nonnull__))
+# else
+#  define ATTRIBUTE_RETURNS_NONNULL
+# endif /* GNUC >= 4.9 */
+#endif /* ATTRIBUTE_RETURNS_NONNULL */
 
 /* Attribute `pure' was valid as of gcc 3.0.  */
 #ifndef ATTRIBUTE_PURE
@@ -382,7 +211,7 @@ So instead we use the macro below and test it against specific values.  */
 # endif /* GNUC >= 3.0 */
 #endif /* ATTRIBUTE_ALIGNED_ALIGNOF */
 
-/* Useful for structures whose layout must much some binary specification
+/* Useful for structures whose layout must match some binary specification
    regardless of the alignment and padding qualities of the compiler.  */
 #ifndef ATTRIBUTE_PACKED
 # define ATTRIBUTE_PACKED __attribute__ ((packed))
@@ -403,6 +232,58 @@ So instead we use the macro below and test it against specific values.  */
 #  define ATTRIBUTE_HOT
 # endif /* GNUC >= 4.3 */
 #endif /* ATTRIBUTE_HOT */
+
+/* Attribute 'no_sanitize_undefined' was valid as of gcc 4.9.  */
+#ifndef ATTRIBUTE_NO_SANITIZE_UNDEFINED
+# if (GCC_VERSION >= 4009)
+#  define ATTRIBUTE_NO_SANITIZE_UNDEFINED __attribute__ ((no_sanitize_undefined))
+# else
+#  define ATTRIBUTE_NO_SANITIZE_UNDEFINED
+# endif /* GNUC >= 4.9 */
+#endif /* ATTRIBUTE_NO_SANITIZE_UNDEFINED */
+
+/* Attribute 'nonstring' was valid as of gcc 8.  */
+#ifndef ATTRIBUTE_NONSTRING
+# if GCC_VERSION >= 8000
+#  define ATTRIBUTE_NONSTRING __attribute__ ((__nonstring__))
+# else
+#  define ATTRIBUTE_NONSTRING
+# endif
+#endif
+
+/* Attribute `alloc_size' was valid as of gcc 4.3.  */
+#ifndef ATTRIBUTE_RESULT_SIZE_1
+# if (GCC_VERSION >= 4003)
+#  define ATTRIBUTE_RESULT_SIZE_1 __attribute__ ((alloc_size (1)))
+# else
+#  define ATTRIBUTE_RESULT_SIZE_1
+#endif
+#endif
+
+#ifndef ATTRIBUTE_RESULT_SIZE_2
+# if (GCC_VERSION >= 4003)
+#  define ATTRIBUTE_RESULT_SIZE_2 __attribute__ ((alloc_size (2)))
+# else
+#  define ATTRIBUTE_RESULT_SIZE_2
+#endif
+#endif
+
+#ifndef ATTRIBUTE_RESULT_SIZE_1_2
+# if (GCC_VERSION >= 4003)
+#  define ATTRIBUTE_RESULT_SIZE_1_2 __attribute__ ((alloc_size (1, 2)))
+# else
+#  define ATTRIBUTE_RESULT_SIZE_1_2
+#endif
+#endif
+
+/* Attribute `warn_unused_result' was valid as of gcc 3.3.  */
+#ifndef ATTRIBUTE_WARN_UNUSED_RESULT
+# if GCC_VERSION >= 3003
+#  define ATTRIBUTE_WARN_UNUSED_RESULT __attribute__ ((__warn_unused_result__))
+# else
+#  define ATTRIBUTE_WARN_UNUSED_RESULT
+# endif
+#endif
 
 /* We use __extension__ in some places to suppress -pedantic warnings
    about GCC extensions.  This feature didn't work properly before
@@ -433,6 +314,38 @@ So instead we use the macro below and test it against specific values.  */
 #else
 #define ENUM_BITFIELD(TYPE) unsigned int
 #endif
+
+#if defined(__cplusplus) && __cpp_constexpr >= 200704
+#define CONSTEXPR constexpr
+#else
+#define CONSTEXPR
+#endif
+
+/* A macro to disable the copy constructor and assignment operator.
+   When building with C++11 and above, the methods are explicitly
+   deleted, causing a compile-time error if something tries to copy.
+   For C++03, this just declares the methods, causing a link-time
+   error if the methods end up called (assuming you don't
+   define them).  For C++03, for best results, place the macro
+   under the private: access specifier, like this,
+
+   class name_lookup
+   {
+     private:
+       DISABLE_COPY_AND_ASSIGN (name_lookup);
+   };
+
+   so that most attempts at copy are caught at compile-time.  */
+
+#if defined(__cplusplus) && __cplusplus >= 201103
+#define DISABLE_COPY_AND_ASSIGN(TYPE)		\
+  TYPE (const TYPE&) = delete;			\
+  void operator= (const TYPE &) = delete
+  #else
+#define DISABLE_COPY_AND_ASSIGN(TYPE)		\
+  TYPE (const TYPE&);				\
+  void operator= (const TYPE &)
+#endif /* __cplusplus >= 201103 */
 
 #ifdef __cplusplus
 }

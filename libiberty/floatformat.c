@@ -1,6 +1,5 @@
 /* IEEE floating point support routines, for GDB, the GNU Debugger.
-   Copyright 1991, 1994, 1999, 2000, 2003, 2005, 2006, 2010, 2012
-   Free Software Foundation, Inc.
+   Copyright (C) 1991-2023 Free Software Foundation, Inc.
 
 This file is part of GDB.
 
@@ -19,7 +18,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
 
 /* This is needed to pick up the NAN macro on some systems.  */
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -77,7 +78,7 @@ floatformat_always_valid (const struct floatformat *fmt ATTRIBUTE_UNUSED,
    a system header, what we do if not, etc.  */
 #define FLOATFORMAT_CHAR_BIT 8
 
-/* floatformats for IEEE half, single and double, big and little endian.  */
+/* floatformats for IEEE half, single, double and quad, big and little endian.  */
 const struct floatformat floatformat_ieee_half_big =
 {
   floatformat_big, 16, 0, 1, 5, 15, 31, 6, 10,
@@ -123,6 +124,22 @@ const struct floatformat floatformat_ieee_double_little =
   floatformat_little, 64, 0, 1, 11, 1023, 2047, 12, 52,
   floatformat_intbit_no,
   "floatformat_ieee_double_little",
+  floatformat_always_valid,
+  NULL
+};
+const struct floatformat floatformat_ieee_quad_big =
+{
+  floatformat_big, 128, 0, 1, 15, 16383, 0x7fff, 16, 112,
+  floatformat_intbit_no,
+  "floatformat_ieee_quad_big",
+  floatformat_always_valid,
+  NULL
+};
+const struct floatformat floatformat_ieee_quad_little =
+{
+  floatformat_little, 128, 0, 1, 15, 16383, 0x7fff, 16, 112,
+  floatformat_intbit_no,
+  "floatformat_ieee_quad_little",
   floatformat_always_valid,
   NULL
 };
@@ -268,22 +285,6 @@ const struct floatformat floatformat_ia64_spill_little =
   floatformat_always_valid,
   NULL
 };
-const struct floatformat floatformat_ia64_quad_big =
-{
-  floatformat_big, 128, 0, 1, 15, 16383, 0x7fff, 16, 112,
-  floatformat_intbit_no,
-  "floatformat_ia64_quad_big",
-  floatformat_always_valid,
-  NULL
-};
-const struct floatformat floatformat_ia64_quad_little =
-{
-  floatformat_little, 128, 0, 1, 15, 16383, 0x7fff, 16, 112,
-  floatformat_intbit_no,
-  "floatformat_ia64_quad_little",
-  floatformat_always_valid,
-  NULL
-};
 
 static int
 floatformat_ibm_long_double_is_valid (const struct floatformat *fmt,
@@ -371,15 +372,41 @@ floatformat_ibm_long_double_is_valid (const struct floatformat *fmt,
     }
 }
 
-const struct floatformat floatformat_ibm_long_double =
+const struct floatformat floatformat_ibm_long_double_big =
 {
   floatformat_big, 128, 0, 1, 11, 1023, 2047, 12, 52,
   floatformat_intbit_no,
-  "floatformat_ibm_long_double",
+  "floatformat_ibm_long_double_big",
   floatformat_ibm_long_double_is_valid,
   &floatformat_ieee_double_big
 };
-
+
+const struct floatformat floatformat_ibm_long_double_little =
+{
+  floatformat_little, 128, 0, 1, 11, 1023, 2047, 12, 52,
+  floatformat_intbit_no,
+  "floatformat_ibm_long_double_little",
+  floatformat_ibm_long_double_is_valid,
+  &floatformat_ieee_double_little
+};
+
+const struct floatformat floatformat_bfloat16_big =
+{
+  floatformat_big, 16, 0, 1, 8, 127, 255, 9, 7,
+  floatformat_intbit_no,
+  "floatformat_bfloat16_big",
+  floatformat_always_valid,
+  NULL
+};
+
+const struct floatformat floatformat_bfloat16_little =
+{
+  floatformat_little, 16, 0, 1, 8, 127, 255, 9, 7,
+  floatformat_intbit_no,
+  "floatformat_bfloat16_little",
+  floatformat_always_valid,
+  NULL
+};
 
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -479,7 +506,7 @@ floatformat_to_double (const struct floatformat *fmt,
       int nan = mant_bits_set (fmt, ufrom);
 
       /* On certain systems (such as GNU/Linux), the use of the
-	 INFINITY macro below may generate a warning that can not be
+	 INFINITY macro below may generate a warning that cannot be
 	 silenced due to a bug in GCC (PR preprocessor/11931).  The
 	 preprocessor fails to recognise the __extension__ keyword in
 	 conjunction with the GNU/C99 extension for hexadecimal

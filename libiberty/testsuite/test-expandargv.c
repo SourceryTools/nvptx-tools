@@ -1,5 +1,5 @@
 /* expandargv test program,
-   Copyright (C) 2006 Free Software Foundation, Inc.
+   Copyright (C) 2006-2023 Free Software Foundation, Inc.
    Written by Carlos O'Donell <carlos@codesourcery.com>
 
    This file is part of the libiberty library, which is part of GCC.
@@ -39,6 +39,9 @@
 #endif
 #ifdef HAVE_STRING_H
 #include <string.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 #ifndef EXIT_SUCCESS

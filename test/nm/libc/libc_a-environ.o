@@ -1,0 +1,10 @@
+// BEGIN PREAMBLE
+.version 3.1
+.target sm_35
+.address_size 64
+// END PREAMBLE
+// BEGIN VAR DEF: initial_env
+.global .align 8 .u64 initial_env[1];
+// BEGIN GLOBAL VAR DEF: environ
+.visible .global .align 8 .u64 environ[1] =
+{generic(initial_env) };

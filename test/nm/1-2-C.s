@@ -2,8 +2,8 @@
 // ..., and then manually simplify.
 
 // BEGIN PREAMBLE
-	.version	3.1
-	.target	sm_35
+	.version 4.0
+	.target	sm_50
 	.address_size 64
 // END PREAMBLE
 

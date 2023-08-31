@@ -1,8 +1,8 @@
 //     $ [nvptx-none-gcc] directive-file-1.c -o directive-file-1.s -S -g
 //     $ [nvptx-none-as] directive-file-1.s -o directive-file-1.o.golden
 // BEGIN PREAMBLE
-.version 3.1
-.target sm_35
+.version 4.0
+.target sm_50
 .address_size 64
 // END PREAMBLE
 // BEGIN GLOBAL FUNCTION DECL: f

@@ -1,2 +1,2 @@
-Verifying sm_30 code with sm_35 code generation.
- ptxas -c -o /dev/null /dev/null --gpu-name sm_35 -O0
+Verifying sm_30 code with sm_50 code generation.
+ ptxas -c -o /dev/null /dev/null --gpu-name sm_50 -O0

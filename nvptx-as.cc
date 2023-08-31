@@ -1249,26 +1249,34 @@ This program has absolutely no warranty.\n",
 	  target_arg = preamble_target_arg;
 
 	  if ((strcmp ("sm_30", target_arg) == 0)
-	      || (strcmp ("sm_32", target_arg) == 0))
+	      || (strcmp ("sm_32", target_arg) == 0)
+	      || (strcmp ("sm_35", target_arg) == 0)
+	      || (strcmp ("sm_37", target_arg) == 0))
 	    {
-	      /* Starting with CUDA 11.0, "Support for Kepler 'sm_30' and
-		 'sm_32' architecture based products is dropped", and these may
-		 no longer be specified in '--gpu-name' of 'ptxas':
+	      /* In CUDA 11.0, "Support for Kepler 'sm_30' and 'sm_32'
+		 architecture based products is dropped", and in CUDA 12.0,
+		 "Kepler architecture support is removed" (that is, sm_35,
+		 sm_37), and these may no longer be specified in '--gpu-name'
+		 of 'ptxas':
 
 		     ptxas fatal   : Value 'sm_30' is not defined for option 'gpu-name'
 
 		     ptxas fatal   : Value 'sm_32' is not defined for option 'gpu-name'
+
+		     ptxas fatal   : Value 'sm_35' is not defined for option 'gpu-name'
+
+		     ptxas fatal   : Value 'sm_37' is not defined for option 'gpu-name'
 
 		 ..., but we need to continue supporting GCC emitting
 		 '.target sm_30' code, for example.
 
 		 Detecting the CUDA/'ptxas' version and the supported
 		 '--gpu-name' options is clumsy, so in this case, just use
-		 'sm_35', which is the baseline supported by all current CUDA
+		 'sm_50', which is the baseline supported by all current CUDA
 		 versions down to CUDA 6.5, at least.  */
 	      if (verbose)
 		fprintf (stderr, "Verifying %s code", target_arg);
-	      target_arg = "sm_35";
+	      target_arg = "sm_50";
 	      if (verbose)
 		fprintf (stderr, " with %s code generation.\n", target_arg);
 	    }

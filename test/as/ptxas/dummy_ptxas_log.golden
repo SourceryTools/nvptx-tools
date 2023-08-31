@@ -4,5 +4,5 @@ dummy ptxas
   arg: /dev/null
   arg: /dev/null
   arg: --gpu-name
-  arg: sm_35
+  arg: sm_50
   arg: -O0

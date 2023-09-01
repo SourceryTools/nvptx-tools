@@ -695,13 +695,21 @@ static Token *
 parse_file (htab_t symbol_table, Token *tok)
 {
   Stmt *comment = 0;
+  bool is_decl = false;
 
   if (tok->kind == K_comment)
     {
       Token *start = tok;
 
       while (tok->kind == K_comment)
-	tok++;
+	{
+	  if (strncmp (tok->ptr, ":VAR_MAP ", 9) == 0
+	      || strncmp (tok->ptr, ":FUNC_MAP ", 10) == 0)
+	    /* GCC 'mkoffload's require these to be emitted in order of
+	       appearance; handle via 'decls'.  */
+	    is_decl = true;
+	  tok++;
+	}
       comment = alloc_comment (start, tok);
       comment->vis |= V_prefix_comment;
     }
@@ -721,7 +729,6 @@ parse_file (htab_t symbol_table, Token *tok)
 	{
 	  unsigned vis = 0;
 	  symbol *def = 0;
-	  unsigned is_decl = 0;
 	  Token *start, *def_token = 0;
 
 	  for (start = tok;
@@ -737,7 +744,8 @@ parse_file (htab_t symbol_table, Token *tok)
 	      else if (is_keyword (tok, "visible"))
 		vis |= V_global;
 	      else if (is_keyword (tok, "extern"))
-		is_decl = 1;
+		/*TODO It's not clear why '.extern' are handled via 'decls' instead of via 'symbol_table'.  */
+		is_decl = true;
 	      else if (is_keyword (tok, "weak"))
 		vis |= V_weak;
 	      if (tok->kind == '(')

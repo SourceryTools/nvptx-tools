@@ -1,4 +1,4 @@
-Document (buggy) behavior that a block comment following a 'K_dotted' directive is mis-handled in 'parse_line_nosemi'.
+Test that a block comment following a 'K_dotted' directive isn't mis-handled in 'parse_line_nosemi'.
 
 RUN: %target_as_cmd --no-verify %S/block_comment-1.s -o %t
 RUN: cmp %S/block_comment-1.o.golden %t

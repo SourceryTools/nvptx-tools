@@ -325,7 +325,7 @@ tokenize (const char *ptr)
 		ptr++;
 
 	      block_comment:
-		eol = in_comment;
+		eol |= in_comment;
 		in_comment = 1;
 		for (; *ptr; ptr++)
 		  {

@@ -550,7 +550,7 @@ write_stmts (FILE *out, const Stmt *stmts)
 /* Parse a line until the end, regardless of semicolons.  */
 
 static Token *
-parse_line_nosemi (Token *tok, Stmt **append_where)
+parse_line_nosemi (unsigned vis, Token *tok, Stmt **append_where)
 {
   Token *start = tok;
 
@@ -558,7 +558,7 @@ parse_line_nosemi (Token *tok, Stmt **append_where)
     tok++;
   while (!tok[-1].end);
 
-  Stmt *stmt = alloc_stmt (V_dot, start, tok, 0);
+  Stmt *stmt = alloc_stmt (vis, start, tok, 0);
   append_stmt (append_where, stmt);
 
   return tok;
@@ -579,12 +579,12 @@ parse_insn (Token *tok)
 	{
 	  if (is_keyword (tok, "file"))
 	    {
-	      tok = parse_line_nosemi (tok, &decls);
+	      tok = parse_line_nosemi (V_dot, tok, &decls);
 	      continue;
 	    }
 	  if (is_keyword (tok, "loc"))
 	    {
-	      tok = parse_line_nosemi (tok, &fns);
+	      tok = parse_line_nosemi (V_dot, tok, &fns);
 	      continue;
 	    }
 	}
@@ -722,7 +722,7 @@ parse_file (htab_t symbol_table, Token *tok)
 	{
 	  if (comment)
 	    append_stmt (&decls, comment);
-	  tok = parse_line_nosemi (tok, &decls);
+	  tok = parse_line_nosemi (V_dot, tok, &decls);
 	}
       else
 	{

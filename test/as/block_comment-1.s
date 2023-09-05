@@ -1,0 +1,5 @@
+.file f1
+/* comment1 */
+.file f2
+/* comment2
+   line 2 */

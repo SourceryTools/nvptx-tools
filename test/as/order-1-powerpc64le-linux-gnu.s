@@ -1,8 +1,8 @@
 // Based on offloading-compilation artifact 'a.xnvptx-none.mkoffload.s' of <https://gcc.gnu.org/PR100059> "[OpenMP] wrong code with 'declare target link' and a scalar variable".
 
 // BEGIN PREAMBLE
-	.version	3.1
-	.target	sm_35
+	.version 4.0
+	.target	sm_50
 	.address_size 64
 // END PREAMBLE
 
@@ -30,19 +30,19 @@
 }
 //:FUNC_MAP "main$_omp_fn$0"
 //:VAR_MAP "i$linkptr"
+//:VAR_MAP "b$linkptr"
+//:VAR_MAP "c$linkptr"
+//:VAR_MAP "a$linkptr"
 
 
 // BEGIN GLOBAL VAR DEF: i$linkptr
 	.visible .global .align 8 .u64 i$linkptr[1];
-//:VAR_MAP "b$linkptr"
 
 // BEGIN GLOBAL VAR DEF: b$linkptr
 	.visible .global .align 8 .u64 b$linkptr[1];
-//:VAR_MAP "c$linkptr"
 
 // BEGIN GLOBAL VAR DEF: c$linkptr
 	.visible .global .align 8 .u64 c$linkptr[1];
-//:VAR_MAP "a$linkptr"
 
 // BEGIN GLOBAL VAR DEF: a$linkptr
 	.visible .global .align 8 .u64 a$linkptr[1];

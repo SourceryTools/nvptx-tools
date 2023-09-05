@@ -1,5 +1,15 @@
 <https://github.com/MentorEmbedded/nvptx-tools/pull/29> "Ensure :VAR_MAP and :FUNC_MAP are output in order"
 <https://gcc.gnu.org/PR100059> "[OpenMP] wrong code with 'declare target link' and a scalar variable"
 
-RUN: %target_as_cmd --no-verify %S/order-1.s -o %t
-RUN: cmp %S/order-1.o.golden %t
+RUN: %target_as_cmd --no-verify %S/order-1-x86_64-linux-gnu.s -o %t
+RUN: cmp %S/order-1-x86_64-linux-gnu.o.golden %t
+
+RUN: %target_as_cmd --no-verify %S/order-1-powerpc64le-linux-gnu.s -o %t
+RUN: cmp %S/order-1-powerpc64le-linux-gnu.o.golden %t
+
+
+RUN: %target_as_cmd --no-verify %S/order-2-x86_64-linux-gnu.s -o %t
+RUN: cmp %S/order-2-x86_64-linux-gnu.o.golden %t
+
+RUN: %target_as_cmd --no-verify %S/order-2-powerpc64le-linux-gnu.s -o %t
+RUN: cmp %S/order-2-powerpc64le-linux-gnu.o.golden %t

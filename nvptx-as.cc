@@ -694,7 +694,7 @@ static Token *
 parse_file (htab_t symbol_table, Token *tok)
 {
   Stmt *comment = 0;
-  bool is_decl = false;
+  bool is_map_directive = false;
 
   if (tok->kind == K_comment)
     {
@@ -702,18 +702,32 @@ parse_file (htab_t symbol_table, Token *tok)
 
       while (tok->kind == K_comment)
 	{
+	  /* Instead of 'K_comment', a point could be made to have these be
+	     represented as their own 'Kind'.  */
 	  if (strncmp (tok->ptr, ":VAR_MAP ", 9) == 0
 	      || strncmp (tok->ptr, ":FUNC_MAP ", 10) == 0)
-	    /* GCC 'mkoffload's require these to be emitted in order of
-	       appearance; handle via 'decls'.  */
-	    is_decl = true;
+	    {
+	      is_map_directive = true;
+	      break;
+	    }
 	  tok++;
 	}
-      comment = alloc_stmt (V_comment, start, tok, 0);
-      comment->vis |= V_prefix_comment;
+      if (start != tok)
+	{
+	  comment = alloc_stmt (V_comment, start, tok, 0);
+	  comment->vis |= V_prefix_comment;
+	}
     }
 
-  if (tok->kind == K_dotted)
+  if (is_map_directive)
+    {
+      /* GCC 'mkoffload' requires these to be emitted in order of appearance;
+	 handle via 'decls'.  */
+      if (comment)
+	append_stmt (&decls, comment);
+      tok = parse_line_nosemi (V_comment, tok, &decls);
+    }
+  else if (tok->kind == K_dotted)
     {
       if (is_keyword (tok, "version")
 	  || is_keyword (tok, "target")
@@ -728,6 +742,7 @@ parse_file (htab_t symbol_table, Token *tok)
 	{
 	  unsigned vis = 0;
 	  symbol *def = 0;
+	  bool is_decl = false;
 	  Token *start, *def_token = 0;
 
 	  for (start = tok;

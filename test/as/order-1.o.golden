@@ -13,8 +13,6 @@
 //:VAR_MAP "b$linkptr"
 //:VAR_MAP "c$linkptr"
 //:VAR_MAP "a$linkptr"
-// BEGIN GLOBAL VAR DEF: i$linkptr
-.visible .global .align 8 .u64 i$linkptr[1];
 // BEGIN GLOBAL FUNCTION DECL: gomp_nvptx_main
 .extern .func gomp_nvptx_main (.param .u64 %in_ar1, .param .u64 %in_ar2);
 // BEGIN GLOBAL VAR DECL: __nvptx_stacks
@@ -23,6 +21,8 @@
 .extern .shared .u32 __nvptx_uni[32];
 // BEGIN GLOBAL VAR DEF: b$linkptr
 .visible .global .align 8 .u64 b$linkptr[1];
+// BEGIN GLOBAL VAR DEF: i$linkptr
+.visible .global .align 8 .u64 i$linkptr[1];
 // BEGIN GLOBAL VAR DEF: c$linkptr
 .visible .global .align 8 .u64 c$linkptr[1];
 // BEGIN GLOBAL VAR DEF: a$linkptr

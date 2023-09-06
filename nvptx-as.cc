@@ -221,7 +221,6 @@ typedef struct Stmt
   unsigned len : 12;
 } Stmt;
 
-#define alloc_comment(S,E) alloc_stmt (V_comment, S, E, 0)
 #define append_stmt(V, S) ((S)->next = *(V), *(V) = (S))
 
 static Stmt *decls;
@@ -594,7 +593,7 @@ parse_insn (Token *tok)
 	case K_comment:
 	  while (tok->kind == K_comment)
 	    tok++;
-	  stmt = alloc_comment (start, tok);
+	  stmt = alloc_stmt (V_comment, start, tok, 0);
 	  append_stmt (&fns, stmt);
 	  continue;
 
@@ -635,7 +634,7 @@ parse_insn (Token *tok)
       if (!tok[-1].end && tok[0].kind == K_comment)
 	{
 	  stmt->vis |= V_no_eol;
-	  stmt = alloc_comment (tok, tok + 1);
+	  stmt = alloc_stmt (V_comment, tok, tok + 1, 0);
 	  append_stmt (&fns, stmt);
 	  tok++;
 	}
@@ -658,7 +657,7 @@ parse_init (htab_t symbol_table, Token *tok, symbol *sym)
 	{
 	  while (tok->kind == K_comment)
 	    tok++;
-	  stmt = alloc_comment (start, tok);
+	  stmt = alloc_stmt (V_comment, start, tok, 0);
 	  append_stmt (&sym->stmts, stmt);
 	  start = tok;
 	}
@@ -681,7 +680,7 @@ parse_init (htab_t symbol_table, Token *tok, symbol *sym)
       if (!tok[-1].end && tok->kind == K_comment)
 	{
 	  stmt->vis |= V_no_eol;
-	  stmt = alloc_comment (tok, tok + 1);
+	  stmt = alloc_stmt (V_comment, tok, tok + 1, 0);
 	  append_stmt (&sym->stmts, stmt);
 	  tok++;
 	}
@@ -710,7 +709,7 @@ parse_file (htab_t symbol_table, Token *tok)
 	    is_decl = true;
 	  tok++;
 	}
-      comment = alloc_comment (start, tok);
+      comment = alloc_stmt (V_comment, start, tok, 0);
       comment->vis |= V_prefix_comment;
     }
 

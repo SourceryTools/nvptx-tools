@@ -1,0 +1,25 @@
+GCC 'gcc.c-torture/compile/limits-fndefn.c' synthesizes a function with 100001 formal parameters:
+
+    [...]
+    // BEGIN GLOBAL FUNCTION DECL: func1
+    .visible .func func1 (.param.u32 %in_ar0, .param.u32 %in_ar1, [...], .param.u32 %in_ar99999, .param.u32 %in_ar100000);
+    
+    // BEGIN GLOBAL FUNCTION DEF: func1
+    .visible .func func1 (.param.u32 %in_ar0, .param.u32 %in_ar1, [...], .param.u32 %in_ar99999, .param.u32 %in_ar100000)
+    {
+    [...]
+
+..., which 'as' truncated:
+
+    [...]
+    // BEGIN GLOBAL FUNCTION DECL: func1
+    .visible .func func1 (.param .u32 %in_ar0, .param .u32 %in_ar1, [...], .param .u32 %in_ar672, .param// BEGIN GLOBAL FUNCTION DEF: func1
+    .visible .func func1 (.param .u32 %in_ar0, .param .u32 %in_ar1, [...], .param .u32 %in_ar671, .param .u32 %in_ar672,{
+    [...]
+
+RUN: cp %S/bare-1.s %t.s
+RUN: printf '.visible .func func1 (' >> %t.s
+RUN: awk 'BEGIN { for (i = 0; i < 100000; ++i) printf ".param .u32 in_ar%u, ", i }' /dev/null >> %t.s
+RUN: echo '.param .u32 in_ar100000);' >> %t.s
+RUN: %target_as_cmd --no-verify %t.s -o %t.o
+RUN: cmp %t.s %t.o

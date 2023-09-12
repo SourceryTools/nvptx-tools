@@ -216,9 +216,9 @@ typedef struct Stmt
 {
   struct Stmt *next;
   Token *tokens;
+  Token *tokens_end;
   symbol *sym;
   unsigned char vis;
-  unsigned len : 12;
 } Stmt;
 
 #define append_stmt(V, S) ((S)->next = *(V), *(V) = (S))
@@ -482,7 +482,7 @@ write_token (FILE *out, Token const *tok)
 static std::list<void *> heaps;
 
 static Stmt *
-alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
+alloc_stmt (unsigned vis, Token *tokens, Token *tokens_end, symbol *sym)
 {
   static unsigned alloc = 0;
   static Stmt *heap = 0;
@@ -501,7 +501,7 @@ alloc_stmt (unsigned vis, Token *tokens, Token *end, symbol *sym)
   stmt->next = 0;
   stmt->vis = vis;
   stmt->tokens = tokens;
-  stmt->len = end - tokens;
+  stmt->tokens_end = tokens_end;
   stmt->sym = sym;
 
   return stmt;
@@ -527,11 +527,11 @@ rev_stmts (Stmt *stmt)
 static void
 write_stmt (FILE *out, const Stmt *stmt)
 {
-  for (int i = 0; i < stmt->len; i++)
+  for (Token *tok = stmt->tokens; tok != stmt->tokens_end; ++tok)
     {
       if ((stmt->vis & V_mask) == V_comment)
 	fprintf (out, "//");
-      write_token (out, stmt->tokens + i);
+      write_token (out, tok);
       if ((stmt->vis & V_mask) == V_pred)
 	fputc (' ', out);
     }

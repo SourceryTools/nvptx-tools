@@ -390,7 +390,10 @@ Report bugs to %s.\n",
   exit (status);
 }
 
+#define OPT_hash_style 256
+
 static const struct option long_options[] = {
+  {"hash-style", required_argument, 0, OPT_hash_style },
   {"help", no_argument, 0, 'h' },
   {"version", no_argument, 0, 'V' },
   {0, 0, 0, 0 }
@@ -440,6 +443,9 @@ the GNU General Public License version 3 or later.\n\
 This program has absolutely no warranty.\n",
 		  PKGVERSION, NVPTX_TOOLS_VERSION, "2015");
 	  exit (0);
+	case OPT_hash_style:
+	  // Ignore --hash-style
+	  break;
 	default:
 	  usage (stderr, 1);
 	  break;

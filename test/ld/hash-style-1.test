@@ -1,0 +1,18 @@
+<https://github.com/MentorEmbedded/nvptx-tools/pull/44> "Handle --hash-style argument in nvptx-ld".
+
+
+    option '--hash-style' requires an argument
+
+RUN: %target_ld_cmd --hash-style > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: test -s %t.stderr
+RUN: < %t.stderr grep -qe '^Usage: nvptx-none-ld '
+RUN: test -f %t.stdout
+RUN: ! test -s %t.stdout
+
+
+Accepts '--hash-style=[...]' as well as '--hash-style [...]'.
+
+RUN: %target_ld_cmd --hash-style=what --hash-style ever -o %t.nvptx %S/empty.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/empty-1-1.nvptx.golden %t.nvptx
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr

@@ -4,8 +4,6 @@ nvptx-tools: a collection of tools for use with nvptx-none GCC toolchains.
   * nvptx-none-ld: "linker" for PTX.
   * nvptx-none-nm: list symbols.
   * nvptx-none-run: run PTX binaries compiled with -mmainkernel.
-  * nvptx-none-run-single: as nvptx-none-run, locked, such that system-wide
-    only one instance of it is running at a time.
 
 Additionally, the following symlinks are installed:
 
@@ -32,8 +30,12 @@ as follows with the GCC testsuite:
     $ make check DEJAGNU=[build-nvptx-tools]/dejagnu.exp RUNTESTFLAGS='--target_board=nvptx-none-run' [...]
 
 By default, this will use nvptx-none-run found in $PATH, but that can be
-overridden by setting the NVPTX_NONE_RUN environment variable, for example to
-[...]/nvptx-none-run-single.
+overridden by setting the NVPTX_NONE_RUN environment variable.
+
+By default, nvptx-none-run invocation is serialized by means of a lock file.
+The default /tmp/gpu.lock may be overridden by setting the
+NVPTX_NONE_EXECUTION_LOCK_FILE environment variable.  Set it to the empty
+string to disable locking.
 
 
 Nvidia CUDA/PTX Dependency

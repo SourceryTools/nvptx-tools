@@ -19,11 +19,20 @@
 set_board_info target_install {nvptx-none}
 
 load_generic_config "sim"
+
+if { [info exists env(NVPTX_NONE_EXECUTION_LOCK_FILE)] } then {
+    set_board_info sim,execution_lock_file "$env(NVPTX_NONE_EXECUTION_LOCK_FILE)"
+} else {
+    #TODO What's a good default filename?
+    set_board_info sim,execution_lock_file "/tmp/gpu.lock"
+}
+
 if { [info exists env(NVPTX_NONE_RUN)] } then {
     set_board_info sim "$env(NVPTX_NONE_RUN)"
 } else {
     set_board_info sim "nvptx-none-run"
 }
+
 # This isn't a simulator, but rather a "launcher".
 unset_board_info is_simulator
 unset_board_info slow_simulator
@@ -41,7 +50,92 @@ set_board_info cflags "[newlib_include_flags]"
 set_board_info ldflags "[newlib_link_flags] -mmainkernel"
 set_board_info ldscript ""
 
-# <http://news.gmane.org/find-root.php?message_id=%3C1392398663.17835.120.camel%40ubuntu-sellcey%3E>
+# Work around <http://mid.mail-archive.com/B457CE4A2BB446B7930A9BA1E38DBCCC@pleaset> 'ERROR: (DejaGnu) proc "::tcl::tm::UnknownHandler {::tcl::MacOSXPkgUnknown ::tclPkgUnknown} msgcat 1.4" does not exist.'...
+# Otherwise, our use of 'clock format' may cause spurious errors such as:
+#     ERROR: gcc.c-torture/compile/pr44686.c   -O0 : unknown dg option: ::tcl::tm::UnknownHandler ::tclPkgUnknown msgcat 1.4 for " dg-require-profiling 1 "-fprofile-generate" "
+# ..., and all testing thus breaking apart.
+set dummy [clock format [clock seconds]]
+unset dummy
+
+proc sim__open_lock_file { lock_file } {
+    # Try to open the lock file for reading, so that this also works if
+    # somebody else created the file.
+    if [catch {open $lock_file r} result] {
+	verbose -log "Couldn't open '$lock_file' for reading: $result"
+	# Try to create the lock file.
+	if [catch {open $lock_file a+} result] {
+	    verbose -log "Couldn't create '$lock_file': $result"
+	    # If this again failed, somebody else created it, concurrently.  If
+	    # in the following we're now not able to open it for reading, we've
+	    # got a fundamental problem, and let it fail.
+	    set result [open $lock_file r]
+	}
+    }
+    return $result
+}
+
+# The default 'sim_load' would eventually call into 'sim_spawn', 'sim_wait',
+# but it's earlier here to just override the former one, and put safeguards
+# into the latter two.
+
+proc sim_spawn { dest cmdline args } {
+    perror "TODO 'sim_spawn'"
+    verbose -log "TODO 'sim_spawn'"
+    return -1
+}
+
+proc sim_wait { dest timeout } {
+    perror "TODO 'sim_wait'"
+    verbose -log "TODO 'sim_wait'"
+    return -1
+}
+
+proc sim_load { dest prog args } {
+    set inpfile ""
+    if { [llength $args] > 1 } {
+	if { [lindex $args 1] != "" } {
+	    set inpfile "[lindex $args 1]"
+	}
+    }
+
+    # The launcher arguments are the program followed by the program arguments.
+    set pargs [lindex $args 0]
+    set largs [concat $prog $pargs]
+    set args [lreplace $args 0 0 $largs]
+
+    set launcher [board_info $dest sim]
+
+    # To support parallel testing ('make -j[...] check') in light of flaky test
+    # results for concurrent GPU usage, we'd like to serialize execution tests.
+    set lock_file [board_info $dest sim,execution_lock_file]
+    if { $lock_file != "" } {
+	set lock_fd [sim__open_lock_file $lock_file]
+	set lock_clock_begin [clock seconds]
+	exec flock 0 <@ $lock_fd
+	set lock_clock_end [clock seconds]
+	verbose -log "Got flock('$lock_file') at [clock format $lock_clock_end] after [expr $lock_clock_end - $lock_clock_begin] s" 2
+    }
+
+    # Note, not using 'remote_exec $dest' here.
+    set result [eval [list remote_exec host $launcher] $args $inpfile]
+    # We don't tell 'launcher' execution failure from 'prog' execution failure.
+    # Maybe we should, or maybe it doesn't matter.  (When there's an error,
+    # there's an error.)
+
+    if { $lock_file != "" } {
+	# Unlock (implicit with 'close').
+	close $lock_fd
+    }
+
+    if { [lindex $result 0] == 0 } {
+	return [list "pass" [lindex $result 1]]
+    } else {
+	return [list "fail" [lindex $result 1]]
+    }
+}
+
 proc sim_exec { dest srcfile args } {
-    return [remote_exec host $srcfile $args]
+    perror "TODO 'sim_exec'"
+    verbose -log "TODO 'sim_exec'"
+    return -1
 }

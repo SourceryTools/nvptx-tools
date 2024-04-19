@@ -705,7 +705,8 @@ parse_file (htab_t symbol_table, Token *tok)
 	  /* Instead of 'K_comment', a point could be made to have these be
 	     represented as their own 'Kind'.  */
 	  if (strncmp (tok->ptr, ":VAR_MAP ", 9) == 0
-	      || strncmp (tok->ptr, ":FUNC_MAP ", 10) == 0)
+	      || strncmp (tok->ptr, ":FUNC_MAP ", 10) == 0
+	      || strncmp (tok->ptr, ":IND_FUNC_MAP ", 14) == 0)
 	    {
 	      is_map_directive = true;
 	      break;

@@ -26,6 +26,7 @@ A number of files are imported from GCC:
   - 'config.sub'
   - 'config/ChangeLog' (partial)
   - 'config/acx.m4' (partial)
+  - 'config/ax_cxx_compile_stdcxx.m4'
   - 'include/'
   - 'install-sh'
   - 'libiberty/'

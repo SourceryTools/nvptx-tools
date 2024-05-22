@@ -1,4 +1,4 @@
-<https://github.com/MentorEmbedded/nvptx-tools/issues/28> "nvptx-as should diagnose unexpected input instead of silently ignoring it"
+<https://github.com/SourceryTools/nvptx-tools/issues/28> "nvptx-as should diagnose unexpected input instead of silently ignoring it"
 
 Document current buggy behavior.
 

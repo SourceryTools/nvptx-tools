@@ -1,4 +1,4 @@
-<https://github.com/MentorEmbedded/nvptx-tools/issues/20> 'nvptx-as reorders ".file" directives'
+<https://github.com/SourceryTools/nvptx-tools/issues/20> 'nvptx-as reorders ".file" directives'
 
 In the file produced by GCC, expect 'nvptx-none-as' to reorder '.file' directives:
 RUN: %target_as_cmd --no-verify %S/directive-file-1.s -o %t

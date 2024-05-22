@@ -445,7 +445,7 @@ This program has absolutely no warranty.\n",
 	  exit (0);
 	case OPT_hash_style:
 	  /* Ignore '--hash-style'; see
-	     <https://github.com/MentorEmbedded/nvptx-tools/pull/44>
+	     <https://github.com/SourceryTools/nvptx-tools/pull/44>
 	     "Handle --hash-style argument in nvptx-ld".  */
 	  break;
 	default:
@@ -511,7 +511,7 @@ This program has absolutely no warranty.\n",
       if (archive::is_archive (f))
 	{
 	  /* (Pre-existing problem of) non-standard Unix 'ld' semantics; see
-	     <https://github.com/MentorEmbedded/nvptx-tools/issues/41>
+	     <https://github.com/SourceryTools/nvptx-tools/issues/41>
 	     "ld: non-standard handling of options which refer to files".  */
 	  libraries.push_back (name);
 

@@ -1,4 +1,4 @@
-<https://github.com/MentorEmbedded/nvptx-tools/pull/44> "Handle --hash-style argument in nvptx-ld".
+<https://github.com/SourceryTools/nvptx-tools/pull/44> "Handle --hash-style argument in nvptx-ld".
 
 
     option '--hash-style' requires an argument

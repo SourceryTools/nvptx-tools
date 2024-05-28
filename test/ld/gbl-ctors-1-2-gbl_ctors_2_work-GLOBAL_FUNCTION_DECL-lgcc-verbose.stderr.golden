@@ -1,0 +1,20 @@
+resolving lib lib1.a
+resolving lib libgcc.a
+Linking gbl-ctors-1.o as 0
+Linking gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o as 1
+trying lib lib1/lib1.a
+trying lib libgcc/libgcc.a
+Starting first resolve run
+Resolving gbl_ctors_2_work
+Linking lib1/lib1.a::0.o/             as 2
+special-purpose function: constructor with priority: 65535, sequence: 0: '_GLOBAL__I_65535_0_c1'
+special-purpose function: constructor with priority: 1234, sequence: 1: '_GLOBAL__I_01234_0_d1'
+special-purpose function: constructor with priority: 65535, sequence: 2: '_GLOBAL__I_65535_1_d1'
+special-purpose function: destructor with priority: 65535, sequence: 0: '_GLOBAL__D_65535_1_c1'
+special-purpose function: destructor with priority: 2143, sequence: 1: '_GLOBAL__D_02143_2_d1'
+special-purpose function: destructor with priority: 65535, sequence: 2: '_GLOBAL__D_65535_3_d1'
+Starting second resolve run
+Resolving __trigger_gbl_ctors
+Linking libgcc/libgcc.a::1.o/             as 3
+Resolving f
+Linking libgcc/libgcc.a::0.o/             as 4

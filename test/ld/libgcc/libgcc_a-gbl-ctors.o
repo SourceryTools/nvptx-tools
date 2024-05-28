@@ -1,0 +1,10 @@
+// BEGIN PREAMBLE
+.version 4.0
+.target sm_50
+.address_size 64
+// END PREAMBLE
+// BEGIN GLOBAL FUNCTION DECL: f
+.extern .func (.param .u32 %value_out) f (.param .u32 %in_ar0, .param .u32 %in_ar1);
+// Global constructor/destructor support.
+// BEGIN GLOBAL VAR DEF: __trigger_gbl_ctors
+.visible .global .align 4 .u32 __trigger_gbl_ctors[1];

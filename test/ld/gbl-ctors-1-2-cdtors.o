@@ -1,0 +1,47 @@
+.version 3.1
+.target sm_30
+.address_size 64
+
+// Constructors.
+
+.extern .func _GLOBAL__I_65535_0_c1;
+.extern .func _GLOBAL__I_01234_0_d1;
+.extern .func _GLOBAL__I_65535_1_d1;
+
+.visible .global .u64 __CTOR_LIST__[] = {
+  3,
+  // priority: 65535, sequence: 2
+  _GLOBAL__I_65535_1_d1,
+  // priority: 65535, sequence: 0
+  _GLOBAL__I_65535_0_c1,
+  // priority: 1234, sequence: 1
+  _GLOBAL__I_01234_0_d1,
+  0
+};
+
+// Destructors.
+
+.extern .func _GLOBAL__D_65535_1_c1;
+.extern .func _GLOBAL__D_02143_2_d1;
+.extern .func _GLOBAL__D_65535_3_d1;
+
+.visible .global .u64 __DTOR_LIST__[] = {
+  3,
+  // priority: 65535, sequence: 2
+  _GLOBAL__D_65535_3_d1,
+  // priority: 65535, sequence: 0
+  _GLOBAL__D_65535_1_c1,
+  // priority: 2143, sequence: 1
+  _GLOBAL__D_02143_2_d1,
+  0
+};
+
+/* For example with old Nvidia Tesla K20c, Driver Version: 361.93.02, the
+   function pointers stored in the '__CTOR_LIST__', '__DTOR_LIST__' arrays
+   evidently evaluate to NULL in JIT compilation.  Defining a dummy function
+   next to the arrays apparently does work around this issue...  */
+
+.func dummy
+{
+  ret;
+}

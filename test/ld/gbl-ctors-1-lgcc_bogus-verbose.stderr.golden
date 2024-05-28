@@ -1,0 +1,14 @@
+resolving lib lib1.a
+resolving lib libgcc_bogus.a
+Linking gbl-ctors-1.o as 0
+trying lib lib1/lib1.a
+trying lib libgcc_bogus/libgcc_bogus.a
+Starting first resolve run
+special-purpose function: constructor with priority: 65535, sequence: 0: '_GLOBAL__I_65535_0_c1'
+special-purpose function: destructor with priority: 65535, sequence: 0: '_GLOBAL__D_65535_1_c1'
+Starting second resolve run
+Resolving __trigger_gbl_ctors
+Linking libgcc_bogus/libgcc_bogus.a::0.o/             as 1
+Resolving gbl_ctors_2_work
+Linking lib1/lib1.a::0.o/             as 2
+unhandled additional special-purpose functions

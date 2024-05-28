@@ -1,0 +1,10 @@
+// BEGIN PREAMBLE
+.version 4.0
+.target sm_50
+.address_size 64
+// END PREAMBLE
+// BEGIN GLOBAL FUNCTION DEF: _GLOBAL__I_three_0_c1
+.visible .func _GLOBAL__I_three_0_c1
+{
+  // [...]
+}

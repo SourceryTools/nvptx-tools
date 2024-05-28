@@ -1,0 +1,263 @@
+Global constructor/destructor support
+
+
+RUN: rm -rf %t
+RUN: mkdir -p %t
+
+
+RUN: printf '\0' > %t/NUL
+
+RUN: cp %S/empty.o %t/
+RUN: cp %S/gbl-ctors-1-bogus-1.o %t/
+RUN: cp %S/gbl-ctors-1-bogus-2.o %t/
+RUN: cp %S/gbl-ctors-1.o %t/
+RUN: cp %S/gbl-ctors-2.o %t/
+RUN: cp %S/gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o %t/
+
+
+'libgcc.a'.
+
+RUN: mkdir %t/libgcc
+
+RUN: %target_as_cmd -o %t/libgcc/GLOBAL_FUNCTION_DEF_f.o %S/../GLOBAL_FUNCTION_DEF_f.s
+
+Use short '*.o' file names, so that 'ar_name' doesn't need indirection through the archive symbol table.
+
+RUN: cp %t/libgcc/GLOBAL_FUNCTION_DEF_f.o %t/libgcc/0.o
+RUN: cp %S/libgcc/libgcc_a-gbl-ctors.o %t/libgcc/1.o
+RUN: ( cd %t/libgcc/ && %target_ar_cmd rcs libgcc.a 0.o 1.o )
+
+
+'libgcc_bogus.a'.
+
+RUN: mkdir %t/libgcc_bogus
+
+Use short '*.o' file names, so that 'ar_name' doesn't need indirection through the archive symbol table.
+
+RUN: cp %S/libgcc/libgcc_bogus_a-gbl-ctors.o %t/libgcc_bogus/0.o
+RUN: ( cd %t/libgcc_bogus/ && %target_ar_cmd rcs libgcc_bogus.a 0.o )
+
+
+'lib1.a'.
+
+RUN: mkdir %t/lib1
+
+Use short '*.o' file names, so that 'ar_name' doesn't need indirection through the archive symbol table.
+
+RUN: cp %t/gbl-ctors-2.o %t/lib1/0.o
+RUN: ( cd %t/lib1/ && %target_ar_cmd rcs lib1.a 0.o )
+
+
+Link manually.
+
+RUN: cat %t/empty.o %t/NUL > %t/empty.nvptx.golden
+RUN: cat %t/gbl-ctors-1-bogus-1.o %t/NUL > %t/gbl-ctors-1-bogus-1.nvptx.golden
+RUN: cat %t/gbl-ctors-1-bogus-2.o %t/NUL > %t/gbl-ctors-1-bogus-2.nvptx.golden
+RUN: cat %t/gbl-ctors-1.o %t/NUL > %t/gbl-ctors-1-1.nvptx.golden
+RUN: cat %t/gbl-ctors-1.o %t/NUL %t/gbl-ctors-2.o %t/NUL > %t/gbl-ctors-1-2.nvptx.golden
+RUN: cat %t/gbl-ctors-1.o %t/NUL %t/gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o %t/NUL %t/gbl-ctors-2.o %t/NUL > %t/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.nvptx.golden
+RUN: cat %t/gbl-ctors-1.o %t/NUL %S/gbl-ctors-1-1-cdtors.o %t/NUL %S/libgcc/libgcc_a-gbl-ctors.o %t/NUL %t/libgcc/GLOBAL_FUNCTION_DEF_f.o %t/NUL > %t/gbl-ctors-1-1-lgcc.nvptx.golden
+RUN: cat %t/gbl-ctors-1.o %t/NUL %t/gbl-ctors-2.o %t/NUL %S/gbl-ctors-1-2-cdtors.o %t/NUL %S/libgcc/libgcc_a-gbl-ctors.o %t/NUL %t/libgcc/GLOBAL_FUNCTION_DEF_f.o %t/NUL > %t/gbl-ctors-1-2-lgcc.nvptx.golden
+RUN: cat %t/gbl-ctors-1.o %t/NUL %t/gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o %t/NUL %t/gbl-ctors-2.o %t/NUL %S/gbl-ctors-1-2-cdtors.o %t/NUL %S/libgcc/libgcc_a-gbl-ctors.o %t/NUL %t/libgcc/GLOBAL_FUNCTION_DEF_f.o %t/NUL > %t/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL-lgcc.nvptx.golden
+
+
+Verify no '__trigger_gbl_ctors', therefore "Disabling handling of special-purpose functions"; not necessary.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/empty.o > %t/stdout 2> %t/stderr
+RUN: cmp %t/empty.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx empty.o > stdout 2> stderr )
+RUN: cmp %t/empty.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-empty-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+Verify '__trigger_gbl_ctors' not necessary, therefore 'libgcc_a-gbl-ctors.o' not linked in.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/empty.o -L%t/libgcc -lgcc > %t/stdout 2> %t/stderr
+RUN: cmp %t/empty.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx empty.o -Llibgcc -lgcc > stdout 2> stderr )
+RUN: cmp %t/empty.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-empty-lgcc-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+
+Bogus '_GLOBAL__'.
+
+Verify no '__trigger_gbl_ctors', therefore "Disabling handling of special-purpose functions"; no error.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1-bogus-1.o > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-bogus-1.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1-bogus-1.o > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-bogus-1.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-bogus-1-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+Verify error.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1-bogus-1.o -L%t/libgcc -lgcc > %t/stdout 2> %t/stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t/nvptx
+RUN: cmp %S/gbl-ctors-1-bogus-1-lgcc.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1-bogus-1.o -Llibgcc -lgcc > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t/nvptx
+RUN: cmp %S/gbl-ctors-1-bogus-1-lgcc-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+
+Bogus '_GLOBAL__I_three_0_c1'.
+
+Verify no '__trigger_gbl_ctors', therefore "Disabling handling of special-purpose functions"; no error.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1-bogus-2.o > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-bogus-2.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1-bogus-2.o > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-bogus-2.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-bogus-2-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+Verify error.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1-bogus-2.o -L%t/libgcc -lgcc > %t/stdout 2> %t/stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t/nvptx
+RUN: cmp %S/gbl-ctors-1-bogus-2-lgcc.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1-bogus-2.o -Llibgcc -lgcc > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t/nvptx
+RUN: cmp %S/gbl-ctors-1-bogus-2-lgcc-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+
+"unhandled additional special-purpose functions"
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o -L%t/lib1 -l1 -L%t/libgcc_bogus -lgcc_bogus > %t/stdout 2> %t/stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t/nvptx
+RUN: cmp %S/gbl-ctors-1-lgcc_bogus.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o -Llib1 -l1 -Llibgcc_bogus -lgcc_bogus > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t/nvptx
+RUN: cmp %S/gbl-ctors-1-lgcc_bogus-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+
+Proper global constructor/destructor support.
+
+
+'gbl-ctors-1.o'
+
+Verify no '__trigger_gbl_ctors', therefore "Disabling handling of special-purpose functions".
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-1.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-1.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-1-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+Verify handling.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o -L%t/libgcc -lgcc > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-1-lgcc.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o -Llibgcc -lgcc > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-1-lgcc.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-1-lgcc-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+
+'gbl-ctors-1.o', 'gbl-ctors-2.o'
+
+Verify no '__trigger_gbl_ctors', therefore "Disabling handling of special-purpose functions".
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o %t/gbl-ctors-2.o > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-2.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o gbl-ctors-2.o > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-2.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-2-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+Verify handling.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o %t/gbl-ctors-2.o -L%t/libgcc -lgcc > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-2-lgcc.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o gbl-ctors-2.o -Llibgcc -lgcc > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-2-lgcc.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-2-lgcc-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+
+'gbl-ctors-1.o', 'lib1.a:gbl-ctors-2.o'
+
+Verify no '__trigger_gbl_ctors', therefore "Disabling handling of special-purpose functions".
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o %t/gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o -L%t/lib1 -l1 > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o -Llib1 -l1 > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+Verify handling.
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: %target_ld_cmd -o %t/nvptx %t/gbl-ctors-1.o %t/gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o -L%t/lib1 -l1 -L%t/libgcc -lgcc > %t/stdout 2> %t/stderr
+RUN: cmp %t/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL-lgcc.nvptx.golden %t/nvptx
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: rm -f %t/nvptx %t/stderr %t/stdout
+RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx gbl-ctors-1.o gbl-ctors-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL.o -Llib1 -l1 -Llibgcc -lgcc > stdout 2> stderr )
+RUN: cmp %t/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL-lgcc.nvptx.golden %t/nvptx
+RUN: cmp %S/gbl-ctors-1-2-gbl_ctors_2_work-GLOBAL_FUNCTION_DECL-lgcc-verbose.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout

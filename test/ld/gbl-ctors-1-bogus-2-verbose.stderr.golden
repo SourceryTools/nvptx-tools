@@ -1,0 +1,3 @@
+Linking gbl-ctors-1-bogus-2.o as 0
+Starting first resolve run
+Disabling handling of special-purpose functions; '__trigger_gbl_ctors' not available

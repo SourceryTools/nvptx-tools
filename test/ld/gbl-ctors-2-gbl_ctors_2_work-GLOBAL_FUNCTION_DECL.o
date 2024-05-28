@@ -1,0 +1,7 @@
+// BEGIN PREAMBLE
+.version 4.0
+.target sm_50
+.address_size 64
+// END PREAMBLE
+// BEGIN GLOBAL FUNCTION DECL: gbl_ctors_2_work
+.extern .func gbl_ctors_2_work;

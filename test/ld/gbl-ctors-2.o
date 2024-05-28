@@ -1,0 +1,30 @@
+// BEGIN PREAMBLE
+.version 4.0
+.target sm_50
+.address_size 64
+// END PREAMBLE
+// BEGIN GLOBAL FUNCTION DEF: gbl_ctors_2_work
+.visible .func gbl_ctors_2_work
+{
+  // [...]
+}
+// BEGIN GLOBAL FUNCTION DEF: _GLOBAL__I_01234_0_d1
+.visible .func _GLOBAL__I_01234_0_d1
+{
+  // [...]
+}
+// BEGIN GLOBAL FUNCTION DEF: _GLOBAL__I_65535_1_d1
+.visible .func _GLOBAL__I_65535_1_d1
+{
+  // [...]
+}
+// BEGIN GLOBAL FUNCTION DEF: _GLOBAL__D_02143_2_d1
+.visible .func _GLOBAL__D_02143_2_d1
+{
+  // [...]
+}
+// BEGIN GLOBAL FUNCTION DEF: _GLOBAL__D_65535_3_d1
+.visible .func _GLOBAL__D_65535_3_d1
+{
+  // [...]
+}

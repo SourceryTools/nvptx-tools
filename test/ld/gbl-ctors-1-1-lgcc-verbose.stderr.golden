@@ -1,0 +1,11 @@
+resolving lib libgcc.a
+Linking gbl-ctors-1.o as 0
+trying lib libgcc/libgcc.a
+Starting first resolve run
+special-purpose function: constructor with priority: 65535, sequence: 0: '_GLOBAL__I_65535_0_c1'
+special-purpose function: destructor with priority: 65535, sequence: 0: '_GLOBAL__D_65535_1_c1'
+Starting second resolve run
+Resolving __trigger_gbl_ctors
+Linking libgcc/libgcc.a::1.o/             as 1
+Resolving f
+Linking libgcc/libgcc.a::0.o/             as 2

@@ -30,8 +30,13 @@
 #include <list>
 #include <string>
 #include <iostream>
+#include <vector>
+#include <utility>
+#include <algorithm>
 
 #include "version.h"
+
+static bool verbose = false;
 
 struct file_hash_entry;
 
@@ -265,6 +270,207 @@ path_resolve (const std::string &filename, const std::list<std::string> &paths)
   return "";
 }
 
+/* Global constructor/destructor support */
+
+/* See GCC 'gcc/tree.cc:get_file_function_name'.  */
+static std::list<const char *> special_purpose_functions;
+
+class cdtor
+{
+public:
+  const char *name;
+  size_t sequence;
+
+  int priority;
+
+  cdtor () = delete;
+  cdtor (const char *name, size_t sequence)
+    : name (name), sequence (sequence)
+  {
+    /* Parse '_GLOBAL__I_00500_0_c1' -> '500', for example.  */
+    const char *priority_str = name + strlen ("_GLOBAL__ _");
+    char *priority_str_end;
+    errno = 0;
+    priority = strtol (priority_str, &priority_str_end, 10);
+    if (errno != 0
+	|| priority_str_end != name + strlen ("_GLOBAL__ _     "))
+      priority = -1;
+  }
+  ~cdtor ()
+  {
+  }
+
+  bool validate () const
+  {
+    if (priority < 0)
+      {
+	std::cerr << "unable to extract priority from special-purpose function '" << name << "'\n";
+	return false;
+      }
+    return true;
+  }
+
+  /* Note that this sorts in the reverse direction -- as it's usually done for
+     '__CTOR_LIST__', '__DTOR_LIST__'.  */
+  static class
+  {
+  public:
+    bool operator() (cdtor &a, cdtor &b) const
+    {
+      if (a.priority < b.priority)
+	return false;
+      else if (a.priority == b.priority
+	       && a.sequence < b.sequence)
+	return false;
+      else
+	return true;
+    }
+  } sorter;
+};
+
+static int
+handle_special_purpose_functions (htab_t symbol_table, FILE *outfile)
+{
+  if (special_purpose_functions.empty ())
+    return 0;
+
+  int ret = 1;
+
+  std::vector<cdtor> ctors;
+  std::vector<cdtor> dtors;
+  for (std::list<const char *>::iterator iterator = special_purpose_functions.begin(),
+	 end = special_purpose_functions.end();
+       iterator != end;
+       ++iterator)
+    {
+      const char *name = *iterator;
+      if (strncmp (name, "_GLOBAL__I_", 11) == 0)
+	{
+	  static size_t sequence = 0;
+	  cdtor ctor (name, sequence++);
+	  ctors.push_back (ctor);
+	}
+      else if (strncmp (name, "_GLOBAL__D_", 11) == 0)
+	{
+	  static size_t sequence = 0;
+	  cdtor dtor (name, sequence++);
+	  dtors.push_back (dtor);
+	}
+      else
+	{
+	  std::cerr << "unexpected special-purpose function name: '" << name << "'\n";
+	  goto error_out;
+	}
+    }
+
+  fprintf (outfile,
+	   /* We only have to define two global variables here; GCC's
+	      historically lowest '.version' and '.target' should do.  */
+	   ".version 3.1\n"
+	   ".target sm_30\n"
+	   ".address_size 64\n");
+
+  fprintf (outfile,
+	   "\n"
+	   "// Constructors.\n"
+	   "\n");
+
+  for (const auto &ctor : ctors)
+    {
+      if (!ctor.validate ())
+	goto error_out;
+      if (verbose)
+	std::cerr << "special-purpose function: constructor "
+		  << "with priority: " << ctor.priority
+		  << ", sequence: " << ctor.sequence
+		  << ": '" << ctor.name << "'\n";
+      fprintf (outfile, ".extern .func %s;\n", ctor.name);
+    }
+
+  std::sort (ctors.begin(), ctors.end(), cdtor::sorter);
+
+  fprintf (outfile,
+	   "\n"
+	   ".visible .global .u64 __CTOR_LIST__[] = {\n");
+  fprintf (outfile,
+	   "  %zu,\n", (size_t) ctors.size ());
+  for (const auto &ctor : ctors)
+    {
+      fprintf (outfile, "  // priority: %d, sequence: %zu\n", ctor.priority, ctor.sequence);
+      fprintf (outfile, "  %s,\n", ctor.name);
+    }
+  fprintf (outfile,
+	   "  0\n"
+	   "};\n");
+
+  {
+    struct symbol_hash_entry *e
+      = symbol_hash_lookup (symbol_table, xstrdup ("__CTOR_LIST__"), 1);
+    e->included = true;
+  }
+
+  fprintf (outfile,
+	   "\n"
+	   "// Destructors.\n"
+	   "\n");
+
+  for (const auto &dtor : dtors)
+    {
+      if (!dtor.validate ())
+	goto error_out;
+      if (verbose)
+	std::cerr << "special-purpose function: destructor "
+		  << "with priority: " << dtor.priority
+		  << ", sequence: " << dtor.sequence
+		  << ": '" << dtor.name << "'\n";
+      fprintf (outfile, ".extern .func %s;\n", dtor.name);
+    }
+
+  std::sort (dtors.begin(), dtors.end(), cdtor::sorter);
+
+  fprintf (outfile,
+	   "\n"
+	   ".visible .global .u64 __DTOR_LIST__[] = {\n");
+  fprintf (outfile,
+	   "  %zu,\n", (size_t) dtors.size ());
+  for (const auto &dtor : dtors)
+    {
+      fprintf (outfile, "  // priority: %d, sequence: %zu\n", dtor.priority, dtor.sequence);
+      fprintf (outfile, "  %s,\n", dtor.name);
+    }
+  fprintf (outfile,
+	   "  0\n"
+	   "};\n");
+
+  {
+    struct symbol_hash_entry *e
+      = symbol_hash_lookup (symbol_table, xstrdup ("__DTOR_LIST__"), 1);
+    e->included = true;
+  }
+
+  fprintf (outfile,
+	   "\n"
+	   "/* For example with old Nvidia Tesla K20c, Driver Version: 361.93.02, the\n"
+	   "   function pointers stored in the '__CTOR_LIST__', '__DTOR_LIST__' arrays\n"
+	   "   evidently evaluate to NULL in JIT compilation.  Defining a dummy function\n"
+	   "   next to the arrays apparently does work around this issue...  */\n"
+	   "\n"
+	   ".func dummy\n"
+	   "{\n"
+	   "  ret;\n"
+	   "}\n");
+
+  fputc ('\0', outfile);
+
+ out:
+  return ret;
+
+ error_out:
+  ret = -1;
+
+  goto out;
+}
+
 static struct symbol_hash_entry *unresolved;
 
 static void
@@ -352,6 +558,12 @@ process_refs_defs (htab_t symbol_table, file *f, const char *ptx)
 		    {
 		      e->included = true;
 		      dequeue_unresolved (e);
+
+		      if (strncmp (e->key, "_GLOBAL__", 9) == 0)
+			/* Capture special-purpose function names already here,
+			   in order of appearance, instead of later traversing
+			   the whole 'symbol_table'.  */
+			special_purpose_functions.push_back (e->key);
 		    }
 		  else
 		    e->def = f;
@@ -405,7 +617,6 @@ main (int argc, char **argv)
   const char *outname = NULL;
   std::list<std::string> libraries;
   std::list<std::string> libpaths;
-  bool verbose = false;
 
   int o;
   int option_index = 0;
@@ -594,6 +805,14 @@ This program has absolutely no warranty.\n",
       fclose (f);
     }
 
+  /* Resolve.  */
+  {
+  bool first_resolve_run = true;
+ resolve:
+  if (verbose)
+    std::cerr << "Starting "
+	      << (first_resolve_run ? "first" : "second")
+	      << " resolve run\n";
   while (unresolved)
     {
       struct file_hash_entry *to_add = NULL;
@@ -635,6 +854,59 @@ This program has absolutely no warranty.\n",
 	  assert (f_data_ == &f->data[f->len + 1]);
 	}
     }
+
+  /* Global constructor/destructor support.  */
+  {
+    /* See GCC 'libgcc/config/nvptx/gbl-ctors.c'.  */
+    const char *trigger_gbl_ctors = "__trigger_gbl_ctors";
+    struct symbol_hash_entry *e_trigger_gbl_ctors
+      = symbol_hash_lookup (symbol_table, xstrdup (trigger_gbl_ctors), 0);
+    if (e_trigger_gbl_ctors)
+      /* We expect link-in of the relevant libgcc object file to correspond to
+	 presence of special-purpose functions for global
+	 constructor/destructor support.  */
+      assert (first_resolve_run == !e_trigger_gbl_ctors->included);
+    else
+      {
+	if (verbose)
+	  std::cerr << "Disabling handling of special-purpose functions; '" << trigger_gbl_ctors << "' not available\n";
+	/* Disable the processing here, for backwards compatibility with GCC
+	   versions not supporting this interface for global
+	   constructor/destructor support.  */
+	special_purpose_functions.clear ();
+      }
+
+    if (first_resolve_run)
+      {
+	/* Handle special-purpose functions...  */
+	int ret = handle_special_purpose_functions (symbol_table, outfile);
+	special_purpose_functions.clear ();
+	if (ret < 0)
+	  goto error_out;
+	else if (ret > 0)
+	  {
+	    /* ..., and if we found any, trigger link-in of the relevant libgcc
+	       object file (and its dependencies).  */
+	    unresolved = e_trigger_gbl_ctors;
+	    first_resolve_run = false;
+	    goto resolve;
+	  }
+      }
+    else
+      {
+	if (!special_purpose_functions.empty ())
+	  {
+	    /* This means that we found additional special-purpose functions
+	       during link-in of the relevant libgcc object file (and its
+	       dependencies).  */
+	    std::cerr << "unhandled additional special-purpose functions\n";
+	    goto error_out;
+	  }
+      }
+  }
+  }
+
+  /* Clean up.  */
 
   htab_delete (symbol_table);
   while (!f_to_clean_up.empty())

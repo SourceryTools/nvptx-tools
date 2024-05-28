@@ -2150,7 +2150,7 @@ if test "${with_bugurl+set}" = set; then :
 	   ;;
      esac
 else
-  BUGURL="https://github.com/MentorEmbedded/nvptx-tools/issues"
+  BUGURL="https://github.com/SourceryTools/nvptx-tools/issues"
 
 fi
 

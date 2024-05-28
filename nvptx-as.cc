@@ -882,7 +882,7 @@ process (FILE *in, FILE *out, int *verify, const char *inname)
   const char *input = read_file (in);
 
   /* As expected by GCC, handle an empty input file specially.  See
-     <https://github.com/MentorEmbedded/nvptx-tools/pull/26> "[nvptx-as] Allow
+     <https://github.com/SourceryTools/nvptx-tools/pull/26> "[nvptx-as] Allow
      empty input file" for reference.  */
   if (*input == '\0')
     {

@@ -26,7 +26,7 @@ NVPTX_RUN_LDFLAGS += $(DL_LIBS)
 #NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_LINK_LIBCUDA
 #NVPTX_RUN_LDFLAGS += -L[CUDA]/lib64/stubs
 #NVPTX_RUN_LDFLAGS += -lcuda
-# See <https://github.com/MentorEmbedded/nvptx-tools/pull/21> 'Work around "libnvidia-fatbinaryloader.so needed by libcuda.so" linking issue'.
+# See <https://github.com/SourceryTools/nvptx-tools/pull/21> 'Work around "libnvidia-fatbinaryloader.so needed by libcuda.so" linking issue'.
 #NVPTX_RUN_LDFLAGS += -Wl,--allow-shlib-undefined
 
 AR = @AR@

@@ -309,24 +309,21 @@ public:
       }
     return true;
   }
-
-  /* Note that this sorts in the reverse direction -- as it's usually done for
-     '__CTOR_LIST__', '__DTOR_LIST__'.  */
-  static class
-  {
-  public:
-    bool operator() (cdtor &a, cdtor &b) const
-    {
-      if (a.priority < b.priority)
-	return false;
-      else if (a.priority == b.priority
-	       && a.sequence < b.sequence)
-	return false;
-      else
-	return true;
-    }
-  } sorter;
 };
+
+/* Note that this sorts in the reverse direction -- as it's usually done for
+   '__CTOR_LIST__', '__DTOR_LIST__'.  */
+bool
+operator< (const cdtor &a, const cdtor &b)
+{
+  if (a.priority < b.priority)
+    return false;
+  else if (a.priority == b.priority
+	   && a.sequence < b.sequence)
+    return false;
+  else
+    return true;
+}
 
 static int
 handle_special_purpose_functions (htab_t symbol_table, FILE *outfile)
@@ -387,7 +384,7 @@ handle_special_purpose_functions (htab_t symbol_table, FILE *outfile)
       fprintf (outfile, ".extern .func %s;\n", ctor.name);
     }
 
-  std::sort (ctors.begin(), ctors.end(), cdtor::sorter);
+  std::sort (ctors.begin(), ctors.end());
 
   fprintf (outfile,
 	   "\n"
@@ -426,7 +423,7 @@ handle_special_purpose_functions (htab_t symbol_table, FILE *outfile)
       fprintf (outfile, ".extern .func %s;\n", dtor.name);
     }
 
-  std::sort (dtors.begin(), dtors.end(), cdtor::sorter);
+  std::sort (dtors.begin(), dtors.end());
 
   fprintf (outfile,
 	   "\n"

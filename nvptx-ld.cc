@@ -315,7 +315,7 @@ public:
   static class
   {
   public:
-    bool operator() (cdtor &a, cdtor &b) const
+    bool operator() (const cdtor &a, const cdtor &b) const
     {
       if (a.priority < b.priority)
 	return false;

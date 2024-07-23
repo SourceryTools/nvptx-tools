@@ -130,6 +130,11 @@ symbol_hash_lookup (htab_t symbol_table, char *string, int create)
   return (struct symbol_hash_entry *) *e;
 }
 
+/* Process GCC/nvptx-generated linker markers.
+
+   Capture in 'symbol_table_global'/'symbol_table_local' the type of symbols in
+   'ptx'.  */
+
 static const char *
 process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const char *ptx)
 {

@@ -511,6 +511,12 @@ define_intrinsics (htab_t symbol_table)
     }
 }
 
+/* Process GCC/nvptx-generated linker markers.
+
+   If 'fhe' is provided, capture in 'symbol_table' that 'fhe' defines global
+   symbols in 'ptx'; if 'fhe' isn't provided, maintain 'symbol_table' for
+   global symbols in 'ptx': 'enqueue_as_unresolved', 'dequeue_unresolved'.  */
+
 static const char *
 process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 {
@@ -554,7 +560,9 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	    {
 	      if (type == 1)
 		{
-		  if (fhe == NULL)
+		  if (fhe)
+		    e->def = fhe;
+		  else
 		    {
 		      e->included = true;
 		      dequeue_unresolved (e);
@@ -565,17 +573,20 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 			   the whole 'symbol_table'.  */
 			special_purpose_functions.push_back (e->key);
 		    }
-		  else
-		    e->def = fhe;
 		}
-	      else
+	      else if (type == 2)
 		{
-		  if (fhe == NULL)
+		  if (fhe)
+		    /* We're not looking for DECLs, only for DEFs.  */
+		    ;
+		  else
 		    {
 		      if (!e->referenced)
 			enqueue_as_unresolved (e);
 		    }
 		}
+	      else
+		abort ();
 	    }
 	}
       ptx++;

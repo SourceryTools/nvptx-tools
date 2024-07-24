@@ -1,0 +1,9 @@
+Linking o/f1.o as 0
+Linking o/f2.o as 1
+Linking o/f3.o as 2
+Linking o/a.o as 3
+Linking o/f2.o as 4
+Linking o/f3.o as 5
+Linking o/f1.o as 6
+Starting first resolve run
+Disabling handling of special-purpose functions; '__trigger_gbl_ctors' not available

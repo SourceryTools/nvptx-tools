@@ -1,0 +1,8 @@
+Linking o/f1.o as 0
+Linking o/a.o as 1
+trying lib a/libf.a
+Starting first resolve run
+Resolving f3
+Resolving f2
+Linking a/libf.a::f123.o/          as 2
+Disabling handling of special-purpose functions; '__trigger_gbl_ctors' not available

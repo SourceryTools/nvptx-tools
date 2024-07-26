@@ -143,6 +143,7 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
      We therefore only present the information conveyed by those markers.  */
   while (*ptx != '\0')
     {
+      const char *ptx_begin = ptx;
       bool global_p;
       if ((global_p = (strncmp (ptx, "\n// BEGIN GLOBAL ", 17) == 0))
 	  || (strncmp (ptx, "\n// BEGIN ", 10) == 0))
@@ -174,15 +175,21 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
 	    }
 	  if (type == '\0')
 	    continue;
-	  const char *end = strchr (ptx, '\n');
-	  if (end == 0)
-	    end = ptx + strlen (ptx);
+	  const char *ptx_sym_name_begin = ptx;
+	  const char *ptx_lf = strchr (ptx, '\n');
+	  if (!ptx_lf)
+	    {
+	      assert (ptx_begin[0] == '\n');
+	      std::cerr << "error, truncated marker line:" << ptx_begin << "\n";
+	      return NULL;
+	    }
+	  const char *ptx_sym_name_end = ptx_lf;
 
-	  char *sym = xstrndup (ptx, end - ptx);
+	  char *sym_name = xstrndup (ptx_sym_name_begin, ptx_sym_name_end - ptx_sym_name_begin);
 	  htab_t symbol_table
 	    = global_p ? symbol_table_global : symbol_table_local;
 	  struct symbol_hash_entry *e
-	    = symbol_hash_lookup (symbol_table, sym, 1);
+	    = symbol_hash_lookup (symbol_table, sym_name, 1);
 
 	  if (e->type == '\0')
 	    {
@@ -622,17 +629,27 @@ This program has absolutely no warranty.\n",
 	    = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
 	  symbol_tables.push_back (symbol_table_local);
 	  buf_ = process_refs_defs (symbol_table_global, symbol_table_local, buf_);
+	  if (buf_ == NULL)
+	    {
+	      std::cerr << "while processing '" << name << "'\n";
+	      break;
+	    }
 	}
       while (buf_ != &buf[len + 1]);
       delete[] buf;
-      print_object_filename_bsd (name.c_str ());
-      display_rel_file (symbol_tables, name);
+      if (buf_ != NULL)
+	{
+	  print_object_filename_bsd (name.c_str ());
+	  display_rel_file (symbol_tables, name);
+	}
       while (!symbol_tables.empty ())
 	{
 	  htab_t symbol_table = symbol_tables.front ();
 	  htab_delete (symbol_table);
 	  symbol_tables.pop_front ();
 	}
+      if (buf_ == NULL)
+	goto error_out;
     }
 
   free ((char *) print_format_string);

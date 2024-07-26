@@ -522,6 +522,7 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 {
   while (*ptx != '\0')
     {
+      const char *ptx_begin = ptx;
       if (strncmp (ptx, "\n// BEGIN GLOBAL ", 17) == 0)
 	{
 	  int type = 0;
@@ -548,13 +549,19 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	    }
 	  if (type == 0)
 	    continue;
-	  const char *end = strchr (ptx, '\n');
-	  if (end == 0)
-	    end = ptx + strlen (ptx);
+	  const char *ptx_sym_name_begin = ptx;
+	  const char *ptx_lf = strchr (ptx, '\n');
+	  if (!ptx_lf)
+	    {
+	      assert (ptx_begin[0] == '\n');
+	      std::cerr << "error, truncated marker line:" << ptx_begin << "\n";
+	      return NULL;
+	    }
+	  const char *ptx_sym_name_end = ptx_lf;
 
-	  char *sym = xstrndup (ptx, end - ptx);
+	  char *sym_name = xstrndup (ptx_sym_name_begin, ptx_sym_name_end - ptx_sym_name_begin);
 	  struct symbol_hash_entry *e
-	    = symbol_hash_lookup (symbol_table, sym, 1);
+	    = symbol_hash_lookup (symbol_table, sym_name, 1);
 
 	  if (!e->included)
 	    {
@@ -763,6 +770,12 @@ This program has absolutely no warranty.\n",
 	  goto error_out;
 	}
       const char *buf_ = process_refs_defs (symbol_table, NULL, buf);
+      if (buf_ == NULL)
+	{
+	  std::cerr << "while processing '" << name << "'\n";
+	  delete[] buf;
+	  goto error_out;
+	}
       assert (buf_ == &buf[len + 1]);
       delete[] buf;
       if (verbose)
@@ -811,6 +824,12 @@ This program has absolutely no warranty.\n",
 	  file_hash_entry *fhe = file_hash_new (p, len, name.c_str (), ar.get_name ());
 	  fhe_to_clean_up.push_front (fhe);
 	  const char *p_ = process_refs_defs (symbol_table, fhe, p);
+	  if (p_ == NULL)
+	    {
+	      std::cerr << "while processing '" << fhe->arname << "::" << fhe->name << "'\n";
+	      fclose (f);
+	      goto error_out;
+	    }
 	  assert (p_ == &p[len + 1]);
 	}
       fclose (f);
@@ -862,6 +881,7 @@ This program has absolutely no warranty.\n",
 	    }
 	  fputc ('\0', outfile);
 	  const char *fhe_data_ = process_refs_defs (symbol_table, NULL, fhe->data);
+	  assert (fhe_data_ != NULL);
 	  assert (fhe_data_ == &fhe->data[fhe->len + 1]);
 	}
     }

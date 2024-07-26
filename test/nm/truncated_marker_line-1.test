@@ -1,0 +1,52 @@
+Verify 'error, truncated marker line'
+
+
+RUN: rm -rf %t
+RUN: mkdir -p %t
+
+
+Assemble.
+
+RUN: mkdir %t/o
+
+RUN: %target_as_cmd -o %t/o/1-1-C.o %S/1-1-C.s
+
+RUN: %target_as_cmd -o %t/o/1-2-C.o %S/1-2-C.s
+
+
+Archive dummy 'libc.a'.
+
+RUN: mkdir %t/libc
+
+RUN: %target_ar_cmd rcs %t/libc/libc.a %S/libc/libc_a-dtoa.o %S/libc/libc_a-environ.o %S/libc/libc_a-memset.o
+
+
+Inject truncated marker line.
+
+RUN: printf '// BEGIN FUNCTION DEF: fun' >> %t/o/1-2-C.o
+RUN: printf 'error, truncated marker line:\n// BEGIN FUNCTION DEF: fun\nwhile processing '\''o/1-2-C.o'\''\n' >> %t/o/1-2-C.o.nm.stderr.golden
+
+
+Link.
+
+RUN: %target_ld_cmd -o %t/1-1,1-2-C.nvptx %t/o/1-1-C.o %t/o/1-2-C.o -L%t/libc -lc
+
+
+Test.
+
+RUN: ( cd %t/ && %env_LC_COLLATE=C_target_nm_cmd o/1-2-C.o > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/o/1-2-C.o.nm.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+
+RUN: ( cd %t/ && %env_LC_COLLATE=C_target_nm_cmd o/1-1-C.o o/1-2-C.o o/1-1-C.o > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/o/1-2-C.o.nm.stderr.golden %t/stderr
+RUN: printf '\no/1-1-C.o:\n' > %t/stdout.golden
+RUN: cat < %S/1-1-C.o.nm.golden >> %t/stdout.golden
+RUN: cmp %t/stdout.golden %t/stdout
+
+RUN: ( cd %t/ && %env_LC_COLLATE=C_target_nm_cmd o/1-1-C.o 1-1,1-2-C.nvptx o/1-2-C.o o/1-1-C.o > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: sed -e 's%o/1-2-C\.o%1-1,1-2-C.nvptx%' < %t/o/1-2-C.o.nm.stderr.golden > %t/stderr.golden
+RUN: cmp %t/stderr.golden %t/stderr
+RUN: printf '\no/1-1-C.o:\n' > %t/stdout.golden
+RUN: cat < %S/1-1-C.o.nm.golden >> %t/stdout.golden
+RUN: cmp %t/stdout.golden %t/stdout

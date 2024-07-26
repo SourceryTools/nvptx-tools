@@ -1,0 +1,83 @@
+Verify 'error, truncated marker line'
+
+
+RUN: rm -rf %t
+RUN: mkdir -p %t
+
+
+Assemble.
+
+RUN: mkdir %t/o
+
+RUN: %target_as_cmd -o %t/o/a.o %S/resolve-1-a.s
+
+RUN: %target_as_cmd -o %t/o/f1.o %S/resolve-1-f1.s
+
+RUN: %target_as_cmd -o %t/o/f2.o %S/resolve-1-f2.s
+
+RUN: %target_as_cmd -o %t/o/f3.o %S/resolve-1-f3.s
+
+
+Inject truncated marker line.
+
+RUN: cp %t/o/f2.o %t/o/f2_.o
+RUN: printf '// BEGIN GLOBAL FUNCTION DEF: fun' >> %t/o/f2_.o
+RUN: printf 'error, truncated marker line:\n// BEGIN GLOBAL FUNCTION DEF: fun\nwhile processing '\''o/f2_.o'\''\n' >> %t/o/f2_.o.ld.stderr.golden
+
+
+Archive.
+
+RUN: mkdir %t/a
+
+Use short '*.o' file names, so that 'ar_name' doesn't need indirection through the archive symbol table.
+
+RUN: cp %t/o/f1.o %t/a/f1.o
+RUN: cp %t/o/f2_.o %t/a/f2_.o
+RUN: cp %t/o/f3.o %t/a/f3.o
+
+RUN: ( cd %t/a/ && %target_ar_cmd rcs libf.a f1.o f2_.o f3.o )
+
+RUN: sed -e 's%o/f2_\.o%a/libf.a::f2_.o/          %' < %t/o/f2_.o.ld.stderr.golden > %t/a/libf.a::f2_.o.ld.stderr.golden
+
+
+Test.
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/f2_.o > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/o/f2_.o.ld.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+RUN: ! test -f %t/nvptx
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f1.o o/f2_.o o/f3.o > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/o/f2_.o.ld.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+RUN: ! test -f %t/nvptx
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o a/libf.a > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/a/libf.a::f2_.o.ld.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+RUN: ! test -f %t/nvptx
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f1.o a/libf.a > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/a/libf.a::f2_.o.ld.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+RUN: ! test -f %t/nvptx
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f1.o o/f3.o a/libf.a > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/a/libf.a::f2_.o.ld.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+RUN: ! test -f %t/nvptx
+
+
+Even if we're not actually linking in anything from 'a/libf.a', we still run into the error during scanning it.
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f1.o o/f2.o o/f3.o a/libf.a > stdout 2> stderr; r=$?; [ x"$r" = x1 ] )
+RUN: cmp %t/a/libf.a::f2_.o.ld.stderr.golden %t/stderr
+RUN: ! test -s %t/stdout
+RUN: ! test -f %t/nvptx
+
+Cross check.
+
+RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f1.o o/f2.o o/f3.o > stdout 2> stderr )
+RUN: ! test -s %t/stderr
+RUN: ! test -s %t/stdout
+RUN: test -f %t/nvptx

@@ -512,7 +512,7 @@ define_intrinsics (htab_t symbol_table)
 }
 
 static const char *
-process_refs_defs (htab_t symbol_table, file_hash_entry *f, const char *ptx)
+process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 {
   while (*ptx != '\0')
     {
@@ -554,7 +554,7 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *f, const char *ptx)
 	    {
 	      if (type == 1)
 		{
-		  if (f == NULL)
+		  if (fhe == NULL)
 		    {
 		      e->included = true;
 		      dequeue_unresolved (e);
@@ -566,11 +566,11 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *f, const char *ptx)
 			special_purpose_functions.push_back (e->key);
 		    }
 		  else
-		    e->def = f;
+		    e->def = fhe;
 		}
 	      else
 		{
-		  if (f == NULL)
+		  if (fhe == NULL)
 		    {
 		      if (!e->referenced)
 			enqueue_as_unresolved (e);
@@ -674,7 +674,7 @@ This program has absolutely no warranty.\n",
     = htab_create (500, hash_string_hash, hash_string_eq, symbol_hash_free);
   /* List of 'file_hash_entry' instances to clean up when we're done with the
      'symbol_table'.  */
-  std::list<file_hash_entry *> f_to_clean_up;
+  std::list<file_hash_entry *> fhe_to_clean_up;
 
   define_intrinsics (symbol_table);
   
@@ -797,9 +797,9 @@ This program has absolutely no warranty.\n",
 	  memcpy (p, ar.get_contents (), len);
 	  p[len] = '\0';
 
-	  file_hash_entry *f = file_hash_new (p, len, name.c_str (), ar.get_name ());
-	  f_to_clean_up.push_front (f);
-	  const char *p_ = process_refs_defs (symbol_table, f, p);
+	  file_hash_entry *fhe = file_hash_new (p, len, name.c_str (), ar.get_name ());
+	  fhe_to_clean_up.push_front (fhe);
+	  const char *p_ = process_refs_defs (symbol_table, fhe, p);
 	  assert (p_ == &p[len + 1]);
 	}
       fclose (f);
@@ -819,39 +819,39 @@ This program has absolutely no warranty.\n",
       struct symbol_hash_entry *e;
       for (e = unresolved; e; e = e->next)
 	{
-	  struct file_hash_entry *f = e->def;
-	  if (!f)
+	  struct file_hash_entry *fhe = e->def;
+	  if (!fhe)
 	    {
 	      std::cerr << "unresolved symbol " << e->key << "\n";
 	      goto error_out;
 	    }
 	  if (verbose)
 	    std::cerr << "Resolving " << e->key << "\n";
-	  if (!f->pprev)
+	  if (!fhe->pprev)
 	    {
-	      f->pprev = &to_add;
-	      f->next = to_add;
-	      to_add = f;
+	      fhe->pprev = &to_add;
+	      fhe->next = to_add;
+	      to_add = fhe;
 	    }
 	  e->included = true;
 	  e->pprev = NULL;
 	}
       unresolved = NULL;
       assert (to_add != NULL);
-      struct file_hash_entry *f;
-      for (f = to_add; f; f = f->next)
+      struct file_hash_entry *fhe;
+      for (fhe = to_add; fhe; fhe = fhe->next)
 	{
-	  f->pprev = NULL;
+	  fhe->pprev = NULL;
 	  if (verbose)
-	    std::cerr << "Linking " << f->arname << "::" << f->name << " as " << idx++ << "\n";
-	  if (fwrite (f->data, 1, f->len, outfile) != f->len)
+	    std::cerr << "Linking " << fhe->arname << "::" << fhe->name << " as " << idx++ << "\n";
+	  if (fwrite (fhe->data, 1, fhe->len, outfile) != fhe->len)
 	    {
 	      std::cerr << "error writing to output file\n";
 	      goto error_out;
 	    }
 	  fputc ('\0', outfile);
-	  const char *f_data_ = process_refs_defs (symbol_table, NULL, f->data);
-	  assert (f_data_ == &f->data[f->len + 1]);
+	  const char *fhe_data_ = process_refs_defs (symbol_table, NULL, fhe->data);
+	  assert (fhe_data_ == &fhe->data[fhe->len + 1]);
 	}
     }
 
@@ -909,11 +909,11 @@ This program has absolutely no warranty.\n",
   /* Clean up.  */
 
   htab_delete (symbol_table);
-  while (!f_to_clean_up.empty())
+  while (!fhe_to_clean_up.empty())
     {
-      struct file_hash_entry *f = f_to_clean_up.front ();
-      file_hash_free (f);
-      f_to_clean_up.pop_front ();
+      struct file_hash_entry *fhe = fhe_to_clean_up.front ();
+      file_hash_free (fhe);
+      fhe_to_clean_up.pop_front ();
     }
 
   fclose (outfile);
@@ -922,11 +922,11 @@ This program has absolutely no warranty.\n",
 
  error_out:
   htab_delete (symbol_table);
-  while (!f_to_clean_up.empty())
+  while (!fhe_to_clean_up.empty())
     {
-      struct file_hash_entry *f = f_to_clean_up.front ();
-      file_hash_free (f);
-      f_to_clean_up.pop_front ();
+      struct file_hash_entry *fhe = fhe_to_clean_up.front ();
+      file_hash_free (fhe);
+      fhe_to_clean_up.pop_front ();
     }
 
   fclose (outfile);

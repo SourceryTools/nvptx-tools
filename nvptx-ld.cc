@@ -574,7 +574,13 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	      if (type == 1)
 		{
 		  if (fhe)
-		    e->def = fhe;
+		    {
+		      if (e->def)
+			/* We've already seen an earlier DEF; ignore this one.  */
+			;
+		      else
+			e->def = fhe;
+		    }
 		  else
 		    {
 		      e->included = true;

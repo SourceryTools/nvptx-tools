@@ -3,5 +3,8 @@ trying lib a/libf_.a
 Starting first resolve run
 Resolving f3
 Resolving f1
-Linking a/libf_.a::f123.o/          as 1
+Linking a/libf_.a::f1.o/            as 1
+Linking a/libf_.a::f3.o/            as 2
+Resolving f2
+Linking a/libf_.a::f2.o/            as 3
 Disabling handling of special-purpose functions; '__trigger_gbl_ctors' not available

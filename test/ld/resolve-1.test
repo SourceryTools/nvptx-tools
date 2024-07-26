@@ -135,7 +135,7 @@ RUN: cmp %S/resolve-1-3-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-'a/libf.a' sorts before 'a/libf_.a'; 'a/libf_.a::f123.o' gets linked in.
+'a/libf.a' sorts before 'a/libf_.a'.
 
 RUN: rm -f %t/nvptx
 RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/libf_.a > stdout 2> stderr )
@@ -143,7 +143,9 @@ RUN: cmp %S/resolve-1-3-3.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-'f1', 'f2', 'f3' provided by 'a/libf_.a::f123.o'.
+'f1', 'f2', 'f3' provided by 'a/libf_.a::f1.o', 'a/libf_.a::f3.o', 'a/libf_.a::f2.o'.
+
+RUN: cat %t/o/a.o %t/NUL %t/a/f1.o %t/NUL %t/a/f3.o %t/NUL %t/a/f2.o %t/NUL > %t/nvptx.golden
 
 RUN: rm -f %t/nvptx
 RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf_.a > stdout 2> stderr )
@@ -161,7 +163,7 @@ RUN: cmp %S/resolve-1-4-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-'f2' provided by 'o/f2.o'; 'f1', 'f2' (duplicate), 'f3' provided by 'a/libf_.a::f123.o'.
+'f2' provided by 'o/f2.o'; 'f1', 'f2' (duplicate), 'f3' provided by 'a/libf.a::f123.o'.
 
 RUN: cat %t/o/a.o %t/NUL %t/o/f2.o %t/NUL %t/a/f123.o %t/NUL > %t/nvptx.golden
 

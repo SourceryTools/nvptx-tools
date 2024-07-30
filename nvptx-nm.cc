@@ -148,11 +148,11 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
       if ((global_p = (strncmp (ptx, "\n// BEGIN GLOBAL ", 17) == 0))
 	  || (strncmp (ptx, "\n// BEGIN ", 10) == 0))
 	{
-	  char type = '\0';
 	  if (global_p)
 	    ptx += 17;
 	  else
 	    ptx += 10;
+	  char type;
 	  if (strncmp (ptx, "VAR DEF: ", 9) == 0)
 	    {
 	      type = global_p ? 'D' : 'd';
@@ -163,7 +163,7 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
 	      type = global_p ? 'T' : 't';
 	      ptx += 14;
 	    }
-	  if (strncmp (ptx, "VAR DECL: ", 10) == 0)
+	  else if (strncmp (ptx, "VAR DECL: ", 10) == 0)
 	    {
 	      type = 'U';
 	      ptx += 10;
@@ -173,8 +173,10 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
 	      type = 'U';
 	      ptx += 15;
 	    }
-	  if (type == '\0')
-	    continue;
+	  else
+	    /* Unknown marker: ignore, and hope for the best.  */
+	    type = '\0';
+
 	  const char *ptx_sym_name_begin = ptx;
 	  const char *ptx_lf = strchr (ptx, '\n');
 	  if (!ptx_lf)
@@ -184,6 +186,10 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
 	      return NULL;
 	    }
 	  const char *ptx_sym_name_end = ptx_lf;
+	  ptx = ptx_lf;
+
+	  if (type == '\0')
+	    continue;
 
 	  char *sym_name = xstrndup (ptx_sym_name_begin, ptx_sym_name_end - ptx_sym_name_begin);
 	  htab_t symbol_table
@@ -210,7 +216,10 @@ process_refs_defs (htab_t symbol_table_global, htab_t symbol_table_local, const 
 	      /* We've already seen a definition; verify it's the same now.  */
 	      assert (e->type == type);
 	    }
+
+	  continue;
 	}
+
       ptx++;
     }
   /* Callers may use this return value to detect NUL-separated parts.  */

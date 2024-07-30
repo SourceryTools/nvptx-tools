@@ -525,8 +525,8 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
       const char *ptx_begin = ptx;
       if (strncmp (ptx, "\n// BEGIN GLOBAL ", 17) == 0)
 	{
-	  int type = 0;
 	  ptx += 17;
+	  int type;
 	  if (strncmp (ptx, "VAR DEF: ", 9) == 0)
 	    {
 	      type = 1;
@@ -537,7 +537,7 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	      type = 1;
 	      ptx += 14;
 	    }
-	  if (strncmp (ptx, "VAR DECL: ", 10) == 0)
+	  else if (strncmp (ptx, "VAR DECL: ", 10) == 0)
 	    {
 	      type = 2;
 	      ptx += 10;
@@ -547,8 +547,10 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	      type = 2;
 	      ptx += 15;
 	    }
-	  if (type == 0)
-	    continue;
+	  else
+	    /* Unknown marker: ignore, and hope for the best.  */
+	    type = 0;
+
 	  const char *ptx_sym_name_begin = ptx;
 	  const char *ptx_lf = strchr (ptx, '\n');
 	  if (!ptx_lf)
@@ -558,6 +560,10 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	      return NULL;
 	    }
 	  const char *ptx_sym_name_end = ptx_lf;
+	  ptx = ptx_lf;
+
+	  if (type == 0)
+	    continue;
 
 	  char *sym_name = xstrndup (ptx_sym_name_begin, ptx_sym_name_end - ptx_sym_name_begin);
 	  struct symbol_hash_entry *e
@@ -595,7 +601,10 @@ process_refs_defs (htab_t symbol_table, file_hash_entry *fhe, const char *ptx)
 	      else
 		abort ();
 	    }
+
+	  continue;
 	}
+
       ptx++;
     }
   /* Callers may use this return value to detect NUL-separated parts.  */

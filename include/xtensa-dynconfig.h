@@ -1,5 +1,5 @@
 /* Xtensa configuration settings.
-   Copyright (C) 2022-2023 Free Software Foundation, Inc.
+   Copyright (C) 2022-2024 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -120,8 +120,6 @@ struct xtensa_config_v4
   int xchal_unaligned_load_hw;
   int xchal_unaligned_store_hw;
 };
-
-typedef struct xtensa_isa_internal_struct xtensa_isa_internal;
 
 extern const void *xtensa_load_config (const char *name,
 				       const void *no_plugin_def,

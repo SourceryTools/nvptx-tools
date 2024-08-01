@@ -878,10 +878,7 @@ This program has absolutely no warranty.\n",
 	      fhe->next = to_add;
 	      to_add = fhe;
 	    }
-	  e->included = true;
-	  e->pprev = NULL;
 	}
-      unresolved = NULL;
       assert (to_add != NULL);
       struct file_hash_entry *fhe;
       for (fhe = to_add; fhe; fhe = fhe->next)
@@ -933,7 +930,7 @@ This program has absolutely no warranty.\n",
 	  {
 	    /* ..., and if we found any, trigger link-in of the relevant libgcc
 	       object file (and its dependencies).  */
-	    unresolved = e_trigger_gbl_ctors;
+	    enqueue_as_unresolved (e_trigger_gbl_ctors);
 	    first_resolve_run = false;
 	    goto resolve;
 	  }

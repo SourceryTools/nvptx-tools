@@ -60,24 +60,44 @@ libiberty.stmp:
 	cd libiberty/ && $(MAKE)
 	: > $@
 
-nvptx-none-as: $(srcdir)/nvptx-as.cc libiberty.stmp $(srcdir)/version.h
+nvptx_none_as_SOURCES = $(srcdir)/nvptx-as.cc
+nvptx_none_as_DEPENDENCIES = $(nvptx_none_as_SOURCES)
+nvptx_none_as_DEPENDENCIES += $(srcdir)/version.h
+nvptx_none_as_DEPENDENCIES += libiberty.stmp
+
+nvptx-none-as: $(nvptx_none_as_DEPENDENCIES)
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS_ALL) -I$(srcdir)/include \
-		$< -o $@ \
+		$(nvptx_none_as_SOURCES) -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-ld: $(srcdir)/nvptx-ld.cc libiberty.stmp $(srcdir)/version.h
+nvptx_none_ld_SOURCES = $(srcdir)/nvptx-ld.cc
+nvptx_none_ld_DEPENDENCIES = $(nvptx_none_ld_SOURCES)
+nvptx_none_ld_DEPENDENCIES += $(srcdir)/version.h
+nvptx_none_ld_DEPENDENCIES += libiberty.stmp
+
+nvptx-none-ld: $(nvptx_none_ld_DEPENDENCIES)
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS_ALL) -I$(srcdir)/include \
-		$< -o $@ \
+		$(nvptx_none_ld_SOURCES) -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-nm: $(srcdir)/nvptx-nm.cc libiberty.stmp $(srcdir)/version.h
+nvptx_none_nm_SOURCES = $(srcdir)/nvptx-nm.cc
+nvptx_none_nm_DEPENDENCIES = $(nvptx_none_nm_SOURCES)
+nvptx_none_nm_DEPENDENCIES += $(srcdir)/version.h
+nvptx_none_nm_DEPENDENCIES += libiberty.stmp
+
+nvptx-none-nm: $(nvptx_none_nm_DEPENDENCIES)
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS_ALL) -I$(srcdir)/include \
-		$< -o $@ \
+		$(nvptx_none_nm_SOURCES) -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
-nvptx-none-run: $(srcdir)/nvptx-run.cc libiberty.stmp $(srcdir)/version.h
+nvptx_none_run_SOURCES = $(srcdir)/nvptx-run.cc
+nvptx_none_run_DEPENDENCIES = $(nvptx_none_run_SOURCES)
+nvptx_none_run_DEPENDENCIES += $(srcdir)/version.h
+nvptx_none_run_DEPENDENCIES += libiberty.stmp
+
+nvptx-none-run: $(nvptx_none_run_DEPENDENCIES)
 	$(CXX) $(CPPFLAGS_ALL) $(CXXFLAGS_ALL) -I$(srcdir)/include \
-		$< -o $@ \
+		$(nvptx_none_run_SOURCES) -o $@ \
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS) \
 		$(NVPTX_RUN_CPPFLAGS) $(NVPTX_RUN_LDFLAGS)
 

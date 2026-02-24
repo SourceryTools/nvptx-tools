@@ -1,0 +1,289 @@
+Test when 'ptxas' doesn't get invoked, and when it does, and how.
+
+REQUIRES: as_libnvrtc_usable
+
+
+RUN: sed -e 's|sm_50|sm_%target_as_arch0|g' < %S/../ptxas/dummy_ptxas_log.golden > dummy_ptxas_log.golden
+RUN: sed -e 's|sm_50|sm_%target_as_arch0|g' < %S/../ptxas/verbose_stderr.golden > verbose_stderr.golden
+RUN: sed -e 's|sm_50|sm_%target_as_arch0|g' < %S/../ptxas/verbose_stderr-sm_30.golden > verbose_stderr-sm_30.golden
+
+RUN: sed -e '1{/^use of NVRTC library inhibited$/d}' -i verbose_stderr.golden
+RUN: sed -e '1{/^use of NVRTC library inhibited$/d}' -i verbose_stderr-sm_30.golden
+
+
+'--help'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd --help
+RUN: ! test -f %t.dummy_ptxas_log
+
+
+'--version'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd --version
+RUN: ! test -f %t.dummy_ptxas_log
+
+
+No output file
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: cmp %S/../bare-1.s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--no-verify'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v --no-verify -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v --verify -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: cmp dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: cmp verbose_stderr-sm_30.golden %t.stderr
+
+
+Implicit '--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: cmp dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: cmp verbose_stderr-sm_30.golden %t.stderr
+
+
+Implicit '--verify', '-m sm_2020'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m sm_2020 > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_2020|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_2020|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', preamble '.target sm_2022'
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_2022|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_2022|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_2022|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', '-m ABC'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m ABC > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|ABC|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|ABC|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', preamble '.target DEF'
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|DEF|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: echo 'nvptx-as: unsupported '\''.target DEF'\'' directive in preamble' >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', '-m sm_GHI'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m sm_GHI > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_GHI|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_GHI|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', preamble '.target sm_JKL'
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_JKL|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: echo 'nvptx-as: unsupported '\''.target sm_JKL'\'' directive in preamble' >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', '-m sm_-1'
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m sm_-1 > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_-1|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_-1|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify', preamble '.target sm_-1'
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_-1|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: echo 'nvptx-as: unsupported '\''.target sm_'\'' directive in preamble' >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Special handling re CUDA 11.0, "Support for Kepler 'sm_30' and 'sm_32' architecture based products is dropped", and CUDA 12.0, "Kepler architecture support is removed" (that is, sm_35, sm_37).
+
+Preamble '.target sm_3': doesn't exist; still special-cased to '--gpu-name sm_%target_as_arch0'.
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_3|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cmp dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_30|sm_3|g' < verbose_stderr-sm_30.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_30': special-cased to '--gpu-name sm_%target_as_arch0'.
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: cmp dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: cmp verbose_stderr-sm_30.golden %t.stderr
+
+Preamble '.target sm_30x': doesn't exist; diagnosed.
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_30x|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: echo 'nvptx-as: unsupported '\''.target sm_30x'\'' directive in preamble' >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_31': doesn't exist; still special-cased to '--gpu-name sm_%target_as_arch0'.
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_31|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cmp dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_30|sm_31|g' < verbose_stderr-sm_30.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_32': special-cased to '--gpu-name sm_%target_as_arch0'.
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_32|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cmp dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_30|sm_32|g' < verbose_stderr-sm_30.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_32x': doesn't exist; diagnosed.
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_32x|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -f %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: echo 'nvptx-as: unsupported '\''.target sm_32x'\'' directive in preamble' >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_35': special-cased to '--gpu-name sm_%target_as_arch0' (if applicable).
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_35|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cp dummy_ptxas_log.golden %t.dummy_ptxas_log.golden
+RUN: if expr 35 \< '%target_as_arch0' > /dev/null; then :; else sed -e 's|sm_%target_as_arch0|sm_35|g' -i %t.dummy_ptxas_log.golden; fi
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: if expr 35 \< '%target_as_arch0' > /dev/null; then sed -e 's|sm_30|sm_35|g' < verbose_stderr-sm_30.golden; else sed -e 's|sm_%target_as_arch0|sm_35|g' < verbose_stderr.golden; fi > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_37': special-cased to '--gpu-name sm_%target_as_arch0' (if applicable).
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_37|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cp dummy_ptxas_log.golden %t.dummy_ptxas_log.golden
+RUN: if expr 37 \< '%target_as_arch0' > /dev/null; then :; else sed -e 's|sm_%target_as_arch0|sm_37|g' -i %t.dummy_ptxas_log.golden; fi
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: if expr 37 \< '%target_as_arch0' > /dev/null; then sed -e 's|sm_30|sm_37|g' < verbose_stderr-sm_30.golden; else sed -e 's|sm_%target_as_arch0|sm_37|g' < verbose_stderr.golden; fi > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_50': special-cased to '--gpu-name sm_%target_as_arch0' (if applicable).
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_50|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cp dummy_ptxas_log.golden %t.dummy_ptxas_log.golden
+RUN: if expr 50 \< '%target_as_arch0' > /dev/null; then :; else sed -e 's|sm_%target_as_arch0|sm_50|g' -i %t.dummy_ptxas_log.golden; fi
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: if expr 50 \< '%target_as_arch0' > /dev/null; then sed -e 's|sm_30|sm_50|g' < verbose_stderr-sm_30.golden; else sed -e 's|sm_%target_as_arch0|sm_50|g' < verbose_stderr.golden; fi > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Preamble '.target sm_52': special-cased to '--gpu-name sm_%target_as_arch0' (if applicable).
+
+RUN: rm -f %t*
+RUN: sed -e 's|sm_30|sm_52|g' < %S/../bare-1.s > %t.bare-1.s
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: cp dummy_ptxas_log.golden %t.dummy_ptxas_log.golden
+RUN: if expr 52 \< '%target_as_arch0' > /dev/null; then :; else sed -e 's|sm_%target_as_arch0|sm_52|g' -i %t.dummy_ptxas_log.golden; fi
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: if expr 52 \< '%target_as_arch0' > /dev/null; then sed -e 's|sm_30|sm_52|g' < verbose_stderr-sm_30.golden; else sed -e 's|sm_%target_as_arch0|sm_52|g' < verbose_stderr.golden; fi > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Explicit '-m sm_30': not special-cased.
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -m sm_30 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_30|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_30|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Explicit '-m sm_31': not special-cased.
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -m sm_31 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_31|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_31|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Explicit '-m sm_32': not special-cased.
+
+RUN: rm -f %t*
+RUN: %target_as_dummy_ptxas_cmd -v -m sm_32 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_%target_as_arch0|sm_32|g' < dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_%target_as_arch0|sm_32|g' < verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr

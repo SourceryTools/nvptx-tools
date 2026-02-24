@@ -1,1 +1,2 @@
+use of NVRTC library inhibited
  ptxas -c -o /dev/null /dev/null --gpu-name sm_50 -O0

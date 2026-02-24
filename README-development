@@ -29,6 +29,9 @@ A number of files are imported from GCC:
   - 'config/ax_cxx_compile_stdcxx.m4'
   - 'config/warnings.m4'
   - 'include/'
+    ... with the exception of:
+      - 'include/cuda/nvrtc.h'
+    ..., which is local to nvptx-tools.
   - 'install-sh'
   - 'libiberty/'
   - 'mkinstalldirs'

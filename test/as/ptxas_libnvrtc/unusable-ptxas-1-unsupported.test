@@ -1,0 +1,63 @@
+What happens if 'ptxas' isn't usable.
+
+..., but the NVRTC library is usable:
+REQUIRES: as_libnvrtc_usable
+
+Unlike 'unusable-ptxas-1-PATH.test', we really only run this if:
+UNSUPPORTED: as_ptxas_usable
+
+
+'--no-verify'
+
+RUN: rm -f %t*
+RUN: %target_as_local_cmd --no-verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_local_cmd --no-verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_local_cmd --verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "nvptx-as: not able to verify output" >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_local_cmd --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "'ptxas' not available." >> %t.stderr.golden
+RUN: echo "nvptx-as: not able to verify output" >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_local_cmd %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_local_cmd -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "'ptxas' not available." >> %t.stderr.golden
+RUN: echo "not able to verify output" >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr

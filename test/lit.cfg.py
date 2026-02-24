@@ -27,6 +27,9 @@ config.substitutions.append(('%target_ar_cmd', config.target_ar))
 
 config.substitutions.append(('%target_as_cmd', config.target_as))
 
+if subprocess.call(args = [config.target_as, '--query=libnvrtc_usable']) == 0:
+    config.available_features.add('as_libnvrtc_usable')
+
 if subprocess.call(args = [config.target_as, '--query=ptxas_usable']) == 0:
     config.available_features.add('as_ptxas_usable')
 

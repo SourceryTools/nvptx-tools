@@ -48,6 +48,8 @@
 
 #include "version.h"
 
+#include "interface-libnvrtc.h"
+
 #ifndef R_OK
 #define R_OK 4
 #define W_OK 2
@@ -89,6 +91,7 @@ enum class verify_mode
   unset,
   no,
   yes,
+  ptxas_libnvrtc,
   ptxas,
 };
 
@@ -1200,6 +1203,30 @@ program_available (const char *progname)
   return false;
 }
 
+/* Is the NVRTC library usable?
+
+   If successful, has initialized NVRTC library interfacing.  */
+
+static bool
+is_libnvrtc_usable (std::ostream &error_stream, bool inhibit)
+{
+  if (inhibit)
+    {
+      error_stream << "use of NVRTC library inhibited";
+      return false;
+    }
+
+  std::ostringstream error_stream_;
+
+  if (!interface_libnvrtc_init (error_stream_))
+    {
+      error_stream << "NVRTC library not usable: " << error_stream_.str ();
+      return false;
+    }
+
+  return true;
+}
+
 /* Is 'ptxas' usable?  */
 
 static bool
@@ -1264,6 +1291,7 @@ main (int argc, char **argv)
   const char *inname = "{standard input}";
   std::ostream *out_stream = &std::cout;
   verify_mode verify = verify_mode::unset;
+  bool inhibit_libnvrtc = false;
   bool inhibit_ptxas = false;
   const char *target_arg_force = NULL;
 
@@ -1312,7 +1340,29 @@ This program has absolutely no warranty.\n";
 	  {
 	    std::ostringstream error_stream;
 	    assert (optarg);
-	    if (!strcmp (optarg, "ptxas_usable"))
+	    if (!strcmp (optarg, "libnvrtc_usable"))
+	      {
+		if (!is_libnvrtc_usable (error_stream, false))
+		  fatal_error (error_stream.str ());
+		exit (0);
+	      }
+	    else if (!strcmp (optarg, "libnvrtc_supported_archs"))
+	      {
+		if (!interface_libnvrtc_init (error_stream))
+		  fatal_error (error_stream.str ());
+
+		int n_archs, *archs;
+		if (!interface_libnvrtc_supported_archs (error_stream, &n_archs, &archs))
+		  fatal_error (error_stream.str ());
+
+		for (size_t i = 0; i < (size_t) n_archs; ++i)
+		  std::cout << archs[i] << '\n';
+
+		delete[] archs;
+
+		exit (0);
+	      }
+	    else if (!strcmp (optarg, "ptxas_usable"))
 	      {
 		if (!is_ptxas_usable (error_stream, false))
 		  fatal_error (error_stream.str ());
@@ -1329,7 +1379,9 @@ This program has absolutely no warranty.\n";
 	  {
 	    std::ostringstream error_stream;
 	    assert (optarg);
-	    if (!strcmp (optarg, "ptxas"))
+	    if (!strcmp (optarg, "libnvrtc"))
+	      inhibit_libnvrtc = true;
+	    else if (!strcmp (optarg, "ptxas"))
 	      inhibit_ptxas = true;
 	    else
 	      {
@@ -1387,19 +1439,32 @@ This program has absolutely no warranty.\n";
       || verify == verify_mode::yes)
     {
       /* Determine what verification to use.  In order of preference:
-	  1. 'ptxas',
-	  2. none/error.  */
+	  1. 'ptxas' with NVRTC library,
+	  2. 'ptxas' without NVRTC library,
+	  3. none/error.  */
 
       bool ptxas_usable = false;
+      bool libnvrtc_usable = false;
+
       if (/*TODO*/ true)
 	{
 	  std::ostringstream error_stream_ptxas;
 	  ptxas_usable = is_ptxas_usable (error_stream_ptxas, inhibit_ptxas);
 	  if (verbose && !ptxas_usable)
 	    std::cerr << error_stream_ptxas.str () << '\n';
+
+	  if (ptxas_usable)
+	    {
+	      std::ostringstream error_stream_libnvrtc;
+	      libnvrtc_usable = is_libnvrtc_usable (error_stream_libnvrtc, inhibit_libnvrtc);
+	      if (verbose && !libnvrtc_usable)
+		std::cerr << error_stream_libnvrtc.str () << '\n';
+	    }
 	}
 
-      if (ptxas_usable)
+      if (libnvrtc_usable && ptxas_usable)
+	verify = verify_mode::ptxas_libnvrtc;
+      else if (ptxas_usable)
 	verify = verify_mode::ptxas;
       else
 	{
@@ -1418,11 +1483,13 @@ This program has absolutely no warranty.\n";
   else
     assert (verify == verify_mode::no);
   assert (verify == verify_mode::no
+	  || verify == verify_mode::ptxas_libnvrtc
 	  || verify == verify_mode::ptxas);
 
   if (verify != verify_mode::no)
     {
       const char *target_arg;
+      bool free_target_arg = false;
       if (target_arg_force)
 	target_arg = target_arg_force;
       else
@@ -1438,7 +1505,50 @@ This program has absolutely no warranty.\n";
 	  */
 	  target_arg = preamble_target_arg;
 
-	  if (verify == verify_mode::ptxas)
+	  if (verify == verify_mode::ptxas_libnvrtc)
+	    {
+	      std::ostringstream error_stream;
+
+	      if (!interface_libnvrtc_init (error_stream))
+		assert (!"unreachable");
+
+	      int n_archs, *archs;
+	      if (!interface_libnvrtc_supported_archs (error_stream, &n_archs, &archs))
+		fatal_error (error_stream.str ());
+
+	      int arch, n, r;
+	      r = sscanf (target_arg, "sm_%d%n", &arch, &n);
+	      if (r == EOF
+		  || r != 1
+		  || target_arg[n] != '\0')
+		{
+		  error_stream << "unsupported '.target " << target_arg << "' directive in preamble";
+		  fatal_error (error_stream.str ());
+		}
+	      /* Per tokenization/'verify_preamble'.  */
+	      assert (arch >= 0);
+
+	      /* If necessary, raise 'arch' to the minimum version
+		 supported.  */
+	      if (arch < archs[0])
+		{
+		  if (verbose)
+		    std::cerr << "Verifying " << target_arg << " code";
+		  target_arg = xasprintf ("sm_%d", archs[0]);
+		  free_target_arg = true;
+		  if (verbose)
+		    std::cerr << " with " << target_arg << " code generation.\n";
+		}
+	      else
+		{
+		  /* Assume that 'target_arg' ('sm_[arch]') is supported, that
+		     is, 'arch' exists in 'archs'.  In case it doesn't, 'ptxas'
+		     is going to error out.  */
+		}
+
+	      delete[] archs;
+	    }
+	  else if (verify == verify_mode::ptxas)
 	    {
 	      /* In CUDA 11.0, "Support for Kepler 'sm_30' and 'sm_32'
 		 architecture based products is dropped", and in CUDA 12.0,
@@ -1455,12 +1565,7 @@ This program has absolutely no warranty.\n";
 		     ptxas fatal   : Value 'sm_37' is not defined for option 'gpu-name'
 
 		 ..., but we need to continue supporting GCC emitting
-		 '.target sm_30' code, for example.
-
-		 Detecting the CUDA/'ptxas' version and the supported
-		 '--gpu-name' options is clumsy, so in this case, just use
-		 'sm_50', which is the baseline supported by all current CUDA
-		 versions down to CUDA 6.5, at least.  */
+		 '.target sm_30' code, for example.  */
 	      if ((strcmp ("sm_30", target_arg) == 0)
 		  || (strcmp ("sm_32", target_arg) == 0)
 		  || (strcmp ("sm_35", target_arg) == 0)
@@ -1477,7 +1582,8 @@ This program has absolutely no warranty.\n";
 	    assert (!"unreachable");
 	}
 
-      if (verify == verify_mode::ptxas)
+      if (verify == verify_mode::ptxas_libnvrtc
+	  || verify == verify_mode::ptxas)
 	{
 	  const char *const ptxas_argv[] = {
 	    "ptxas",
@@ -1494,6 +1600,9 @@ This program has absolutely no warranty.\n";
 	}
       else
 	assert (!"unreachable");
+
+      if (free_target_arg)
+	free (const_cast<char *>(target_arg));
     }
 
   free (preamble_target_arg);

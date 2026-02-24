@@ -5,8 +5,13 @@
 # in Debian "bookworm", or Ubuntu 22.04 "jammy", for example), so we instead
 # define the following, in here.
 
+
+# Apply '--inhibit=libnvrtc' to all, to avoid use
+# of the NVRTC library with 'ptxas' verification.
+
 config.substitutions.insert(0, ('%target_as_local_cmd',
-                                '%target_as_cmd'))
+                                '%target_as_cmd'
+                                ' --inhibit=libnvrtc'))
 
 config.substitutions.insert(0, ('%target_as_dummy_ptxas_cmd',
                                 '%dummy_ptxas_path'

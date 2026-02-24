@@ -72,24 +72,25 @@ Individual nvptx-tools depend on CUDA/PTX as follows:
     skipped (output file assumed compliant).
 
     Unless overridden with the '-m' option, the target architecture used for
-    'ptxas' verification ('--gpu-name' option to 'ptxas') is deduced from the
-    '.target' directive in the input's preamble.  As support for the Kepler
-    microarchitecture in 'ptxas' has been removed in CUDA 11.0 through 12.0,
-    sm_3x code is verified with '--gpu-name sm_50'.
+    verification is deduced from the '.target' directive in the input's
+    preamble, and then raised to the baseline version supported, as reported by
+    the NVIDIA/CUDA NVRTC library if usable (as of CUDA 11.2, for our
+    purposes), or sm_50.  Reason for sm_50 is that support for the Kepler
+    microarchitecture (sm_3x) in 'ptxas' has been removed in CUDA 11.0 through
+    12.0.  Support for sm_50 was available as of CUDA 6.0, and remained
+    supported until CUDA 13.0, which raised the baseline to sm_75.
 
   * nvptx-none-run
 
     Uses the CUDA Driver library ('libcuda') to run PTX binaries.
-
-Support for sm_50 was introduced with PTX ISA 4.0, CUDA 6.0, driver r331, and
-remains supported at this time (CUDA 12.2.2).
 
 
 Certain testcases for the nvptx-tools have dependencies as follows:
 
   * nvptx-none-as
 
-    Testcases depending on 'ptxas' are UNSUPPORTED if 'ptxas' isn't available.
+    Certain test cases depend on availability/usability of the NVIDIA/CUDA
+    NVRTC library, and/or 'ptxas'.
 
   * nvptx-none-run
 

@@ -1,0 +1,63 @@
+What happens if 'ptxas' isn't usable
+
+..., but the NVRTC library is usable:
+REQUIRES: as_libnvrtc_usable
+
+To inhibit finding 'ptxas' via 'PATH', prefix all '%target_as_cmd' in here with
+'%empty_path'.  This works as 'as' doesn't invoke any other executables.
+
+
+'--no-verify'
+
+RUN: rm -f %t*
+RUN: %target_as_empty_path_cmd --no-verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_empty_path_cmd --no-verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+
+'--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_empty_path_cmd --verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "nvptx-as: not able to verify output" >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_empty_path_cmd --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! test -s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "'ptxas' not available." >> %t.stderr.golden
+RUN: echo "nvptx-as: not able to verify output" >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+
+Implicit '--verify'
+
+RUN: rm -f %t*
+RUN: %target_as_empty_path_cmd %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr
+
+'-v'
+
+RUN: rm -f %t*
+RUN: %target_as_empty_path_cmd -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
+RUN: cmp %S/../bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: echo "'ptxas' not available." >> %t.stderr.golden
+RUN: echo "not able to verify output" >> %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr

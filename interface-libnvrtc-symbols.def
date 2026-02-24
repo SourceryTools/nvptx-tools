@@ -1,0 +1,3 @@
+LIBNVRTC_SYMBOL (nvrtcGetNumSupportedArchs)
+LIBNVRTC_SYMBOL (nvrtcGetSupportedArchs)
+LIBNVRTC_SYMBOL (nvrtcVersion)

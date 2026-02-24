@@ -15,19 +15,24 @@ DL_LIBS = @DL_LIBS@
 NVPTX_RUN = @NVPTX_RUN@
 
 # nvptx-tools developer's section.
-#
+
+#CUDA_TOOLKIT = [...]
+
+# For the testsuite: for 'ptxas' invoked from 'nvptx-none-as'.
+#PATH := $(CUDA_TOOLKIT)/bin:$(PATH)
+
 # Letting 'configure' decide whether to build 'nvptx-none-run' (default) vs. force-enabling its build:
 #NVPTX_RUN = nvptx-none-run
 #
-# Including the nvptx-tools-shipped 'include/cuda/cuda.h' (default) vs. system <cuda.h>:
+# Including the nvptx-tools-shipped 'include/cuda/cuda.h' (default) vs. <cuda.h>:
 #NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_INCLUDE_SYSTEM_CUDA_H
-#NVPTX_RUN_CPPFLAGS += -I[CUDA]/include
+#NVPTX_RUN_CPPFLAGS += -I$(CUDA_TOOLKIT)/include
 #
 # 'dlopen'ing the CUDA Driver library (default):
 NVPTX_RUN_LDFLAGS += $(DL_LIBS)
 # ... vs. linking it:
 #NVPTX_RUN_CPPFLAGS += -DNVPTX_RUN_LINK_LIBCUDA
-#NVPTX_RUN_LDFLAGS += -L[CUDA]/lib64/stubs
+#NVPTX_RUN_LDFLAGS += -L$(CUDA_TOOLKIT)/lib64/stubs
 #NVPTX_RUN_LDFLAGS += -lcuda
 # See <https://github.com/SourceryTools/nvptx-tools/pull/21> 'Work around "libnvidia-fatbinaryloader.so needed by libcuda.so" linking issue'.
 #NVPTX_RUN_LDFLAGS += -Wl,--allow-shlib-undefined

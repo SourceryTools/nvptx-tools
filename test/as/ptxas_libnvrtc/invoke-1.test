@@ -7,8 +7,8 @@ RUN: sed -e 's|sm_50|sm_%target_as_arch0|g' < %S/../ptxas/dummy_ptxas_log.golden
 RUN: sed -e 's|sm_50|sm_%target_as_arch0|g' < %S/../ptxas/verbose_stderr.golden > verbose_stderr.golden
 RUN: sed -e 's|sm_50|sm_%target_as_arch0|g' < %S/../ptxas/verbose_stderr-sm_30.golden > verbose_stderr-sm_30.golden
 
-RUN: sed -e '1{/^use of NVRTC library inhibited$/d}' -i verbose_stderr.golden
-RUN: sed -e '1{/^use of NVRTC library inhibited$/d}' -i verbose_stderr-sm_30.golden
+RUN: sed -e '2{/^use of NVRTC library inhibited$/d}' -i verbose_stderr.golden
+RUN: sed -e '2{/^use of NVRTC library inhibited$/d}' -i verbose_stderr-sm_30.golden
 
 
 '--help'
@@ -102,6 +102,7 @@ RUN: sed -e 's|sm_30|DEF|g' < %S/../bare-1.s > %t.bare-1.s
 RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
+RUN: echo 'use of nvJitLink library inhibited' >> %t.stderr.golden
 RUN: echo 'nvptx-as: unsupported '\''.target DEF'\'' directive in preamble' >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 
@@ -124,6 +125,7 @@ RUN: sed -e 's|sm_30|sm_JKL|g' < %S/../bare-1.s > %t.bare-1.s
 RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
+RUN: echo 'use of nvJitLink library inhibited' >> %t.stderr.golden
 RUN: echo 'nvptx-as: unsupported '\''.target sm_JKL'\'' directive in preamble' >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 
@@ -146,6 +148,7 @@ RUN: sed -e 's|sm_30|sm_-1|g' < %S/../bare-1.s > %t.bare-1.s
 RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
+RUN: echo 'use of nvJitLink library inhibited' >> %t.stderr.golden
 RUN: echo 'nvptx-as: unsupported '\''.target sm_'\'' directive in preamble' >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 
@@ -177,6 +180,7 @@ RUN: sed -e 's|sm_30|sm_30x|g' < %S/../bare-1.s > %t.bare-1.s
 RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
+RUN: echo 'use of nvJitLink library inhibited' >> %t.stderr.golden
 RUN: echo 'nvptx-as: unsupported '\''.target sm_30x'\'' directive in preamble' >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 
@@ -207,6 +211,7 @@ RUN: sed -e 's|sm_30|sm_32x|g' < %S/../bare-1.s > %t.bare-1.s
 RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
+RUN: echo 'use of nvJitLink library inhibited' >> %t.stderr.golden
 RUN: echo 'nvptx-as: unsupported '\''.target sm_32x'\'' directive in preamble' >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
 

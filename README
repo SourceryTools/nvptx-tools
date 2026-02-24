@@ -66,10 +66,11 @@ Individual nvptx-tools depend on CUDA/PTX as follows:
 
   * nvptx-none-as
 
-    In addition to its own minimalistic verification, it verifies the output
-    file produced by feeding it into 'ptxas'.  If (at run time) that executable
-    isn't available in the standard search path, this verification step is
-    skipped (output file assumed compliant).
+    In addition to its own minimalistic verification, it optionally verifies
+    the output file using the NVIDIA/CUDA nvJitLink library if usable (as of
+    CUDA 13.2, for our purposes), or 'ptxas'.  If (at run time) neither of
+    these is usable, this verification step is skipped (output file assumed
+    compliant).
 
     Unless overridden with the '-m' option, the target architecture used for
     verification is deduced from the '.target' directive in the input's
@@ -90,7 +91,7 @@ Certain testcases for the nvptx-tools have dependencies as follows:
   * nvptx-none-as
 
     Certain test cases depend on availability/usability of the NVIDIA/CUDA
-    NVRTC library, and/or 'ptxas'.
+    nvJitLink, NVRTC libraries, and/or 'ptxas'.
 
   * nvptx-none-run
 

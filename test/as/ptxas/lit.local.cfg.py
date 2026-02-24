@@ -6,11 +6,13 @@
 # define the following, in here.
 
 
-# Apply '--inhibit=libnvrtc' to all, to avoid use
+# Apply '--inhibit=libnvjitlink' to all, to avoid nvJitLink library interfere
+# with 'ptxas' verification.  Apply '--inhibit=libnvrtc' to all, to avoid use
 # of the NVRTC library with 'ptxas' verification.
 
 config.substitutions.insert(0, ('%target_as_local_cmd',
                                 '%target_as_cmd'
+                                ' --inhibit=libnvjitlink'
                                 ' --inhibit=libnvrtc'))
 
 config.substitutions.insert(0, ('%target_as_dummy_ptxas_cmd',

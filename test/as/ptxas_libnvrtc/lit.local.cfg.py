@@ -1,8 +1,12 @@
 # See '../ptxas/lit.local.cfg.py'.
 
 
+# Apply '--inhibit=libnvjitlink' to all, to avoid nvJitLink library interfere
+# with 'ptxas' verification.
+
 config.substitutions.insert(0, ('%target_as_local_cmd',
-                                '%target_as_cmd'))
+                                '%target_as_cmd'
+                                ' --inhibit=libnvjitlink'))
 
 config.substitutions.insert(0, ('%target_as_dummy_ptxas_cmd',
                                 '%dummy_ptxas_path'

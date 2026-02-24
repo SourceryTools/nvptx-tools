@@ -30,8 +30,9 @@ A number of files are imported from GCC:
   - 'config/warnings.m4'
   - 'include/'
     ... with the exception of:
+      - 'include/cuda/nvJitLink.h'
       - 'include/cuda/nvrtc.h'
-    ..., which is local to nvptx-tools.
+    ..., which are local to nvptx-tools.
   - 'install-sh'
   - 'libiberty/'
   - 'mkinstalldirs'

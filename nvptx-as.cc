@@ -49,6 +49,7 @@
 #include "version.h"
 
 #include "interface-libnvrtc.h"
+#include "interface-libnvjitlink.h"
 
 #ifndef R_OK
 #define R_OK 4
@@ -91,6 +92,7 @@ enum class verify_mode
   unset,
   no,
   yes,
+  libnvjitlink,
   ptxas_libnvrtc,
   ptxas,
 };
@@ -1227,6 +1229,79 @@ is_libnvrtc_usable (std::ostream &error_stream, bool inhibit)
   return true;
 }
 
+/* Is the nvJitLink library usable?
+
+   It's available as of CUDA 12.0, but 'libnvJitLink.so' only provides
+   "internal" '__nvJitLink[...]' symbols.
+
+   As of CUDA 12.3, 'libnvJitLink.so' provides "public" 'nvJitLink[...]'
+   symbols.
+
+   It's usable for our purposes as of CUDA 13.2, when the '-r' link option
+   became available, to "Do relocatable (or incremental) link, producing
+   another relocatable object", which we depend on for our purpose of using the
+   nvJitLink library for verification of arbitrary PTX code.  Without the '-r'
+   link option, we'd get a ton of:
+
+       nvptx-as: nvJitLinkComplete failed: 6
+       error   : Undefined reference to '[S]' in '[...]'
+
+   ..., where '[S]' is '.extern', for example.
+
+   If successful, has initialized nvJitLink, NVRTC libraries interfacing.  */
+
+static bool
+is_libnvjitlink_usable (std::ostream &error_stream, bool inhibit)
+{
+  if (inhibit)
+    {
+      error_stream << "use of nvJitLink library inhibited";
+      return false;
+    }
+
+  std::ostringstream error_stream_;
+
+  if (!interface_libnvjitlink_init (error_stream_))
+    {
+    not_usable:
+      error_stream << "nvJitLink library not usable: " << error_stream_.str ();
+      return false;
+    }
+
+  if (!interface_libnvrtc_init (error_stream_))
+    goto not_usable;
+
+  unsigned int major, minor;
+  if (!interface_libnvjitlink_version (error_stream_, &major, &minor))
+    goto not_usable;
+
+  /* The '-r' link option (see comment above) is a CUDA 13.2 feature.  */
+  if (major < 13
+      || (major == 13 && minor < 2))
+    {
+      error_stream_ << "need CUDA 13.2 or later version";
+      goto not_usable;
+    }
+
+  /* Sanity check matching versions of NVRTC and nvJitLink libraries.  */
+  {
+    int libnvrtc_major, libnvrtc_minor;
+    if (!interface_libnvrtc_version (error_stream_, &libnvrtc_major, &libnvrtc_minor))
+      goto not_usable;
+
+    if ((unsigned int) libnvrtc_major != major
+	|| (unsigned int) libnvrtc_minor != minor)
+      {
+	error_stream_ << "mismatching versions of NVRTC and nvJitLink libraries: "
+		      << libnvrtc_major << '.' << libnvrtc_minor
+		      << " vs. " << major << '.' << minor;
+	goto not_usable;
+      }
+  }
+
+  return true;
+}
+
 /* Is 'ptxas' usable?  */
 
 static bool
@@ -1292,6 +1367,7 @@ main (int argc, char **argv)
   std::ostream *out_stream = &std::cout;
   verify_mode verify = verify_mode::unset;
   bool inhibit_libnvrtc = false;
+  bool inhibit_libnvjitlink = false;
   bool inhibit_ptxas = false;
   const char *target_arg_force = NULL;
 
@@ -1340,7 +1416,13 @@ This program has absolutely no warranty.\n";
 	  {
 	    std::ostringstream error_stream;
 	    assert (optarg);
-	    if (!strcmp (optarg, "libnvrtc_usable"))
+	    if (!strcmp (optarg, "libnvjitlink_usable"))
+	      {
+		if (!is_libnvjitlink_usable (error_stream, false))
+		  fatal_error (error_stream.str ());
+		exit (0);
+	      }
+	    else if (!strcmp (optarg, "libnvrtc_usable"))
 	      {
 		if (!is_libnvrtc_usable (error_stream, false))
 		  fatal_error (error_stream.str ());
@@ -1379,7 +1461,9 @@ This program has absolutely no warranty.\n";
 	  {
 	    std::ostringstream error_stream;
 	    assert (optarg);
-	    if (!strcmp (optarg, "libnvrtc"))
+	    if (!strcmp (optarg, "libnvjitlink"))
+	      inhibit_libnvjitlink = true;
+	    else if (!strcmp (optarg, "libnvrtc"))
 	      inhibit_libnvrtc = true;
 	    else if (!strcmp (optarg, "ptxas"))
 	      inhibit_ptxas = true;
@@ -1439,14 +1523,21 @@ This program has absolutely no warranty.\n";
       || verify == verify_mode::yes)
     {
       /* Determine what verification to use.  In order of preference:
-	  1. 'ptxas' with NVRTC library,
-	  2. 'ptxas' without NVRTC library,
-	  3. none/error.  */
+	  1. nvJitLink library,
+	  2. 'ptxas' with NVRTC library,
+	  3. 'ptxas' without NVRTC library,
+	  4. none/error.  */
 
+      bool libnvjitlink_usable = false;
       bool ptxas_usable = false;
       bool libnvrtc_usable = false;
 
-      if (/*TODO*/ true)
+      std::ostringstream error_stream_libnvjitlink;
+      libnvjitlink_usable = is_libnvjitlink_usable (error_stream_libnvjitlink, inhibit_libnvjitlink);
+      if (verbose && !libnvjitlink_usable)
+	std::cerr << error_stream_libnvjitlink.str () << '\n';
+
+      if (!libnvjitlink_usable)
 	{
 	  std::ostringstream error_stream_ptxas;
 	  ptxas_usable = is_ptxas_usable (error_stream_ptxas, inhibit_ptxas);
@@ -1462,7 +1553,9 @@ This program has absolutely no warranty.\n";
 	    }
 	}
 
-      if (libnvrtc_usable && ptxas_usable)
+      if (libnvjitlink_usable)
+	verify = verify_mode::libnvjitlink;
+      else if (libnvrtc_usable && ptxas_usable)
 	verify = verify_mode::ptxas_libnvrtc;
       else if (ptxas_usable)
 	verify = verify_mode::ptxas;
@@ -1483,6 +1576,7 @@ This program has absolutely no warranty.\n";
   else
     assert (verify == verify_mode::no);
   assert (verify == verify_mode::no
+	  || verify == verify_mode::libnvjitlink
 	  || verify == verify_mode::ptxas_libnvrtc
 	  || verify == verify_mode::ptxas);
 
@@ -1497,7 +1591,8 @@ This program has absolutely no warranty.\n";
 	  assert (preamble_target_arg);
 
 	  /* We'd like to verify per what we deduced from from the input's
-	     preamble.  For 'ptxas', the default '--gpu-name' may
+	     preamble.  The nvJitLink library requires to specify the target
+	     architecture, but also for 'ptxas', the default '--gpu-name' may
 	     not be sufficient for what is requested in the '.target' directive
 	     in the input's preamble:
 
@@ -1505,7 +1600,8 @@ This program has absolutely no warranty.\n";
 	  */
 	  target_arg = preamble_target_arg;
 
-	  if (verify == verify_mode::ptxas_libnvrtc)
+	  if (verify == verify_mode::libnvjitlink
+	      || verify == verify_mode::ptxas_libnvrtc)
 	    {
 	      std::ostringstream error_stream;
 
@@ -1542,8 +1638,8 @@ This program has absolutely no warranty.\n";
 	      else
 		{
 		  /* Assume that 'target_arg' ('sm_[arch]') is supported, that
-		     is, 'arch' exists in 'archs'.  In case it doesn't, 'ptxas'
-		     is going to error out.  */
+		     is, 'arch' exists in 'archs'.  In case it doesn't, the
+		     nvJitLink library or 'ptxas' are going to error out.  */
 		}
 
 	      delete[] archs;
@@ -1582,8 +1678,36 @@ This program has absolutely no warranty.\n";
 	    assert (!"unreachable");
 	}
 
-      if (verify == verify_mode::ptxas_libnvrtc
-	  || verify == verify_mode::ptxas)
+      if (verify == verify_mode::libnvjitlink)
+	{
+	  std::ostringstream error_stream;
+
+	  if (!interface_libnvjitlink_init (error_stream))
+	    assert (!"unreachable");
+
+	  char *link_option_arch = xasprintf ("-arch=%s", target_arg);
+	  const char * link_options[] = {
+	    link_option_arch,
+	    "-r",
+	    "-Xptxas=-c",
+	    "-O0",
+	    "-Xptxas=-O0",
+	  };
+	  size_t n_link_options = sizeof (link_options) / sizeof (*link_options);
+	  if (verbose)
+	    {
+	      std::cerr << "nvJitLink library verification: '" << outname << '\'';
+	      for (size_t i = 0; i < n_link_options; ++i)
+		std::cerr << ", '" << link_options[i] << '\'';
+	      std::cerr << '\n';
+	    }
+	  if (!interface_libnvjitlink_verify (error_stream, outname, n_link_options, link_options))
+	    fatal_error (error_stream.str ());
+
+	  free (link_option_arch);
+	}
+      else if (verify == verify_mode::ptxas_libnvrtc
+	       || verify == verify_mode::ptxas)
 	{
 	  const char *const ptxas_argv[] = {
 	    "ptxas",

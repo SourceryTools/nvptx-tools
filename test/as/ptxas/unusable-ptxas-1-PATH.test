@@ -36,6 +36,7 @@ RUN: rm -f %t*
 RUN: %target_as_empty_path_cmd --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -s %t.o
 RUN: ! test -s %t.stdout
+RUN: echo "use of nvJitLink library inhibited" >> %t.stderr.golden
 RUN: echo "'ptxas' not available." >> %t.stderr.golden
 RUN: echo "nvptx-as: not able to verify output" >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
@@ -55,6 +56,7 @@ RUN: rm -f %t*
 RUN: %target_as_empty_path_cmd -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
 RUN: cmp %S/../bare-1.s %t.o
 RUN: ! test -s %t.stdout
+RUN: echo "use of nvJitLink library inhibited" >> %t.stderr.golden
 RUN: echo "'ptxas' not available." >> %t.stderr.golden
 RUN: echo "not able to verify output" >> %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr

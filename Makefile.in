@@ -32,6 +32,17 @@ NVPTX_AS_LDFLAGS += $(DL_LIBS)
 #NVPTX_AS_LDFLAGS += -L$(CUDA_TOOLKIT)/lib64 -Wl,-rpath,$(CUDA_TOOLKIT)/lib64
 #NVPTX_AS_LDFLAGS += -lnvrtc
 
+# Including the nvptx-tools-shipped 'include/cuda/nvJitLink.h' (default) vs. <nvJitLink.h>:
+#NVPTX_AS_CPPFLAGS += -DNVPTX_AS_INCLUDE_SYSTEM_NVJITLINK_H
+#NVPTX_AS_CPPFLAGS += -I$(CUDA_TOOLKIT)/include
+#
+# 'dlopen'ing the nvJitLink library (default):
+NVPTX_AS_LDFLAGS += $(DL_LIBS)
+# ... vs. linking it:
+#NVPTX_AS_CPPFLAGS += -DNVPTX_AS_LINK_LIBNVJITLINK
+#NVPTX_AS_LDFLAGS += -L$(CUDA_TOOLKIT)/lib64 -Wl,-rpath,$(CUDA_TOOLKIT)/lib64
+#NVPTX_AS_LDFLAGS += -lnvJitLink
+
 # Letting 'configure' decide whether to build 'nvptx-none-run' (default) vs. force-enabling its build:
 #NVPTX_RUN = nvptx-none-run
 #
@@ -78,11 +89,15 @@ libiberty.stmp:
 
 nvptx_none_as_SOURCES = $(srcdir)/nvptx-as.cc
 nvptx_none_as_SOURCES += $(srcdir)/interface-libnvrtc.cc
+nvptx_none_as_SOURCES += $(srcdir)/interface-libnvjitlink.cc
 nvptx_none_as_DEPENDENCIES = $(nvptx_none_as_SOURCES)
 nvptx_none_as_DEPENDENCIES += $(srcdir)/version.h
 nvptx_none_as_DEPENDENCIES += $(srcdir)/interface-libnvrtc.h
 nvptx_none_as_DEPENDENCIES += $(srcdir)/include/cuda/nvrtc.h
 nvptx_none_as_DEPENDENCIES += $(srcdir)/interface-libnvrtc-symbols.def
+nvptx_none_as_DEPENDENCIES += $(srcdir)/interface-libnvjitlink.h
+nvptx_none_as_DEPENDENCIES += $(srcdir)/include/cuda/nvJitLink.h
+nvptx_none_as_DEPENDENCIES += $(srcdir)/interface-libnvjitlink-symbols.def
 nvptx_none_as_DEPENDENCIES += libiberty.stmp
 
 nvptx-none-as: $(nvptx_none_as_DEPENDENCIES)

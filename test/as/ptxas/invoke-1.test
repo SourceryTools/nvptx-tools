@@ -177,3 +177,33 @@ RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: sed -e 's|sm_50|sm_52|g' < %S/verbose_stderr.golden > %t.stderr.golden
 RUN: cmp %t.stderr.golden %t.stderr
+
+Explicit '-m sm_30': not special-cased.
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -m sm_30 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_50|sm_30|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_50|sm_30|g' < %S/verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Explicit '-m sm_31', and not candidate for special-casing anyway.
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -m sm_31 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_50|sm_31|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_50|sm_31|g' < %S/verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr
+
+Explicit '-m sm_32': not special-cased.
+
+RUN: rm -f %t*
+RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -m sm_32 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: sed -e 's|sm_50|sm_32|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
+RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
+RUN: ! test -s %t.stdout
+RUN: sed -e 's|sm_50|sm_32|g' < %S/verbose_stderr.golden > %t.stderr.golden
+RUN: cmp %t.stderr.golden %t.stderr

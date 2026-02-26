@@ -4303,6 +4303,19 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+DL_HEADERS=false
+for ac_header in dlfcn.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "dlfcn.h" "ac_cv_header_dlfcn_h" "$ac_includes_default"
+if test "x$ac_cv_header_dlfcn_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_DLFCN_H 1
+_ACEOF
+ DL_HEADERS=true
+fi
+
+done
+
 DL_LIBS=
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlsym in -ldl" >&5
@@ -4348,7 +4361,7 @@ fi
 
 NVPTX_RUN=nvptx-none-run
 
-if test x"$DL_LIBS" = x; then
+if ! "$DL_HEADERS" || test x"$DL_LIBS" = x; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: not able to build $NVPTX_RUN" >&5
 $as_echo "$as_me: not able to build $NVPTX_RUN" >&6;}
   NVPTX_RUN=

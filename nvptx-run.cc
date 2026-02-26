@@ -2,6 +2,7 @@
    Copyright (C) 2014, 2015 Mentor Graphics
    Copyright (C) 2016 Ivannikov Institute for System Programming of the Russian Academy of Sciences
    Copyright (C) 2022, 2023 Siemens
+   Copyright (C) 2026 BayLibre
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -44,7 +45,6 @@ extern "C" CUresult cuGetErrorString (CUresult, const char **);
 #define DO_PRAGMA(x) _Pragma (#x)
 
 #ifndef NVPTX_RUN_LINK_LIBCUDA
-# include <dlfcn.h>
 
 static struct cuda_lib_s {
 
@@ -57,6 +57,10 @@ static struct cuda_lib_s {
 # undef CUDA_ONE_CALL_MAYBE_NULL
 
 } cuda_lib;
+
+# ifdef HAVE_DLFCN_H
+
+# include <dlfcn.h>
 
 /* -1 if init_cuda_lib has not been called yet, false
    if it has been and failed, true if it has been and succeeded.  */
@@ -90,6 +94,13 @@ init_cuda_lib (void)
   return true;
 }
 # define CUDA_CALL_PREFIX cuda_lib.
+
+# else /* !HAVE_DLFCN_H */
+
+#  error "Don't know how to load dynamic shared objects."
+
+# endif /* HAVE_DLFCN_H */
+
 #else
 
 # define CUDA_ONE_CALL(call)
@@ -284,7 +295,7 @@ main (int argc, char **argv)
 	case 'V':
 	  std::cout << "\
 nvptx-none-run " << PKGVERSION << NVPTX_TOOLS_VERSION << "\n\
-Copyright (C) 2024 The nvptx-tools Developers\n\
+Copyright (C) 2026 The nvptx-tools Developers\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\
 the GNU General Public License version 3 or later.\n\

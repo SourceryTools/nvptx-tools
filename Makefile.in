@@ -91,10 +91,12 @@ nvptx-none-nm: $(nvptx_none_nm_DEPENDENCIES)
 		-Llibiberty -liberty $(LDFLAGS) $(LIBS)
 
 nvptx_none_run_SOURCES = $(srcdir)/nvptx-run.cc
+nvptx_none_run_SOURCES += $(srcdir)/interface-libcuda.cc
 nvptx_none_run_DEPENDENCIES = $(nvptx_none_run_SOURCES)
 nvptx_none_run_DEPENDENCIES += $(srcdir)/version.h
+nvptx_none_run_DEPENDENCIES += $(srcdir)/interface-libcuda.h
 nvptx_none_run_DEPENDENCIES += $(srcdir)/include/cuda/cuda.h
-nvptx_none_run_DEPENDENCIES += $(srcdir)/nvptx-run-cuda-lib.def
+nvptx_none_run_DEPENDENCIES += $(srcdir)/interface-libcuda-symbols.def
 nvptx_none_run_DEPENDENCIES += libiberty.stmp
 
 nvptx-none-run: $(nvptx_none_run_DEPENDENCIES)

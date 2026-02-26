@@ -22,17 +22,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#ifndef NVPTX_RUN_INCLUDE_SYSTEM_CUDA_H
-# include "cuda/cuda.h"
-#else
-# include <cuda.h>
-
-/* On systems where installed NVIDIA driver is newer than CUDA Toolkit,
-   libcuda.so may have these functions even though <cuda.h> does not.  */
-
-extern "C" CUresult cuGetErrorName (CUresult, const char **);
-extern "C" CUresult cuGetErrorString (CUresult, const char **);
-#endif
 
 #define HAVE_DECL_BASENAME 1
 #include "libiberty.h"
@@ -42,82 +31,10 @@ extern "C" CUresult cuGetErrorString (CUresult, const char **);
 
 #include "version.h"
 
-#define DO_PRAGMA(x) _Pragma (#x)
-
-#ifndef NVPTX_RUN_LINK_LIBCUDA
-
-static struct cuda_lib_s {
-
-# define CUDA_ONE_CALL(call)			\
-  __typeof (::call) *call;
-# define CUDA_ONE_CALL_MAYBE_NULL(call)		\
-  CUDA_ONE_CALL (call)
-# include "nvptx-run-cuda-lib.def"
-# undef CUDA_ONE_CALL
-# undef CUDA_ONE_CALL_MAYBE_NULL
-
-} cuda_lib;
-
-# ifdef HAVE_DLFCN_H
-
-# include <dlfcn.h>
-
-/* -1 if init_cuda_lib has not been called yet, false
-   if it has been and failed, true if it has been and succeeded.  */
-static signed char cuda_lib_inited = -1;
-
-/* Dynamically load the CUDA runtime library and initialize function
-   pointers, return false if unsuccessful, true if successful.  */
-static bool
-init_cuda_lib (void)
-{
-  if (cuda_lib_inited != -1)
-    return cuda_lib_inited;
-  const char *cuda_runtime_lib = "libcuda.so.1";
-  void *h = dlopen (cuda_runtime_lib, RTLD_LAZY);
-  cuda_lib_inited = false;
-  if (h == NULL)
-    return false;
-
-# define CUDA_ONE_CALL(call) CUDA_ONE_CALL_1 (call, false)
-# define CUDA_ONE_CALL_MAYBE_NULL(call) CUDA_ONE_CALL_1 (call, true)
-# define CUDA_ONE_CALL_1(call, allow_null)		\
-  cuda_lib.call = (__typeof (call) *) dlsym (h, #call);	\
-  if (!allow_null && cuda_lib.call == NULL)		\
-    return false;
-# include "nvptx-run-cuda-lib.def"
-# undef CUDA_ONE_CALL
-# undef CUDA_ONE_CALL_1
-# undef CUDA_ONE_CALL_MAYBE_NULL
-
-  cuda_lib_inited = true;
-  return true;
-}
-# define CUDA_CALL_PREFIX cuda_lib.
-
-# else /* !HAVE_DLFCN_H */
-
-#  error "Don't know how to load dynamic shared objects."
-
-# endif /* HAVE_DLFCN_H */
-
-#else
-
-# define CUDA_ONE_CALL(call)
-# define CUDA_ONE_CALL_MAYBE_NULL(call) DO_PRAGMA (weak call)
-# include "nvptx-run-cuda-lib.def"
-# undef CUDA_ONE_CALL_MAYBE_NULL
-# undef CUDA_ONE_CALL
-
-# define CUDA_CALL_PREFIX
-# define init_cuda_lib() true
-#endif
-
-#define CUDA_CALL_NOCHECK(FN, ...)		\
-  CUDA_CALL_PREFIX FN (__VA_ARGS__)
-
-#define CUDA_CALL_EXISTS(FN)			\
-  CUDA_CALL_PREFIX FN
+#include "interface-libcuda.h"
+/* This file here has not yet been transitioned to the new interfaces.  */
+#define CUDA_CALL_NOCHECK LIBCUDA_SYMBOL_CALL_NOCHECK
+#define CUDA_CALL_EXISTS LIBCUDA_SYMBOL_EXISTS
 
 
 static void
@@ -257,6 +174,7 @@ static const struct option long_options[] =
 int
 main (int argc, char **argv)
 {
+  std::ostringstream error_stream;
   int o;
   long stack_size = 0, heap_size = 256 * 1024 * 1024, num_lanes = 1;
   while ((o = getopt_long (argc, argv, "+S:H:L:O:gGhV", long_options, 0)) != -1)
@@ -315,8 +233,12 @@ This program has absolutely no warranty.\n";
   if (f == NULL)
     fatal_error ("program file not found");
 
-  if (!init_cuda_lib ())
-    fatal_error ("couldn't initialize CUDA Driver");
+  if (!interface_libcuda_init (error_stream))
+    {
+      std::ostringstream error_stream_;
+      error_stream_ << "couldn't initialize CUDA Driver: " << error_stream.str ();
+      fatal_error (error_stream_.str ());
+    }
 
   CUresult r;
   r = CUDA_CALL_NOCHECK (cuInit, 0);

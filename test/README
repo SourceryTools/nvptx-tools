@@ -15,9 +15,18 @@ for executing LLVM and Clang style test suites, [...]" (notice "portable", and
 lit Installation
 ----------------
 
-There don't universally seem to be distribution packages available for lit, so
-you may have to set it up manually.  Instead of having to rely on an LLVM
-build, it may be installed via <https://pypi.org/project/lit/>:
+If lit isn't found via the 'PATH' environment variable, you may 'configure'
+nvptx-tools with 'LIT=[...]', or put that assignment onto the 'make check'
+command line.
+
+With GNU Guix, you may install the 'python-lit' package (in a 'python'
+environment together with 'python-psutil', if using lit's '--timeout T'
+option), or just use:
+
+    LIT='guix shell python python-lit python-psutil -- lit'
+
+If there are no distribution packages available, you may install lit via
+<https://pypi.org/project/lit/>:
 
     $ # tested 2020-12-18, Ubuntu 18.04, x86_64 GNU/Linux
     $ sudo apt-get install python3-pip
@@ -47,11 +56,6 @@ up the 'PATH' environment variable to include a LLVM build's '[...]/bin'
 directory, and the nvptx-tools 'configure' script will pick up 'llvm-lit' from
 there.
 
-Generally, if lit isn't found via the 'PATH' environment variable, you may
-'configure' nvptx-tools with 'LIT="$HOME"/.local/bin/lit' (or similar for the
-other installation variants), or put that assignment onto the 'make check'
-invocation.
-
 
 jq Installation
 ---------------
@@ -62,3 +66,7 @@ jq (command-line JSON processor) is used for postprocessing the lit
 If jq isn't found via the 'PATH' environment variable, you may 'configure'
 nvptx-tools with 'JQ=[...]', or put that assignment onto the 'make check'
 command line.
+
+With GNU Guix, you may install the 'jq' package, or just use:
+
+    JQ='guix shell jq -- jq'

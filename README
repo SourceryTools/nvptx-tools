@@ -30,6 +30,14 @@ Additional flags may be passed to lit, for example:
 
 ..., to display details, but just run the 'as/[...]', 'ld/[...]' test cases.
 
+By default, lit is run with '--timeout 10', to protect against rogue test
+cases.  In case this results in:
+
+    [...] fatal: Setting a timeout per test not supported. Requires the Python psutil module but it could not be found. Try installing it [...]
+
+..., then either do as advised, or override with '--timeout 0' in 'LITFLAGS'
+for no time limit.
+
 
 DejaGnu Board File
 ------------------

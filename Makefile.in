@@ -115,7 +115,7 @@ else
 	rm -f test/lit.json.log test/lit.log test/lit.sum
 	date > test/lit.log
 	cp test/lit.log test/lit.sum
-	-$(LIT) --echo-all-commands --output test/lit.json.log --order lexical $(LITFLAGS_J) $(LITFLAGS) test
+	-$(LIT) --echo-all-commands --output test/lit.json.log --timeout 10 --order lexical $(LITFLAGS_J) $(LITFLAGS) test
 	$(JQ) -r '.tests[] | "\(.code): \(.name)\nElapsed: \(.elapsed)\n\(.output)\n"' < test/lit.json.log >> test/lit.log
 	$(JQ) -r '.tests[] | "\(.code): \(.name)"' < test/lit.json.log >> test/lit.sum
 endif

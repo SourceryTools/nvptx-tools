@@ -14,11 +14,21 @@ Additionally, the following symlinks are installed:
 Testsuite
 ---------
 
-    $ make check
+    $ make [-jN] check
 
 In addition to the testsuite of the included libiberty support library
 ('check-libiberty'), this tests the nvptx-tools using a lit-based testsuite
 ('check-lit'); see 'test/README'.
+
+The lit-based testsuite logs to 'test/lit.json.log', and postprocesses that
+file into 'test/lit.log', 'test/lit.sum' files, which are somewhat similar
+(but not identical) in format to DejaGnu's detailed and summary log files.
+
+Additional flags may be passed to lit, for example:
+
+    $ make [-jN] check LITFLAGS="--show-all --filter '^nvptx-tools :: (as|ld)/'"
+
+..., to display details, but just run the 'as/[...]', 'ld/[...]' test cases.
 
 
 DejaGnu Board File

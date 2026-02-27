@@ -53,11 +53,12 @@ other installation variants), or put that assignment onto the 'make check'
 invocation.
 
 
-Testsuite Invocation
---------------------
+jq Installation
+---------------
 
-    $ make [-jN] check
+jq (command-line JSON processor) is used for postprocessing the lit
+'--output test/lit.json.log' file.
 
-Additional flags may be passed to lit, for example:
-
-    $ make [-jN] check LITFLAGS='--echo-all-commands --output test/log.json'
+If jq isn't found via the 'PATH' environment variable, you may 'configure'
+nvptx-tools with 'JQ=[...]', or put that assignment onto the 'make check'
+command line.

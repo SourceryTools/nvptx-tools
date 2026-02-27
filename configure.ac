@@ -42,5 +42,7 @@ AC_CHECK_PROGS([LIT], [lit] [lit.py] [llvm-lit])
 
 AC_CONFIG_FILES([test/lit.site.cfg.py])
 
+AC_CHECK_PROGS([JQ], [jq])
+
 
 AC_OUTPUT

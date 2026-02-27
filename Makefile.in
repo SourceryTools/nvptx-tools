@@ -38,6 +38,8 @@ RANLIB = @RANLIB@
 LIT = @LIT@
 LITFLAGS =
 
+JQ = @JQ@
+
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -104,10 +106,18 @@ check: check-lit
 .PHONY: check-lit
 check-lit: all
 ifeq ($(LIT),)
-	@echo >&2 Need lit to run the testsuite, see \'$(srcdir)/test/README\'
+	@echo >&2 Need lit for \'$@\', see \'$(srcdir)/test/README\'
+	@exit 1
+else ifeq ($(JQ),)
+	@echo >&2 Need jq for \'$@\', see \'$(srcdir)/test/README\'
 	@exit 1
 else
-	$(LIT) $(LITFLAGS_J) $(LITFLAGS) test
+	rm -f test/lit.json.log test/lit.log test/lit.sum
+	date > test/lit.log
+	cp test/lit.log test/lit.sum
+	-$(LIT) --echo-all-commands --output test/lit.json.log --order lexical $(LITFLAGS_J) $(LITFLAGS) test
+	$(JQ) -r '.tests[] | "\(.code): \(.name)\nElapsed: \(.elapsed)\n\(.output)\n"' < test/lit.json.log >> test/lit.log
+	$(JQ) -r '.tests[] | "\(.code): \(.name)"' < test/lit.json.log >> test/lit.sum
 endif
 
 

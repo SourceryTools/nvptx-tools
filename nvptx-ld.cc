@@ -726,7 +726,7 @@ usage (std::ostream &out_stream, int status)
 Usage: nvptx-none-ld [option...] [files]\n\
 Options:\n\
   -o FILE               Write output to FILE\n\
-  -v                    Be verbose\n\
+  --verbose, -v         Be verbose\n\
   -l LIBRARY            Link with LIBRARY\n\
   -L DIR                Search for libraries in DIR\n\
   --help                Print this help and exit\n\
@@ -746,6 +746,7 @@ static const struct option long_options[] = {
   {"hash-style", required_argument, 0, OPT_hash_style },
   {"help", no_argument, 0, 'h' },
   {"ignore-unresolved-symbol", required_argument, 0, OPT_ignore_unresolved_symbol },
+  {"verbose", no_argument, 0, 'v' },
   {"version", no_argument, 0, 'V' },
   {0, 0, 0, 0 }
 };

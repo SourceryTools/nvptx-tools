@@ -1,8 +1,8 @@
 // Based on offloading-compilation artifact 'a.xnvptx-none.mkoffload.s' of <https://gcc.gnu.org/PR100059> "[OpenMP] wrong code with 'declare target link' and a scalar variable".
 
 // BEGIN PREAMBLE
-	.version 4.0
-	.target	sm_50
+	.version 3.1
+	.target	sm_35
 	.address_size 64
 // END PREAMBLE
 

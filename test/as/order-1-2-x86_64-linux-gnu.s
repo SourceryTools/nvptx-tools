@@ -1,8 +1,8 @@
 // Based on offloading-compilation artifact 'a.xnvptx-none.mkoffload.s' of GCC 'libgomp.c-c++-common/declare_target-1.c'.
 
 // BEGIN PREAMBLE
-	.version 4.0
-	.target sm_50
+	.version 3.1
+	.target sm_35
 	.address_size 64
 // END PREAMBLE
 

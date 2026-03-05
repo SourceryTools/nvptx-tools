@@ -1,5 +1,5 @@
-.version 4.0
-.target	sm_50
+.version 3.1
+.target	sm_35
 .address_size 64
 
 //:FUNC_MAP "f1.1"

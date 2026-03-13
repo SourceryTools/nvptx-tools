@@ -248,7 +248,11 @@ This program has absolutely no warranty.\n";
   CUcontext ctx;
   r = CUDA_CALL_NOCHECK (cuDeviceGet, &dev, 0);
   fatal_unless_success (r, "cuDeviceGet failed");
+#if CUDA_VERSION >= 13000
+  r = CUDA_CALL_NOCHECK (cuCtxCreate, &ctx, NULL, 0, dev);
+#else
   r = CUDA_CALL_NOCHECK (cuCtxCreate, &ctx, 0, dev);
+#endif
   fatal_unless_success (r, "cuCtxCreate failed");
 
   CUdeviceptr d_retval;

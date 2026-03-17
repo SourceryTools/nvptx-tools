@@ -1,6 +1,6 @@
 Aspects of explicit '--verify'.
 
-REQUIRES: ptxas
+REQUIRES: as_ptxas_usable
 
 
 'bare-1.s'

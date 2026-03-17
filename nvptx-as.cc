@@ -3,7 +3,7 @@
    Copyright (C) 2017 Red Hat
    Copyright (C) 2017, 2021, 2022, 2023 Siemens
    Copyright (C) 2020 SUSE
-   Copyright (C) 2024 BayLibre
+   Copyright (C) 2024, 2026 BayLibre
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -19,8 +19,7 @@
    along with nvptx-tools; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
-/* Munges GCC-generated PTX assembly so that it becomes acceptable for ptxas
-   and the CUDA driver library.
+/* Munges GCC-generated PTX assembly so that it becomes compliant.
 
    This is not a complete assembler.  We presume the source is well
    formed from the compiler and can die horribly if it is not.  */
@@ -84,6 +83,14 @@
 static bool verbose = false;
 
 static const char *outname = NULL;
+
+enum class verify_mode
+{
+  unset,
+  no,
+  yes,
+  ptxas,
+};
 
 static void
 fatal_error (const std::string &error_string)
@@ -942,7 +949,7 @@ symbol_order_deps (std::vector<const symbol *> &symbols_out, symbol *e, std::ost
 }
 
 static void
-process (FILE *in, std::ostream &out_stream, int *verify, const char *inname)
+process (FILE *in, std::ostream &out_stream, verify_mode &verify, const char *inname)
 {
   std::ostringstream error_stream;
 
@@ -956,7 +963,7 @@ process (FILE *in, std::ostream &out_stream, int *verify, const char *inname)
       /* Produce an empty output file.  */
 
       /* An empty file isn't a valid PTX file.  */
-      *verify = 0;
+      verify = verify_mode::no;
 
       XDELETEVEC (input);
 
@@ -969,9 +976,9 @@ process (FILE *in, std::ostream &out_stream, int *verify, const char *inname)
   Token *tok_to_free = tok;
 
   /* Do minimalistic verification, so that we reliably reject (certain classes
-     of) invalid input.  (If available and applicable, 'ptxas' is later used to
+     of) invalid input.  (Do this here, in case we're not able, later on, to
      verify the whole output file.)  */
-  if (*verify != 0)
+  if (verify != verify_mode::no)
     {
       if (!verify_preamble (tok, error_stream))
 	{
@@ -1193,18 +1200,39 @@ program_available (const char *progname)
   return false;
 }
 
+/* Is 'ptxas' usable?  */
+
+static bool
+is_ptxas_usable (std::ostream &error_stream, bool inhibit)
+{
+  if (inhibit)
+    {
+      error_stream << "use of 'ptxas' inhibited";
+      return false;
+    }
+
+  if (!program_available ("ptxas"))
+    {
+      error_stream << "'ptxas' not available.";
+      return false;
+    }
+
+  return true;
+}
+
 ATTRIBUTE_NORETURN static void
 usage (std::ostream &out_stream, int status)
 {
   out_stream << "\
 Usage: nvptx-none-as [option...] [asmfile]\n\
 Options:\n\
-  -m TARGET             Override target architecture used for ptxas\n\
-                        verification (default: deduce from input's preamble)\n\
+  -m TARGET             Override target architecture used for verification\n\
+                        (default: deduce from input's preamble)\n\
   -o FILE               Write output to FILE\n\
   -v                    Be verbose\n\
-  --verify              Do verify output is acceptable to ptxas\n\
-  --no-verify           Do not verify output is acceptable to ptxas\n\
+  --verify              Verify output for PTX compliance\n\
+  [default]             If possible, verify output for PTX compliance\n\
+  --no-verify           Don't verify output for PTX compliance\n\
   --help                Print this help and exit\n\
   --version             Print version number and exit\n\
 \n\
@@ -1212,11 +1240,18 @@ Report bugs to " << REPORT_BUGS_TO << ".\n";
   exit (status);
 }
 
+#define OPT_verify 256
+#define OPT_no_verify 257
+#define OPT_query 258
+#define OPT_inhibit 259
+
 static struct option long_options[] = {
   {"traditional-format",     no_argument, 0,  0 },
   {"save-temps",  no_argument,       0,  0 },
-  {"verify",  no_argument,       0,  0 },
-  {"no-verify",  no_argument,       0,  0 },
+  {"verify", no_argument, 0, OPT_verify },
+  {"no-verify", no_argument, 0, OPT_no_verify },
+  /* internal-use; undocumented */ {"query", required_argument, 0, OPT_query },
+  /* internal-use; undocumented */ {"inhibit", required_argument, 0, OPT_inhibit },
   {"help", no_argument, 0, 'h' },
   {"version", no_argument, 0, 'V' },
   {0,         0,                 0,  0 }
@@ -1228,7 +1263,8 @@ main (int argc, char **argv)
   FILE *in = stdin;
   const char *inname = "{standard input}";
   std::ostream *out_stream = &std::cout;
-  int verify = -1;
+  verify_mode verify = verify_mode::unset;
+  bool inhibit_ptxas = false;
   const char *target_arg_force = NULL;
 
   int o;
@@ -1237,12 +1273,6 @@ main (int argc, char **argv)
     {
       switch (o)
 	{
-	case 0:
-	  if (option_index == 2)
-	    verify = 1;
-	  else if (option_index == 3)
-	    verify = 0;
-	  break;
 	case 'v':
 	  verbose = true;
 	  break;
@@ -1266,12 +1296,48 @@ main (int argc, char **argv)
 	case 'V':
 	  std::cout << "\
 nvptx-none-as " << PKGVERSION << NVPTX_TOOLS_VERSION << "\n\
-Copyright (C) 2024 The nvptx-tools Developers\n\
+Copyright (C) 2026 The nvptx-tools Developers\n\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This program is free software; you may redistribute it under the terms of\n\
 the GNU General Public License version 3 or later.\n\
 This program has absolutely no warranty.\n";
 	  exit (0);
+	case OPT_verify:
+	  verify = verify_mode::yes;
+	  break;
+	case OPT_no_verify:
+	  verify = verify_mode::no;
+	  break;
+	case OPT_query:
+	  {
+	    std::ostringstream error_stream;
+	    assert (optarg);
+	    if (!strcmp (optarg, "ptxas_usable"))
+	      {
+		if (!is_ptxas_usable (error_stream, false))
+		  fatal_error (error_stream.str ());
+		exit (0);
+	      }
+	    else
+	      {
+		error_stream << "invalid '--" << long_options[option_index].name << "=" << optarg << "'";
+		fatal_error (error_stream.str ());
+	      }
+	  }
+	  break;
+	case OPT_inhibit:
+	  {
+	    std::ostringstream error_stream;
+	    assert (optarg);
+	    if (!strcmp (optarg, "ptxas"))
+	      inhibit_ptxas = true;
+	    else
+	      {
+		error_stream << "invalid '--" << long_options[option_index].name << "=" << optarg << "'";
+		fatal_error (error_stream.str ());
+	      }
+	  }
+	  break;
 	default:
 	  usage (std::cerr, 1);
 	  break;
@@ -1298,7 +1364,7 @@ This program has absolutely no warranty.\n";
   if (!in)
     fatal_error ("cannot open input ptx file");
 
-  process (in, *out_stream, &verify, inname);
+  process (in, *out_stream, verify, inname);
 
   if (in != stdin)
     {
@@ -1311,14 +1377,50 @@ This program has absolutely no warranty.\n";
       out_stream = NULL;
     }
 
+  assert (verify == verify_mode::unset
+	  || verify == verify_mode::no
+	  || verify == verify_mode::yes);
   if (outname == NULL)
-    /* We don't have a PTX file for 'ptxas' to read in; skip verification.  */
-    verify = 0;
-  else if (verify == -1)
-    if (program_available ("ptxas"))
-      verify = 1;
+    /* We don't have an output file; skip verification.  */
+    verify = verify_mode::no;
+  if (verify == verify_mode::unset
+      || verify == verify_mode::yes)
+    {
+      /* Determine what verification to use.  In order of preference:
+	  1. 'ptxas',
+	  2. none/error.  */
 
-  if (verify > 0)
+      bool ptxas_usable = false;
+      if (/*TODO*/ true)
+	{
+	  std::ostringstream error_stream_ptxas;
+	  ptxas_usable = is_ptxas_usable (error_stream_ptxas, inhibit_ptxas);
+	  if (verbose && !ptxas_usable)
+	    std::cerr << error_stream_ptxas.str () << '\n';
+	}
+
+      if (ptxas_usable)
+	verify = verify_mode::ptxas;
+      else
+	{
+	  const char *msg = "not able to verify output";
+	  if (verify == verify_mode::yes)
+	    fatal_error (msg);
+	  else
+	    {
+	      assert (verify == verify_mode::unset);
+	      if (verbose)
+		std::cerr << msg << '\n';
+	      verify = verify_mode::no;
+	    }
+	}
+    }
+  else
+    assert (verify == verify_mode::no);
+  assert (verify == verify_mode::no
+	  || verify == verify_mode::ptxas);
+
+  if (verify != verify_mode::no)
     {
       const char *target_arg;
       if (target_arg_force)
@@ -1327,19 +1429,16 @@ This program has absolutely no warranty.\n";
 	{
 	  assert (preamble_target_arg);
 
-	  /* Override the default '--gpu-name' of 'ptxas': its default may not
-	     be sufficient for what is requested in the '.target' directive in
-	     the input's preamble:
+	  /* We'd like to verify per what we deduced from from the input's
+	     preamble.  For 'ptxas', the default '--gpu-name' may
+	     not be sufficient for what is requested in the '.target' directive
+	     in the input's preamble:
 
 	         ptxas fatal   : SM version specified by .target is higher than default SM version assumed
-
-	     In this case, use the '.target' we found in the preamble.  */
+	  */
 	  target_arg = preamble_target_arg;
 
-	  if ((strcmp ("sm_30", target_arg) == 0)
-	      || (strcmp ("sm_32", target_arg) == 0)
-	      || (strcmp ("sm_35", target_arg) == 0)
-	      || (strcmp ("sm_37", target_arg) == 0))
+	  if (verify == verify_mode::ptxas)
 	    {
 	      /* In CUDA 11.0, "Support for Kepler 'sm_30' and 'sm_32'
 		 architecture based products is dropped", and in CUDA 12.0,
@@ -1362,31 +1461,39 @@ This program has absolutely no warranty.\n";
 		 '--gpu-name' options is clumsy, so in this case, just use
 		 'sm_50', which is the baseline supported by all current CUDA
 		 versions down to CUDA 6.5, at least.  */
-	      if (verbose)
-		std::cerr << "Verifying " << target_arg << " code";
-	      target_arg = "sm_50";
-	      if (verbose)
-		std::cerr << " with " << target_arg << " code generation.\n";
+	      if ((strcmp ("sm_30", target_arg) == 0)
+		  || (strcmp ("sm_32", target_arg) == 0)
+		  || (strcmp ("sm_35", target_arg) == 0)
+		  || (strcmp ("sm_37", target_arg) == 0))
+		{
+		  if (verbose)
+		    std::cerr << "Verifying " << target_arg << " code";
+		  target_arg = "sm_50";
+		  if (verbose)
+		    std::cerr << " with " << target_arg << " code generation.\n";
+		}
 	    }
+	  else
+	    assert (!"unreachable");
 	}
 
-      const char *const new_argv[] = {
-	"ptxas",
-	"-c",
-	"-o",
-	"/dev/null",
-	outname,
-	"--gpu-name",
-	target_arg,
-	"-O0",
-	NULL,
-      };
-      fork_execute (new_argv[0], new_argv);
-    }
-  else if (verify < 0)
-    {
-      if (verbose)
-	std::cerr << "'ptxas' not available.\n";
+      if (verify == verify_mode::ptxas)
+	{
+	  const char *const ptxas_argv[] = {
+	    "ptxas",
+	    "-c",
+	    "-o",
+	    "/dev/null",
+	    outname,
+	    "--gpu-name",
+	    target_arg,
+	    "-O0",
+	    NULL,
+	  };
+	  fork_execute (ptxas_argv[0], ptxas_argv);
+	}
+      else
+	assert (!"unreachable");
     }
 
   free (preamble_target_arg);

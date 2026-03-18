@@ -1,4 +1,7 @@
 Per #26 commit ea21ab573245b0ce8d9e9da53f18d37b9d671a18 "[nvptx-as] Allow empty input file", verification isn't done if the input file is empty.
+..., which implies that we may have "unguarded" '--verify' variants in here, too.
+
+See also 'stdio-1.test'.
 
 
 'empty.s'

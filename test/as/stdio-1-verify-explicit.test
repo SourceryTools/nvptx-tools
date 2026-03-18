@@ -1,6 +1,6 @@
 Functionality implemented in commit 08b0896a71925d4e033be40abdd23cf08a41a5da "restore ability to use stdin/stdout".
 
-See 'stdio-1.test'; these here are the 'ptxas' verification variants.
+See 'stdio-1.test'; these here are explicit '--verify' variants.
 
 REQUIRES: ptxas
 
@@ -10,5 +10,7 @@ REQUIRES: ptxas
 'stdin'
 
 RUN: rm -f %t*
-RUN: %target_as_cmd --verify < %S/bare-1.s -o %t.o
+RUN: %target_as_cmd --verify < %S/bare-1.s -o %t.o > %t.stdout 2> %t.stderr
 RUN: cmp %S/bare-1.s %t.o
+RUN: ! test -s %t.stdout
+RUN: ! test -s %t.stderr

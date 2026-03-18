@@ -4,21 +4,21 @@ Test when 'ptxas' doesn't get invoked, and when it does, and how.
 '--help'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd --help
+RUN: %target_as_dummy_ptxas_cmd --help
 RUN: ! test -f %t.dummy_ptxas_log
 
 
 '--version'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd --version
+RUN: %target_as_dummy_ptxas_cmd --version
 RUN: ! test -f %t.dummy_ptxas_log
 
 
 No output file
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: cmp %S/../bare-1.s %t.stdout
 RUN: ! test -s %t.stderr
@@ -27,7 +27,7 @@ RUN: ! test -s %t.stderr
 '--no-verify'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v --no-verify -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v --no-verify -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: ! test -f %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: ! test -s %t.stderr
@@ -36,7 +36,7 @@ RUN: ! test -s %t.stderr
 '--verify'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v --verify -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v --verify -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: cmp %S/verbose_stderr-sm_30.golden %t.stderr
@@ -45,7 +45,7 @@ RUN: cmp %S/verbose_stderr-sm_30.golden %t.stderr
 Implicit '--verify'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: cmp %S/verbose_stderr-sm_30.golden %t.stderr
@@ -54,7 +54,7 @@ RUN: cmp %S/verbose_stderr-sm_30.golden %t.stderr
 Implicit '--verify', '-m sm_2020'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %S/../bare-1.s -m sm_2020 > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m sm_2020 > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_2020|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -66,7 +66,7 @@ Implicit '--verify', preamble '.target sm_2022'
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_2022|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_2022|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -77,7 +77,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Implicit '--verify', '-m ABC'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %S/../bare-1.s -m ABC > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m ABC > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|ABC|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -89,7 +89,7 @@ Implicit '--verify', preamble '.target DEF'
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|DEF|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|DEF|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -100,7 +100,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Implicit '--verify', '-m sm_GHI'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %S/../bare-1.s -m sm_GHI > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m sm_GHI > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_GHI|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -112,7 +112,7 @@ Implicit '--verify', preamble '.target sm_JKL'
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_JKL|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_JKL|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -123,7 +123,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Implicit '--verify', '-m sm_-1'
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %S/../bare-1.s -m sm_-1 > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s -m sm_-1 > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_-1|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -135,7 +135,7 @@ Implicit '--verify', preamble '.target sm_-1'
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_-1|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -149,7 +149,7 @@ Preamble '.target sm_3': doesn't exist; not special-cased.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_3|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_3|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -159,7 +159,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Preamble '.target sm_30': special-cased to '--gpu-name sm_50'.
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: cmp %S/verbose_stderr-sm_30.golden %t.stderr
@@ -168,7 +168,7 @@ Preamble '.target sm_30x': doesn't exist; not special-cased.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_30x|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_30x|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -179,7 +179,7 @@ Preamble '.target sm_31': doesn't exist; not special-cased.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_31|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_31|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -190,7 +190,7 @@ Preamble '.target sm_32': special-cased to '--gpu-name sm_50'.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_32|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: sed -e 's|sm_30|sm_32|g' < %S/verbose_stderr-sm_30.golden > %t.stderr.golden
@@ -200,7 +200,7 @@ Preamble '.target sm_32x': doesn't exist; not special-cased.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_32x|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_32x|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -211,7 +211,7 @@ Preamble '.target sm_35': special-cased to '--gpu-name sm_50'.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_35|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: sed -e 's|sm_30|sm_35|g' < %S/verbose_stderr-sm_30.golden > %t.stderr.golden
@@ -221,7 +221,7 @@ Preamble '.target sm_37': special-cased to '--gpu-name sm_50'.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_37|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: sed -e 's|sm_30|sm_37|g' < %S/verbose_stderr-sm_30.golden > %t.stderr.golden
@@ -231,7 +231,7 @@ Preamble '.target sm_50': not special-cased.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_50|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %S/dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
 RUN: cmp %S/verbose_stderr.golden %t.stderr
@@ -240,7 +240,7 @@ Preamble '.target sm_52': not special-cased.
 
 RUN: rm -f %t*
 RUN: sed -e 's|sm_30|sm_52|g' < %S/../bare-1.s > %t.bare-1.s
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -o /dev/null %t.bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_52|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -250,7 +250,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Explicit '-m sm_30': not special-cased.
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -m sm_30 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -m sm_30 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_30|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -260,7 +260,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Explicit '-m sm_31', and not candidate for special-casing anyway.
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -m sm_31 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -m sm_31 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_31|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout
@@ -270,7 +270,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 Explicit '-m sm_32': not special-cased.
 
 RUN: rm -f %t*
-RUN: %dummy_ptxas_path DUMMY_PTXAS_LOG=%t.dummy_ptxas_log %target_as_cmd -v -m sm_32 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
+RUN: %target_as_dummy_ptxas_cmd -v -m sm_32 -o /dev/null %S/../bare-1.s > %t.stdout 2> %t.stderr
 RUN: sed -e 's|sm_50|sm_32|g' < %S/dummy_ptxas_log.golden > %t.dummy_ptxas_log.golden
 RUN: cmp %t.dummy_ptxas_log.golden %t.dummy_ptxas_log
 RUN: ! test -s %t.stdout

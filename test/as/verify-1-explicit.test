@@ -14,6 +14,8 @@ RUN: ! test -s %t.stderr
 
 'garbage-1.s'
 
+(Full verification not actually invoked here.)
+
 RUN: rm -f %t*
 RUN: %target_as_cmd --verify %S/garbage-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
 RUN: ! test -f %t.o
@@ -22,6 +24,8 @@ RUN: < %t.stderr grep -qe '%r_target_as_missing_version_directive'
 
 
 'whitespace-1.s'
+
+(Full verification not actually invoked here.)
 
 RUN: rm -f %t*
 RUN: %target_as_cmd --verify %S/whitespace-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]

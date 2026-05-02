@@ -875,7 +875,7 @@ This program has absolutely no warranty.\n";
       char *buf = XNEWVEC (char, len + 1);
       size_t read_len = fread (buf, 1, len, f);
       buf[len] = '\0';
-      if (read_len != len || ferror (f))
+      if (read_len != static_cast<size_t>(len) || ferror (f))
 	{
 	  std::cerr << "error reading " << name << "\n";
 	  fclose (f);

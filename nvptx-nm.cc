@@ -383,7 +383,7 @@ numeric_reverse (const void *x, const void *y)
   return - numeric_forward (x, y);
 }
 
-static int (*(sorters[2][2])) (const void *, const void *) =
+static int (*sorters[2][2]) (const void *, const void *) =
 {
   { non_numeric_forward, non_numeric_reverse },
   { numeric_forward, numeric_reverse }
@@ -461,7 +461,7 @@ print_symbols (symbol_hash_entry **minisyms,
 }
 
 static void
-display_rel_file (std::list<htab_t> &symbol_tables, const std::string &name)
+display_rel_file (std::list<htab_t> &symbol_tables, const std::string &/*name*/)
 {
   size_t symcount = 0;
   for (std::list<htab_t>::iterator it = symbol_tables.begin ();
@@ -667,7 +667,7 @@ This program has absolutely no warranty.\n";
       char *buf = new char[len + 1];
       size_t read_len = fread (buf, 1, len, f);
       buf[len] = '\0';
-      if (read_len != len || ferror (f))
+      if (read_len != static_cast<size_t>(len) || ferror (f))
 	{
 	  std::cerr << "error reading " << name << "\n";
 	  fclose (f);

@@ -3,7 +3,7 @@ Invocation error cases.
 
 RUN: echo > %t.stderr.golden 'multiple output files specified'
 
-RUN: %target_as_cmd -o %t.a -o %t.b > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd -o %t.a -o %t.b > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 RUN: ! test -f %t.a
@@ -12,21 +12,21 @@ RUN: ! test -f %t.b
 
 RUN: echo > %t.stderr.golden 'nvptx-as: too many input files specified'
 
-RUN: %target_as_cmd a b > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd a b > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 
 
 RUN: echo > %t.stderr.golden 'nvptx-as: cannot open '\''oh/no'\'
 
-RUN: ( cd %T/ && %target_as_cmd -o oh/no > %t.stdout 2> %t.stderr ); r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd -o oh/no > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
-RUN: ! test -f %T/oh/no
+RUN: ! test -f oh/no
 
 
 RUN: echo > %t.stderr.golden 'nvptx-as: cannot open input ptx file'
 
-RUN: %target_as_cmd %t/oh/no > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd %t/oh/no > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout

@@ -7,7 +7,7 @@ import subprocess
 
 config.name = 'nvptx-tools'
 
-config.test_format = lit.formats.ShTest(True)
+config.test_format = lit.formats.ShTest()
 
 config.test_source_root = os.path.dirname(__file__)
 

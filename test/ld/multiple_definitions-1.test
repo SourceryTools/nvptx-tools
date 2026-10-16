@@ -7,10 +7,10 @@ RUN: mkdir -p %t
 
 Intrinsics.
 
-RUN: for name in vprintf malloc free; do sed -e "s%\[NAME\]%$name%" < %S/multiple_definitions-1-1.s > %t/multiple_definitions-1-1-"$name".s || exit 1; done; true
-RUN: for name in vprintf malloc free; do sed -e "s%\[NAME\]%$name%" -e "s%\[FILE1\]%[intrinsic]%" -e "s%\[FILE2\]%multiple_definitions-1-1-"$name".o%" < %S/multiple_definitions-1-1.ld.stderr.golden > %t/multiple_definitions-1-1-"$name".ld.stderr.golden || exit 1; done; true
-RUN: for name in vprintf malloc free; do %target_as_cmd -o %t/multiple_definitions-1-1-"$name".o %t/multiple_definitions-1-1-"$name".s || exit 1; done
-RUN: ( cd %t/ && for name in vprintf malloc free; do %target_ld_cmd -o multiple_definitions-1-1-"$name".nvptx multiple_definitions-1-1-"$name".o > multiple_definitions-1-1-"$name".ld.stdout 2> multiple_definitions-1-1-"$name".ld.stderr; r=$?; [ x"$r" = x1 ] || exit 1; done )
-RUN: for name in vprintf malloc free; do cmp %t/multiple_definitions-1-1-"$name".ld.stderr.golden %t/multiple_definitions-1-1-"$name".ld.stderr || exit 1; done
-RUN: for name in vprintf malloc free; do ! test -s %t/multiple_definitions-1-1-"$name".ld.stdout || exit 1; done
-RUN: for name in vprintf malloc free; do ! test -f %t/multiple_definitions-1-1-"$name".nvptx || exit 1; done
+RUN: sh -c 'for name in vprintf malloc free; do sed -e "s%\[NAME\]%$name%" < %S/multiple_definitions-1-1.s > %t/multiple_definitions-1-1-"$name".s || exit 1; done; true'
+RUN: sh -c 'for name in vprintf malloc free; do sed -e "s%\[NAME\]%$name%" -e "s%\[FILE1\]%[intrinsic]%" -e "s%\[FILE2\]%multiple_definitions-1-1-"$name".o%" < %S/multiple_definitions-1-1.ld.stderr.golden > %t/multiple_definitions-1-1-"$name".ld.stderr.golden || exit 1; done; true'
+RUN: sh -c 'for name in vprintf malloc free; do %target_as_cmd -o %t/multiple_definitions-1-1-"$name".o %t/multiple_definitions-1-1-"$name".s || exit 1; done'
+RUN: sh -c 'cd %t/ && for name in vprintf malloc free; do %target_ld_cmd -o multiple_definitions-1-1-"$name".nvptx multiple_definitions-1-1-"$name".o > multiple_definitions-1-1-"$name".ld.stdout 2> multiple_definitions-1-1-"$name".ld.stderr; r=$?; [ x"$r" = x1 ] || exit 1; done'
+RUN: sh -c 'for name in vprintf malloc free; do cmp %t/multiple_definitions-1-1-"$name".ld.stderr.golden %t/multiple_definitions-1-1-"$name".ld.stderr || exit 1; done'
+RUN: sh -c 'for name in vprintf malloc free; do ! test -s %t/multiple_definitions-1-1-"$name".ld.stdout || exit 1; done'
+RUN: sh -c 'for name in vprintf malloc free; do ! test -f %t/multiple_definitions-1-1-"$name".nvptx || exit 1; done'

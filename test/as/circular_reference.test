@@ -3,27 +3,27 @@
 
 RUN: echo 'nvptx-as: circular reference in variable initializers' > %t.stderr.golden
 
-RUN: %target_as_cmd --no-verify -o %t.o %S/circular_reference-1.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd --no-verify -o %t.o %S/circular_reference-1.s > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 RUN: ! test -f %t.o
 
-RUN: %target_as_cmd --no-verify -o %t.o %S/circular_reference-2.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd --no-verify -o %t.o %S/circular_reference-2.s > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 RUN: ! test -f %t.o
 
-RUN: %target_as_cmd --no-verify -o %t.o %S/circular_reference-3.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd --no-verify -o %t.o %S/circular_reference-3.s > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 RUN: ! test -f %t.o
 
-RUN: %target_as_cmd --no-verify -o %t.o %S/circular_reference-4.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd --no-verify -o %t.o %S/circular_reference-4.s > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 RUN: ! test -f %t.o
 
-RUN: %target_as_cmd --no-verify -o %t.o %S/circular_reference-5.s > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_cmd --no-verify -o %t.o %S/circular_reference-5.s > %t.stdout 2> %t.stderr
 RUN: cmp %t.stderr.golden %t.stderr
 RUN: ! test -s %t.stdout
 RUN: ! test -f %t.o

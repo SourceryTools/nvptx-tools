@@ -5,18 +5,18 @@ RUN: rm -rf %t
 RUN: mkdir -p %t
 
 
-RUN: ( cd %S/ && %target_nm_cmd weak-non-GLOBAL-VAR_DEF.o > %t/stdout 2> %t/stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %S/ && ! %target_nm_cmd weak-non-GLOBAL-VAR_DEF.o > %t/stdout 2> %t/stderr'
 RUN: cmp %S/weak-non-GLOBAL-VAR_DEF.o.nm.stderr.golden %t/stderr
 RUN: test ! -s %t/stdout
 
-RUN: ( cd %S/ && %target_nm_cmd weak-non-GLOBAL-FUNCTION_DEF.o > %t/stdout 2> %t/stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %S/ && ! %target_nm_cmd weak-non-GLOBAL-FUNCTION_DEF.o > %t/stdout 2> %t/stderr'
 RUN: cmp %S/weak-non-GLOBAL-FUNCTION_DEF.o.nm.stderr.golden %t/stderr
 RUN: test ! -s %t/stdout
 
-RUN: ( cd %S/ && %target_nm_cmd weak-non-GLOBAL-VAR_DECL.o > %t/stdout 2> %t/stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %S/ && ! %target_nm_cmd weak-non-GLOBAL-VAR_DECL.o > %t/stdout 2> %t/stderr'
 RUN: cmp %S/weak-non-GLOBAL-VAR_DECL.o.nm.stderr.golden %t/stderr
 RUN: test ! -s %t/stdout
 
-RUN: ( cd %S/ && %target_nm_cmd weak-non-GLOBAL-FUNCTION_DECL.o > %t/stdout 2> %t/stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %S/ && ! %target_nm_cmd weak-non-GLOBAL-FUNCTION_DECL.o > %t/stdout 2> %t/stderr'
 RUN: cmp %S/weak-non-GLOBAL-FUNCTION_DECL.o.nm.stderr.golden %t/stderr
 RUN: test ! -s %t/stdout

@@ -4,27 +4,52 @@ Multiple files.
 RUN: %target_as_cmd -o %t.empty-1.o %S/../as/bare-1.s
 
 
-RUN: ( cd %S/libc/ && %env_LC_COLLATE=C_target_nm_cmd ../libc/libc_a-dtoa.o %t.empty-1.o %S/libc/../libc/libc_a-memset.o libc_a-environ.o %S/libc/libc_a-dtoa.o %t.empty-1.o > %t.stdout 2> %t.stderr )
-RUN: : > %t.stdout.golden
-RUN: { echo && echo ../libc/libc_a-dtoa.o: && cat < %S/libc/libc_a-dtoa.o.nm.golden; } >> %t.stdout.golden
-RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
-RUN: { echo && echo %S/libc/../libc/libc_a-memset.o: && cat < %S/libc/libc_a-memset.o.nm.golden; } >> %t.stdout.golden
-RUN: { echo && echo libc_a-environ.o: && cat < %S/libc/libc_a-environ.o.nm.golden; } >> %t.stdout.golden
-RUN: { echo && echo %S/libc/libc_a-dtoa.o: && cat < %S/libc/libc_a-dtoa.o.nm.golden; } >> %t.stdout.golden
-RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: sh -c 'cd %S/libc/ && %env_LC_COLLATE=C_target_nm_cmd ../libc/libc_a-dtoa.o %t.empty-1.o %S/libc/../libc/libc_a-memset.o libc_a-environ.o %S/libc/libc_a-dtoa.o %t.empty-1.o > %t.stdout 2> %t.stderr'
+RUN: rm -f %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo ../libc/libc_a-dtoa.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-dtoa.o.nm.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %t.empty-1.o: >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %S/libc/../libc/libc_a-memset.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-memset.o.nm.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo libc_a-environ.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-environ.o.nm.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %S/libc/libc_a-dtoa.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-dtoa.o.nm.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %t.empty-1.o: >> %t.stdout.golden
 RUN: cmp %t.stdout.golden %t.stdout
 RUN: ! test -s %t.stderr
 
-RUN: ( cd %S/libc/ && %env_LC_COLLATE=C_target_nm_cmd -nr %t.empty-1.o libc_a-environ.o ../libc/libc_a-dtoa.o libc_a-environ.o %S/libc/../libc/libc_a-memset.o %S/libc/libc_a-dtoa.o libc_a-environ.o %t.empty-1.o %t.empty-1.o > %t.stdout 2> %t.stderr )
-RUN: : > %t.stdout.golden
-RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
-RUN: { echo && echo libc_a-environ.o: && cat < %S/libc/libc_a-environ.o.nm_-r.golden; } >> %t.stdout.golden
-RUN: { echo && echo ../libc/libc_a-dtoa.o: && cat < %S/libc/libc_a-dtoa.o.nm_-nr.golden; } >> %t.stdout.golden
-RUN: { echo && echo libc_a-environ.o: && cat < %S/libc/libc_a-environ.o.nm_-r.golden; } >> %t.stdout.golden
-RUN: { echo && echo %S/libc/../libc/libc_a-memset.o: && cat < %S/libc/libc_a-memset.o.nm.golden; } >> %t.stdout.golden
-RUN: { echo && echo %S/libc/libc_a-dtoa.o: && cat < %S/libc/libc_a-dtoa.o.nm_-nr.golden; } >> %t.stdout.golden
-RUN: { echo && echo libc_a-environ.o: && cat < %S/libc/libc_a-environ.o.nm_-r.golden; } >> %t.stdout.golden
-RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
-RUN: { echo && echo %t.empty-1.o:; } >> %t.stdout.golden
+RUN: sh -c 'cd %S/libc/ && %env_LC_COLLATE=C_target_nm_cmd -nr %t.empty-1.o libc_a-environ.o ../libc/libc_a-dtoa.o libc_a-environ.o %S/libc/../libc/libc_a-memset.o %S/libc/libc_a-dtoa.o libc_a-environ.o %t.empty-1.o %t.empty-1.o > %t.stdout 2> %t.stderr'
+RUN: rm -f %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %t.empty-1.o: >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo libc_a-environ.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-environ.o.nm_-r.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo ../libc/libc_a-dtoa.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-dtoa.o.nm_-nr.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo libc_a-environ.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-environ.o.nm_-r.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %S/libc/../libc/libc_a-memset.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-memset.o.nm.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %S/libc/libc_a-dtoa.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-dtoa.o.nm_-nr.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo libc_a-environ.o: >> %t.stdout.golden
+RUN: dd < %S/libc/libc_a-environ.o.nm_-r.golden >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %t.empty-1.o: >> %t.stdout.golden
+RUN: echo >> %t.stdout.golden
+RUN: echo %t.empty-1.o: >> %t.stdout.golden
 RUN: cmp %t.stdout.golden %t.stdout
 RUN: ! test -s %t.stderr

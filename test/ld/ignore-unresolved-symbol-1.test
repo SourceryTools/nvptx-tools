@@ -9,8 +9,8 @@ RUN: printf '\0' > %t/NUL
 
     option '--ignore-unresolved-symbol' requires an argument
 
-RUN: %target_ld_cmd --ignore-unresolved-symbol > %t/stdout 2> %t/stderr; r=$?; [ x"$r" = x1 ]
-RUN: < %t/stderr grep -qe '^Usage: nvptx-none-ld '
+RUN: ! %target_ld_cmd --ignore-unresolved-symbol > %t/stdout 2> %t/stderr
+RUN: grep -qe '^Usage: nvptx-none-ld ' < %t/stderr
 RUN: ! test -s %t/stdout
 
 
@@ -48,13 +48,13 @@ RUN: cp %t/o/f2.o %t/a/f2.o
 RUN: cp %t/o/f3.o %t/a/f3.o
 RUN: cp %t/o/f1_f2_f3.o %t/a/f123.o
 
-RUN: ( cd %t/a/ && %target_ar_cmd rcs libf123.a f123.o )
+RUN: sh -c 'cd %t/a/ && %target_ar_cmd rcs libf123.a f123.o'
 
-RUN: ( cd %t/a/ && %target_ar_cmd rcs libf1_f3.a f1.o f3.o )
+RUN: sh -c 'cd %t/a/ && %target_ar_cmd rcs libf1_f3.a f1.o f3.o'
 
-RUN: ( cd %t/a/ && %target_ar_cmd rcs libf2.a f2.o )
+RUN: sh -c 'cd %t/a/ && %target_ar_cmd rcs libf2.a f2.o'
 
-RUN: ( cd %t/a/ && %target_ar_cmd rcs libf2_f3.a f2.o f3.o )
+RUN: sh -c 'cd %t/a/ && %target_ar_cmd rcs libf2_f3.a f2.o f3.o'
 
 
 Test.
@@ -62,13 +62,13 @@ Test.
 
 Link 'a.o'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-1-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -76,13 +76,13 @@ RUN: ! test -f %t/nvptx
 
 Link 'a.o' twice.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-1-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -90,26 +90,26 @@ RUN: ! test -f %t/nvptx
 
 Same error for '--ignore-unresolved-symbol f1'; we're looking for 'f3' first.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-1-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
 '--ignore-unresolved-symbol f1' twice.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f1 o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-1-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -117,13 +117,13 @@ RUN: ! test -f %t/nvptx
 
 'a.o' twice, '--ignore-unresolved-symbol f1'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-1-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -131,26 +131,26 @@ RUN: ! test -f %t/nvptx
 
 '--ignore-unresolved-symbol f3'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-2-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
 '--ignore-unresolved-symbol f3' twice.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-2-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -158,13 +158,13 @@ RUN: ! test -f %t/nvptx
 
 'a.o' twice, '--ignore-unresolved-symbol f3'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-2-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -174,24 +174,24 @@ RUN: ! test -f %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-3-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
 '--ignore-unresolved-symbol f1', '--ignore-unresolved-symbol f3' twice.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-3-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -201,12 +201,12 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL %t/o/a.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/a.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-3-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -216,22 +216,22 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL %t/o/f1_f2_f3.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o o/f1_f2_f3.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o o/f1_f2_f3.o > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o o/f1_f2_f3.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o o/f1_f2_f3.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-4-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o a/libf123.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o a/libf123.a > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o a/libf123.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f2 --ignore-unresolved-symbol f3 o/a.o a/libf123.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-4-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -239,7 +239,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 
     unresolved symbol f2
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o a/libf1_f3.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o a/libf1_f3.a > stdout 2> stderr'
 RUN: echo 'unresolved symbol f2' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
@@ -249,12 +249,12 @@ RUN: ! test -s %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL %t/o/f1.o %t/NUL %t/o/f3.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f2 o/a.o a/libf1_f3.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f2 o/a.o a/libf1_f3.a > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f2 o/a.o a/libf1_f3.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f2 o/a.o a/libf1_f3.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-5-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -262,48 +262,48 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 
 Link 'a.o', 'f2.o'/'libf2.a'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f2.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o o/f2.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f2.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o o/f2.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-6-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o a/libf2.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o a/libf2.a > stdout 2> stderr'
 RUN: echo 'unresolved symbol f3' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf2.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o a/libf2.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-6-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
 '--ignore-unresolved-symbol f3'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-6-3.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-6-4.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
@@ -312,24 +312,24 @@ RUN: ! test -s %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL %t/o/f2.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o o/f2.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-6-5.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 --ignore-unresolved-symbol f3 o/a.o a/libf2.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-6-6.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -337,24 +337,24 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 
 Link 'a.o', 'f3.o', 'f2.o'/'libf2.a'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f3.o o/f2.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o o/f3.o o/f2.o > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f3.o o/f2.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o o/f3.o o/f2.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-7-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o o/f3.o a/libf2.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o o/f3.o a/libf2.a > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f3.o a/libf2.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o o/f3.o a/libf2.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-7-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
@@ -363,22 +363,22 @@ RUN: ! test -s %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL %t/o/f3.o %t/NUL %t/o/f2.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o o/f2.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o o/f2.o > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o o/f2.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o o/f2.o > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-7-3.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o a/libf2.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o a/libf2.a > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o a/libf2.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o o/f3.o a/libf2.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-7-4.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -386,13 +386,13 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 
 Link 'a.o', 'libf2_f3.a'.
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx o/a.o a/libf2_f3.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -o nvptx o/a.o a/libf2_f3.a > stdout 2> stderr'
 RUN: echo 'unresolved symbol f1' > %t/stderr.golden
 RUN: cmp %t/stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf2_f3.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o a/libf2_f3.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-8-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -s %t/nvptx
@@ -401,12 +401,12 @@ RUN: ! test -s %t/nvptx
 
 RUN: cat %t/o/a.o %t/NUL %t/o/f3.o %t/NUL %t/o/f2.o %t/NUL > %t/nvptx.golden
 
-RUN: ( cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o a/libf2_f3.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -o nvptx --ignore-unresolved-symbol f1 o/a.o a/libf2_f3.a > stdout 2> stderr'
 RUN: ! test -s %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o a/libf2_f3.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx --ignore-unresolved-symbol f1 o/a.o a/libf2_f3.a > stdout 2> stderr'
 RUN: cmp %S/ignore-unresolved-symbol-1-8-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx

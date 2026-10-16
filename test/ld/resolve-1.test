@@ -32,9 +32,9 @@ RUN: cp %t/o/f2.o %t/a/f2.o
 RUN: cp %t/o/f3.o %t/a/f3.o
 RUN: cp %t/o/f1_f2_f3.o %t/a/f123.o
 
-RUN: ( cd %t/a/ && %target_ar_cmd rcs libf.a f123.o )
+RUN: sh -c 'cd %t/a/ && %target_ar_cmd rcs libf.a f123.o'
 
-RUN: ( cd %t/a/ && %target_ar_cmd rcs libf_.a f1.o f2.o f3.o f123.o )
+RUN: sh -c 'cd %t/a/ && %target_ar_cmd rcs libf_.a f1.o f2.o f3.o f123.o'
 
 
 Link.
@@ -44,7 +44,7 @@ Link.
 RUN: cat %t/o/a.o %t/NUL %t/o/f1.o %t/NUL %t/o/f2.o %t/NUL %t/o/f3.o %t/NUL > %t/nvptx.golden
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f1.o o/f2.o o/f3.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f1.o o/f2.o o/f3.o > stdout 2> stderr'
 RUN: cmp %S/resolve-1-1-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -52,7 +52,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/libf.a' not used.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f1.o o/f2.o o/f3.o a/libf.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f1.o o/f2.o o/f3.o a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-1-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -60,7 +60,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/libf_.a' not used.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f1.o o/f2.o o/f3.o a/libf_.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f1.o o/f2.o o/f3.o a/libf_.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-1-3.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -70,7 +70,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 RUN: cat %t/o/f3.o %t/NUL %t/o/f1.o %t/NUL %t/o/a.o %t/NUL %t/o/f2.o %t/NUL > %t/nvptx.golden
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/f3.o o/f1.o o/a.o o/f2.o > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/f3.o o/f1.o o/a.o o/f2.o > stdout 2> stderr'
 RUN: cmp %S/resolve-1-1-4.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -78,7 +78,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/libf.a' not used.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/f3.o o/f1.o o/a.o o/f2.o a/libf.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/f3.o o/f1.o o/a.o o/f2.o a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-1-5.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -86,14 +86,14 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/libf.a', 'a/libf_.a' not used.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/f3.o o/f1.o o/a.o o/f2.o a/libf.a a/libf_.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/f3.o o/f1.o o/a.o o/f2.o a/libf.a a/libf_.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-1-6.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
 'f1', 'f2', 'f3' provided by 'o/f1.o', 'o/f2.o', 'o/f3.o', and again duplicated in different order.
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/f1.o o/f2.o o/f3.o o/a.o o/f2.o o/f3.o o/f1.o > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/f1.o o/f2.o o/f3.o o/a.o o/f2.o o/f3.o o/f1.o > stdout 2> stderr'
 RUN: cmp %S/resolve-1-2-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
@@ -103,7 +103,7 @@ RUN: ! test -f %t/nvptx
 RUN: cat %t/o/a.o %t/NUL %t/a/f123.o %t/NUL > %t/nvptx.golden
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-3-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -111,7 +111,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 Second 'a/libf.a' is de-duplicated.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/libf.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-3-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -119,7 +119,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/libf.a' and 'a/../a/libf.a' are not de-duplicated; 'a/../a/libf.a' sorts before 'a/libf.a'.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/../a/libf.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/../a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-3-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -127,7 +127,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/../a/libf.a' and 'a/libf.a' are not de-duplicated; 'a/../a/libf.a' sorts before 'a/libf.a'.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/../a/libf.a a/libf.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/../a/libf.a a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-3-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -135,7 +135,7 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 'a/libf.a' sorts before 'a/libf_.a'.
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/libf_.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf.a a/libf_.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-3-3.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
@@ -145,21 +145,21 @@ RUN: cmp %t/nvptx.golden %t/nvptx
 RUN: cat %t/o/a.o %t/NUL %t/a/f1.o %t/NUL %t/a/f3.o %t/NUL %t/a/f2.o %t/NUL > %t/nvptx.golden
 
 RUN: rm -f %t/nvptx
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf_.a > stdout 2> stderr )
+RUN: sh -c 'cd %t/ && %target_ld_cmd -v -o nvptx o/a.o a/libf_.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-3-4.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: cmp %t/nvptx.golden %t/nvptx
 
 'f1' provided by 'o/f1.o'; 'f1' (duplicate), 'f2', 'f3' provided by 'a/libf.a::f123.o'.
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/f1.o o/a.o a/libf.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/f1.o o/a.o a/libf.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-4-1.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx
 
 'f2' provided by 'o/f2.o'; 'f1', 'f2' (duplicate), 'f3' provided by 'a/libf.a::f123.o'.
 
-RUN: ( cd %t/ && %target_ld_cmd -v -o nvptx o/a.o o/f2.o a/libf.a a/libf_.a > stdout 2> stderr ); r=$?; [ x"$r" = x1 ]
+RUN: sh -c 'cd %t/ && ! %target_ld_cmd -v -o nvptx o/a.o o/f2.o a/libf.a a/libf_.a > stdout 2> stderr'
 RUN: cmp %S/resolve-1-4-2.stderr.golden %t/stderr
 RUN: ! test -s %t/stdout
 RUN: ! test -f %t/nvptx

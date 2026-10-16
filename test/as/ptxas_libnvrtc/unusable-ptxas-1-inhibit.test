@@ -24,7 +24,7 @@ RUN: ! test -s %t.stderr
 '--verify'
 
 RUN: rm -f %t*
-RUN: %target_as_local_cmd --inhibit=ptxas --verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_local_cmd --inhibit=ptxas --verify %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
 RUN: ! test -s %t.o
 RUN: ! test -s %t.stdout
 RUN: echo "nvptx-as: not able to verify output" >> %t.stderr.golden
@@ -33,7 +33,7 @@ RUN: cmp %t.stderr.golden %t.stderr
 '-v'
 
 RUN: rm -f %t*
-RUN: %target_as_local_cmd --inhibit=ptxas --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr; r=$?; [ x"$r" = x1 ]
+RUN: ! %target_as_local_cmd --inhibit=ptxas --verify -v %S/../bare-1.s -o %t.o > %t.stdout 2> %t.stderr
 RUN: ! test -s %t.o
 RUN: ! test -s %t.stdout
 RUN: echo "use of nvJitLink library inhibited" >> %t.stderr.golden

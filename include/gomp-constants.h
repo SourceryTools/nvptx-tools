@@ -1,6 +1,6 @@
 /* Communication between GCC and libgomp.
 
-   Copyright (C) 2014-2024 Free Software Foundation, Inc.
+   Copyright (C) 2014-2026 Free Software Foundation, Inc.
 
    Contributed by Mentor Embedded.
 
@@ -160,7 +160,7 @@ enum gomp_map_kind
 					 | GOMP_MAP_FLAG_SPECIAL_2
 					 | GOMP_MAP_FLAG_SPECIAL | 0),
     /* On a location of a pointer/reference that is assumed to be already mapped
-       earlier, store the translated address of the preceeding mapping.
+       earlier, store the translated address of the preceding mapping.
        No refcount is bumped by this, and the store is done unconditionally.  */
     GOMP_MAP_ALWAYS_POINTER =		(GOMP_MAP_FLAG_SPECIAL_2
 					 | GOMP_MAP_FLAG_SPECIAL | 1),
@@ -195,6 +195,11 @@ enum gomp_map_kind
     GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION
       =					(GOMP_MAP_DEEP_COPY | 2),
 
+    /* Used to pass a descriptor for an OpenMP uses_allocators clause,
+       also serves as an effective 'firstprivate' clause for the allocator
+       variable.  */
+    GOMP_MAP_USES_ALLOCATORS =		(GOMP_MAP_DEEP_COPY | 3),
+
     /* Internal to GCC, not used in libgomp.  */
     /* Do not map, but pointer assign a pointer instead.  */
     GOMP_MAP_FIRSTPRIVATE_POINTER =	(GOMP_MAP_LAST | 1),
@@ -209,7 +214,13 @@ enum gomp_map_kind
     GOMP_MAP_PRESENT_ALLOC =		(GOMP_MAP_LAST | 4),
     GOMP_MAP_PRESENT_TO =		(GOMP_MAP_LAST | 5),
     GOMP_MAP_PRESENT_FROM =		(GOMP_MAP_LAST | 6),
-    GOMP_MAP_PRESENT_TOFROM =		(GOMP_MAP_LAST | 7)
+    GOMP_MAP_PRESENT_TOFROM =		(GOMP_MAP_LAST | 7),
+    /* Unset, used for "declare mapper" maps with no explicit data movement
+       specified.  These use the movement specified at the invocation site.  */
+    GOMP_MAP_UNSET =			(GOMP_MAP_LAST | 8),
+    /* Used to record the name of a named mapper.  */
+    GOMP_MAP_PUSH_MAPPER_NAME =		(GOMP_MAP_LAST | 9),
+    GOMP_MAP_POP_MAPPER_NAME =		(GOMP_MAP_LAST | 10)
   };
 
 #define GOMP_MAP_COPY_TO_P(X) \
@@ -280,10 +291,14 @@ enum gomp_map_kind
    omp_invalid_device) to -3 (so that for dev_num >= -2U we can
    subtract 1).  -4 is then what we use for omp_invalid_device,
    which unlike the other non-conforming device numbers results
-   in fatal error regardless of OMP_TARGET_OFFLOAD.  */
+   in fatal error regardless of OMP_TARGET_OFFLOAD.
+   Furthermore, OpenMP 6.1 exposes the default device to the user; hence,
+   GOMP_DEVICE_DEFAULT_OMP_61 can be used for it,
+   with and without remapped device numbers.  */
 #define GOMP_DEVICE_ICV			-1
 #define GOMP_DEVICE_HOST_FALLBACK	-2
 #define GOMP_DEVICE_INVALID		-4
+#define GOMP_DEVICE_DEFAULT_OMP_61	-5
 
 /* GOMP_task/GOMP_taskloop* flags argument.  */
 #define GOMP_TASK_FLAG_UNTIED		(1 << 0)
@@ -322,7 +337,7 @@ enum gomp_map_kind
 /* Versions of libgomp and device-specific plugins.  GOMP_VERSION
    should be incremented whenever an ABI-incompatible change is introduced
    to the plugin interface defined in libgomp/libgomp.h.  */
-#define GOMP_VERSION	3
+#define GOMP_VERSION	4
 #define GOMP_VERSION_NVIDIA_PTX 1
 #define GOMP_VERSION_GCN 3
 
@@ -371,7 +386,7 @@ enum gomp_map_kind
 /* Target argument index of THREAD_LIMIT.  */
 #define GOMP_TARGET_ARG_THREAD_LIMIT		(2 << 8)
 
-/* If the value is directly embeded in target argument, it should be a 16-bit
+/* If the value is directly embedded in target argument, it should be a 16-bit
    at most and shifted by this many bits.  */
 #define GOMP_TARGET_ARG_VALUE_SHIFT		16
 
@@ -382,15 +397,53 @@ enum gomp_map_kind
 #define GOMP_DEPEND_MUTEXINOUTSET	4
 #define GOMP_DEPEND_INOUTSET		5
 
+/* Predefined allocator value ranges.  */
+#define GOMP_OMP_PREDEF_ALLOC_MAX	8
+#define GOMP_OMPX_PREDEF_ALLOC_MIN	200
+#define GOMP_OMPX_PREDEF_ALLOC_MAX	201
+
+/* Predefined memspace value ranges.  */
+#define GOMP_OMP_PREDEF_MEMSPACE_MAX	4
+#define GOMP_OMPX_PREDEF_MEMSPACE_MIN	200
+#define GOMP_OMPX_PREDEF_MEMSPACE_MAX	200
+
+/* Predefined allocator with access == cgroup, pteam, and thread.  */
+#define GOMP_OMP_PREDEF_ALLOC_CGROUP	6
+#define GOMP_OMP_PREDEF_ALLOC_PTEAM	7
+#define GOMP_OMP_PREDEF_ALLOC_THREAD	8
+
 /* Flag values for OpenMP 'requires' directive features.  */
+// compiler use only: OMP_REQUIRES_ATOMIC_DEFAULT_MEM_ORDER  0xf
 #define GOMP_REQUIRES_UNIFIED_ADDRESS       0x10
 #define GOMP_REQUIRES_UNIFIED_SHARED_MEMORY 0x20
+// compiler use only: OMP_REQUIRES_DYNAMIC_ALLOCATORS 0x40
 #define GOMP_REQUIRES_REVERSE_OFFLOAD       0x80
+// compiler use only: OMP_REQUIRES_ATOMIC_DEFAULT_MEM_ORDER_USED 0x100
 #define GOMP_REQUIRES_TARGET_USED           0x200
+#define GOMP_REQUIRES_SELF_MAPS             0x400
+
+/* Interop foreign-runtime data;
+   OpenMP defines positive values; reserve 0 and negative for GCC.  */
+#define GOMP_INTEROP_IFR_LAST	7
+#define GOMP_INTEROP_IFR_SEPARATOR ((char)(-__INT8_MAX__-1))
+#define GOMP_INTEROP_IFR_UNKNOWN ((char)(-__INT8_MAX__))
+
+/* GOMP_interop target_targetsync argument.  */
+#define GOMP_INTEROP_TARGET	(1 << 0)
+#define GOMP_INTEROP_TARGETSYNC	(1 << 1)
+
+/* GOMP_interop flags argument.  */
+#define GOMP_INTEROP_FLAG_NOWAIT	(1 << 0)
 
 /* HSA specific data structures.  */
 
 /* Identifiers of device-specific target arguments.  */
 #define GOMP_TARGET_ARG_HSA_KERNEL_ATTRIBUTES	(1 << 8)
+
+/* GOMP_barrier{,_cancel}_ext argument.
+   TODO turn this into an enum?  */
+#define GOMP_BARRIER_IMPLICIT_PARALLEL 0
+#define GOMP_BARRIER_IMPLICIT_WORKSHARE 1
+#define GOMP_BARRIER_EXPLICIT 2
 
 #endif

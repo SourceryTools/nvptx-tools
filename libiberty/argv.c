@@ -1,5 +1,5 @@
 /* Create and destroy argument vectors (argv's)
-   Copyright (C) 1992-2024 Free Software Foundation, Inc.
+   Copyright (C) 1992-2026 Free Software Foundation, Inc.
    Written by Fred Fish @ Cygnus Support
 
 This file is part of the libiberty library.
@@ -124,15 +124,6 @@ consume_whitespace (const char **input)
     }
 }
 
-static int
-only_whitespace (const char* input)
-{
-  while (*input != EOS && ISSPACE (*input))
-    input++;
-
-  return (*input == EOS);
-}
-
 /*
 
 @deftypefn Extension char** buildargv (char *@var{sp})
@@ -212,67 +203,74 @@ char **buildargv (const char *input)
 	      argv[argc] = NULL;
 	    }
 	  /* Begin scanning arg */
-	  arg = copybuf;
-	  while (*input != EOS)
+	  if (*input != EOS)
 	    {
-	      if (ISSPACE (*input) && !squote && !dquote && !bsquote)
+	      arg = copybuf;
+	      while (*input != EOS)
 		{
-		  break;
-		}
-	      else
-		{
-		  if (bsquote)
+		  if (ISSPACE (*input) && !squote && !dquote && !bsquote)
 		    {
-		      bsquote = 0;
-		      *arg++ = *input;
-		    }
-		  else if (*input == '\\')
-		    {
-		      bsquote = 1;
-		    }
-		  else if (squote)
-		    {
-		      if (*input == '\'')
-			{
-			  squote = 0;
-			}
-		      else
-			{
-			  *arg++ = *input;
-			}
-		    }
-		  else if (dquote)
-		    {
-		      if (*input == '"')
-			{
-			  dquote = 0;
-			}
-		      else
-			{
-			  *arg++ = *input;
-			}
+		      break;
 		    }
 		  else
 		    {
-		      if (*input == '\'')
+		      if (bsquote)
 			{
-			  squote = 1;
+			  bsquote = 0;
+			  if (*input != '\n')
+			    *arg++ = *input;
 			}
-		      else if (*input == '"')
+		      else if (*input == '\\'
+			       && !squote
+			       && (!dquote
+				   || strchr ("$`\"\\\n", *(input + 1)) != NULL))
 			{
-			  dquote = 1;
+			  bsquote = 1;
+			}
+		      else if (squote)
+			{
+			  if (*input == '\'')
+			    {
+			      squote = 0;
+			    }
+			  else
+			    {
+			      *arg++ = *input;
+			    }
+			}
+		      else if (dquote)
+			{
+			  if (*input == '"')
+			    {
+			      dquote = 0;
+			    }
+			  else
+			    {
+			      *arg++ = *input;
+			    }
 			}
 		      else
 			{
-			  *arg++ = *input;
+			  if (*input == '\'')
+			    {
+			      squote = 1;
+			    }
+			  else if (*input == '"')
+			    {
+			      dquote = 1;
+			    }
+			  else
+			    {
+			      *arg++ = *input;
+			    }
 			}
+		      input++;
 		    }
-		  input++;
 		}
+	      *arg = EOS;
+	      argv[argc] = xstrdup (copybuf);
+	      argc++;
 	    }
-	  *arg = EOS;
-	  argv[argc] = xstrdup (copybuf);
-	  argc++;
 	  argv[argc] = NULL;
 
 	  consume_whitespace (&input);
@@ -435,17 +433,8 @@ expandargv (int *argcp, char ***argvp)
 	}
       /* Add a NUL terminator.  */
       buffer[len] = '\0';
-      /* If the file is empty or contains only whitespace, buildargv would
-	 return a single empty argument.  In this context we want no arguments,
-	 instead.  */
-      if (only_whitespace (buffer))
-	{
-	  file_argv = (char **) xmalloc (sizeof (char *));
-	  file_argv[0] = NULL;
-	}
-      else
-	/* Parse the string.  */
-	file_argv = buildargv (buffer);
+      /* Parse the string.  */
+      file_argv = buildargv (buffer);
       /* If *ARGVP is not already dynamically allocated, copy it.  */
       if (*argvp == original_argv)
 	*argvp = dupargv (*argvp);
@@ -501,6 +490,81 @@ countargv (char * const *argv)
   for (argc = 0; argv[argc] != NULL; argc++)
     continue;
   return argc;
+}
+
+/*
+
+@deftypefn Extension {char *} expandargstr @
+  (const char *@var{progname}, const char *@var{val})
+
+Expand @var{val} as a response file via @code{expandargv} if it begins
+with @samp{@@}, using @var{progname} as @code{argv[0]}, and return the
+expanded option list as a shell-quoted string.  Returns a newly
+allocated string.
+
+@end deftypefn
+
+*/
+
+char *
+expandargstr (const char *progname, const char *val)
+{
+  int argc = 2;
+  char **argv;
+  char **orig;
+  size_t len;
+  char *buf;
+  char *p;
+  int i;
+
+  if (val[0] != '@')
+    return xstrdup (val);
+
+  argv = (char **) xcalloc (3, sizeof (char *));
+  orig = argv;
+  argv[0] = xstrdup (progname);
+  argv[1] = xstrdup (val);
+  argv[2] = NULL;
+  expandargv (&argc, &argv);
+  if (argv != orig)
+    freeargv (orig);
+
+  len = 1;
+  for (i = 1; argv[i] != NULL; i++)
+    {
+      const char *q;
+      if (i > 1)
+	len++;
+      len += 2;
+      for (q = argv[i]; *q; q++)
+	len += (*q == '\'') ? 4 : 1;
+    }
+
+  buf = (char *) xmalloc (len);
+  p = buf;
+  for (i = 1; argv[i] != NULL; i++)
+    {
+      const char *q;
+      if (i > 1)
+	*p++ = ' ';
+      *p++ = '\'';
+      for (q = argv[i]; *q; q++)
+	{
+	  if (*q == '\'')
+	    {
+	      *p++ = '\'';
+	      *p++ = '\\';
+	      *p++ = '\'';
+	      *p++ = '\'';
+	    }
+	  else
+	    *p++ = *q;
+	}
+      *p++ = '\'';
+    }
+  *p = '\0';
+  freeargv (argv);
+  return buf;
 }
 
 #ifdef MAIN

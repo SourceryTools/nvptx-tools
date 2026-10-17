@@ -1,5 +1,5 @@
 /* Declarations and definitions relating to the BPF Type Format (BTF).
-   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+   Copyright (C) 2021-2026 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -56,6 +56,11 @@ struct btf_header
 /* Maximum number of struct, union, enum members or func args.  */
 #define BTF_MAX_VLEN	0xffff
 
+/* Type ID 0 represents the void type.  */
+#define BTF_VOID_TYPEID 0
+/* Initial type ID for regular types.  */
+#define BTF_INIT_TYPEID 1
+
 struct btf_type
 {
   uint32_t name_off; 	/* Offset in string section of type name.  */
@@ -77,7 +82,7 @@ struct btf_type
   };
 };
 
-/* The folloing macros access the information encoded in btf_type.info.  */
+/* The following macros access the information encoded in btf_type.info.  */
 /* Type kind. See below.  */
 #define BTF_INFO_KIND(info)	(((info) >> 24) & 0x1f)
 /* Number of entries of variable length data following certain type kinds.
@@ -90,7 +95,7 @@ struct btf_type
 
 /* Encoding for struct btf_type.info.  */
 #define BTF_TYPE_INFO(kind, kflag, vlen) \
-  ((((kflag) ? 1 : 0 ) << 31) | ((kind) << 24) | ((vlen) & 0xffff))
+  ((((kflag) ? 1 : 0 ) << 31) | ((kind & 0x1f) << 24) | ((vlen) & 0xffff))
 
 #define BTF_KIND_UNKN		0	/* Unknown or invalid.  */
 #define BTF_KIND_INT		1	/* Integer.  */
@@ -109,6 +114,8 @@ struct btf_type
 #define BTF_KIND_VAR		14	/* Variable.  */
 #define BTF_KIND_DATASEC	15	/* Section such as .bss or .data.  */
 #define BTF_KIND_FLOAT		16	/* Floating point.  */
+#define BTF_KIND_DECL_TAG	17	/* Declaration tag.  */
+#define BTF_KIND_TYPE_TAG	18	/* Type tag.  */
 #define BTF_KIND_ENUM64 	19	/* Enumeration up to 64 bits.  */
 #define BTF_KIND_MAX		BTF_KIND_ENUM64
 #define NR_BTF_KINDS		(BTF_KIND_MAX + 1)
@@ -220,6 +227,18 @@ struct btf_enum64
   uint32_t name_off;	/* Offset in string section of enumerator name.  */
   uint32_t val_lo32;	/* lower 32-bit value for a 64-bit value Enumerator */
   uint32_t val_hi32;	/* high 32-bit value for a 64-bit value Enumerator */
+};
+
+/* BTF_KIND_DECL_TAG is followed by a single struct btf_decl_tag, which
+   describes the item to which the tag applies:
+   - If component_idx == (uint32_t) -1, then the tag applies to item referred
+     to by the type_id.
+   - Otherwise, the tag applies to the struct or union member, or function
+     argument of the type referred to by type_id with the 0-based index
+     given by component_idx.  */
+struct btf_decl_tag
+{
+  uint32_t component_idx;
 };
 
 #ifdef	__cplusplus

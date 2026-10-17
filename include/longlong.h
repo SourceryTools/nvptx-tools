@@ -1,5 +1,5 @@
 /* longlong.h -- definitions for mixed size 32/64 bit arithmetic.
-   Copyright (C) 1991-2024 Free Software Foundation, Inc.
+   Copyright (C) 1991-2026 Free Software Foundation, Inc.
 
    This file is part of the GNU C Library.
 
@@ -422,7 +422,7 @@ extern UDItype __umulsidi3 (USItype, USItype);
     union {DItype __ll;							\
 	   struct {USItype __h, __l;} __i;				\
 	  } __x;							\
-    __x.__i.__h = n1; __x.__i.__l = n0;					\
+    __x.__i.__h = (n1); __x.__i.__l = (n0);				\
     __asm__ ("dr %0,%2"							\
 	     : "=r" (__x.__ll)						\
 	     : "0" (__x.__ll), "r" (d));				\
@@ -594,11 +594,7 @@ extern UDItype __umulsidi3 (USItype, USItype);
 #endif
 
 #ifdef __loongarch__
-# if W_TYPE_SIZE == 32
-#  define count_leading_zeros(count, x)  ((count) = __builtin_clz (x))
-#  define count_trailing_zeros(count, x) ((count) = __builtin_ctz (x))
-#  define COUNT_LEADING_ZEROS_0 32
-# elif W_TYPE_SIZE == 64
+# if W_TYPE_SIZE == 64
 #  define count_leading_zeros(count, x)  ((count) = __builtin_clzll (x))
 #  define count_trailing_zeros(count, x) ((count) = __builtin_ctzll (x))
 #  define COUNT_LEADING_ZEROS_0 64
@@ -1065,6 +1061,20 @@ extern UDItype __umulsidi3 (USItype, USItype);
 #endif
 
 #if defined(__riscv)
+
+#ifdef __riscv_zbb
+#if W_TYPE_SIZE == 32
+#define count_leading_zeros(COUNT, X)   ((COUNT) = __builtin_clz (X))
+#define count_trailing_zeros(COUNT, X)   ((COUNT) = __builtin_ctz (X))
+#define COUNT_LEADING_ZEROS_0 32
+#endif /* W_TYPE_SIZE == 32 */
+#if W_TYPE_SIZE == 64
+#define count_leading_zeros(COUNT, X)   ((COUNT) = __builtin_clzll (X))
+#define count_trailing_zeros(COUNT, X)   ((COUNT) = __builtin_ctzll (X))
+#define COUNT_LEADING_ZEROS_0 64
+#endif /* W_TYPE_SIZE == 64 */
+#endif /* __riscv_zbb */
+
 #ifdef __riscv_mul
 #define __umulsidi3(u,v) ((UDWtype)(UWtype)(u) * (UWtype)(v))
 #define __muluw3(a, b) ((UWtype)(a) * (UWtype)(b))
@@ -1074,7 +1084,7 @@ extern UDItype __umulsidi3 (USItype, USItype);
 #elif __riscv_xlen == 64
   #define MULUW3 "call __muldi3"
 #else
-#error unsupport xlen
+#error unsupported xlen
 #endif /* __riscv_xlen */
 /* We rely on the fact that MULUW3 doesn't clobber the t-registers.
    It can get better register allocation result.  */
@@ -1508,7 +1518,7 @@ extern UDItype __umulsidi3 (USItype, USItype);
     union {DItype __ll;							\
 	   struct {SItype __l, __h;} __i;				\
 	  } __xx;							\
-    __xx.__i.__h = n1; __xx.__i.__l = n0;				\
+    __xx.__i.__h = (n1); __xx.__i.__l = (n0);				\
     __asm__ ("ediv %3,%2,%0,%1"						\
 	     : "=g" (q), "=g" (r)					\
 	     : "g" (__xx.__ll), "g" (d));				\

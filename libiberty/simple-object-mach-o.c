@@ -1,5 +1,5 @@
 /* simple-object-mach-o.c -- routines to manipulate Mach-O object files.
-   Copyright (C) 2010-2024 Free Software Foundation, Inc.
+   Copyright (C) 2010-2026 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 This program is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ struct mach_o_header_32
   unsigned char filetype[4];	/* Type of file.  */
   unsigned char ncmds[4];	/* Number of load commands.  */
   unsigned char sizeofcmds[4];	/* Total size of load commands.  */
-  unsigned char flags[4];	/* Flags for special featues.  */
+  unsigned char flags[4];	/* Flags for special features.  */
 };
 
 /* Mach-O header (64-bit version).  */
@@ -66,7 +66,7 @@ struct mach_o_header_64
   unsigned char filetype[4];	/* Type of file.  */
   unsigned char ncmds[4];	/* Number of load commands.  */
   unsigned char sizeofcmds[4];	/* Total size of load commands.  */
-  unsigned char flags[4];	/* Flags for special featues.  */
+  unsigned char flags[4];	/* Flags for special features.  */
   unsigned char reserved[4];	/* Reserved.  Duh.  */
 };
 
@@ -78,6 +78,7 @@ struct mach_o_header_64
 /* For filetype field in header.  */
 
 #define MACH_O_MH_OBJECT		0x01
+#define MACH_O_MH_DYLIB			0x06
 
 /* A Mach-O file is a list of load commands.  This is the header of a
    load command.  */
@@ -312,9 +313,9 @@ simple_object_mach_o_match (
   b = &buf[0];
 
   filetype = (*fetch_32) (b + offsetof (struct mach_o_header_32, filetype));
-  if (filetype != MACH_O_MH_OBJECT)
+  if (!(filetype == MACH_O_MH_OBJECT || filetype == MACH_O_MH_DYLIB))
     {
-      *errmsg = "Mach-O file is not object file";
+      *errmsg = "Mach-O file is neither object file nor dylib";
       *err = 0;
       return NULL;
     }
@@ -464,7 +465,8 @@ simple_object_mach_o_segment (simple_object_read *sobj, off_t offset,
   /* Fetch the section headers from the segment command.  */
 
   secdata = XNEWVEC (unsigned char, nsects * sechdrsize);
-  if (!simple_object_internal_read (sobj->descriptor, offset + seghdrsize,
+  if (!simple_object_internal_read (sobj->descriptor,
+				    sobj->offset + offset + seghdrsize,
 				    secdata, nsects * sechdrsize, errmsg, err))
     {
       XDELETEVEC (secdata);
@@ -617,7 +619,6 @@ simple_object_mach_o_segment (simple_object_read *sobj, off_t offset,
       char *name;
       off_t secoffset;
       size_t secsize;
-      int l;
 
       sechdr = secdata + i * sechdrsize;
 
@@ -669,12 +670,15 @@ simple_object_mach_o_segment (simple_object_read *sobj, off_t offset,
 	    }
 	}
 
+      memset (namebuf, 0, sizeof (namebuf));
+      /* Copy the section name so we can append a null to make it into a
+	 c-string (Mach-o section names are not terminated).  */
+      memcpy (namebuf, sechdr + sectname_offset, MACH_O_NAME_LEN);
+      namebuf[MACH_O_NAME_LEN] = '\0';
+      name = &namebuf[0];
+      /* Maybe override this if we have long section name extension.  */
       if ((gnu_sections_found & SOMO_LONGN_PRESENT) != 0)
 	{
-	  memcpy (namebuf, sechdr + sectname_offset, MACH_O_NAME_LEN);
-	  namebuf[MACH_O_NAME_LEN] = '\0';
-
-	  name = &namebuf[0];
 	  if (strtab != NULL && name[0] == '_' && name[1] == '_')
 	    {
 	      unsigned long stringoffset;
@@ -695,19 +699,6 @@ simple_object_mach_o_segment (simple_object_read *sobj, off_t offset,
 		  name = strtab + stringoffset;
 		}
 	  }
-	}
-      else
-	{
-	   /* Otherwise, make a name like __segment,__section as per the
-	      convention in mach-o asm.  */
-	  name = &namebuf[0];
-	  memcpy (namebuf, (char *) sechdr + segname_offset, MACH_O_NAME_LEN);
-	  namebuf[MACH_O_NAME_LEN] = '\0';
-	  l = strlen (namebuf);
-	  namebuf[l] = ',';
-	  memcpy (namebuf + l + 1, (char *) sechdr + sectname_offset,
-		  MACH_O_NAME_LEN);
-	  namebuf[l + 1 + MACH_O_NAME_LEN] = '\0';
 	}
 
       simple_object_mach_o_section_info (omr->is_big_endian, is_32, sechdr,
@@ -1204,8 +1195,8 @@ simple_object_mach_o_write_segment (simple_object_write *sobj, int descriptor,
       unsigned int i;
 
       /* Write the section header for the wrapper.  */
-      /* Account for any initial aligment - which becomes the alignment for this
-	 created section.  */
+      /* Account for any initial alignment - which becomes the alignment for
+	 this created section.  */
 
       secsize = (offset - index[0]);
       if (!simple_object_mach_o_write_section_header (sobj, descriptor,
@@ -1218,7 +1209,7 @@ simple_object_mach_o_write_segment (simple_object_write *sobj, int descriptor,
 						      errmsg, err))
 	return 0;
 
-      /* Subtract the wrapper section start from the begining of each sub
+      /* Subtract the wrapper section start from the beginning of each sub
 	 section.  */
 
       for (i = 1; i < nsects_in; ++i)

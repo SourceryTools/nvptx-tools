@@ -1,5 +1,5 @@
 /* CUDA Driver API description.
-   Copyright (C) 2017-2024 Free Software Foundation, Inc.
+   Copyright (C) 2017-2026 Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -83,8 +83,13 @@ typedef enum {
   CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR = 39,
   CU_DEVICE_ATTRIBUTE_ASYNC_ENGINE_COUNT = 40,
   CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING = 41,
-  CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR = 82
+  CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR = 82,
+  CU_DEVICE_ATTRIBUTE_PAGEABLE_MEMORY_ACCESS = 88
 } CUdevice_attribute;
+
+typedef enum {
+  CU_MEM_ATTACH_GLOBAL = 0x1
+} CUmemAttach_flags;
 
 enum {
   CU_EVENT_DEFAULT = 0,
@@ -137,6 +142,13 @@ typedef enum {
   CU_MEMORYTYPE_ARRAY = 0x03,
   CU_MEMORYTYPE_UNIFIED = 0x04
 } CUmemorytype;
+
+typedef enum {
+  CU_POINTER_ATTRIBUTE_CONTEXT = 0x01,
+  CU_POINTER_ATTRIBUTE_MEMORY_TYPE = 0x02,
+  CU_POINTER_ATTRIBUTE_DEVICE_POINTER = 0x03,
+  CU_POINTER_ATTRIBUTE_HOST_POINTER = 0x04
+} CUpointer_attribute;
 
 typedef struct {
   size_t srcXInBytes, srcY;
@@ -200,6 +212,10 @@ typedef struct {
   size_t WidthInBytes, Height, Depth;
 } CUDA_MEMCPY3D_PEER;
 
+typedef struct {
+  char bytes[16];
+} CUuuid;
+
 #define cuCtxCreate cuCtxCreate_v2
 CUresult cuCtxCreate (CUcontext *, unsigned, CUdevice);
 #define cuCtxDestroy cuCtxDestroy_v2
@@ -213,11 +229,15 @@ CUresult cuCtxPushCurrent (CUcontext);
 CUresult cuCtxSynchronize (void);
 CUresult cuCtxSetLimit (CUlimit, size_t);
 CUresult cuDeviceGet (CUdevice *, int);
+/* _v2 was added in CUDA 11.4 and 'will supplant' the old one in 12.0.  */
+CUresult cuDeviceGetUuid (CUuuid*, CUdevice);
+CUresult cuDeviceGetUuid_v2 (CUuuid*, CUdevice);
 #define cuDeviceTotalMem cuDeviceTotalMem_v2
 CUresult cuDeviceTotalMem (size_t *, CUdevice);
 CUresult cuDeviceGetAttribute (int *, CUdevice_attribute, CUdevice);
 CUresult cuDeviceGetCount (int *);
 CUresult cuDeviceGetName (char *, int, CUdevice);
+CUresult cuDeviceGetPCIBusId (char *, int, CUdevice);
 CUresult cuEventCreate (CUevent *, unsigned);
 #define cuEventDestroy cuEventDestroy_v2
 CUresult cuEventDestroy (CUevent);
@@ -246,6 +266,7 @@ CUresult cuMemAlloc (CUdeviceptr *, size_t);
 #define cuMemAllocHost cuMemAllocHost_v2
 CUresult cuMemAllocHost (void **, size_t);
 CUresult cuMemHostAlloc (void **, size_t, unsigned int);
+CUresult cuMemAllocManaged(CUdeviceptr *, size_t, unsigned int);
 CUresult cuMemcpy (CUdeviceptr, CUdeviceptr, size_t);
 CUresult cuMemcpyPeer (CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t);
 CUresult cuMemcpyPeerAsync (CUdeviceptr, CUcontext, CUdeviceptr, CUcontext, size_t, CUstream);
@@ -271,6 +292,9 @@ CUresult cuMemcpy3D (const CUDA_MEMCPY3D *);
 CUresult cuMemcpy3DAsync (const CUDA_MEMCPY3D *, CUstream);
 CUresult cuMemcpy3DPeer (const CUDA_MEMCPY3D_PEER *);
 CUresult cuMemcpy3DPeerAsync (const CUDA_MEMCPY3D_PEER *, CUstream);
+#define cuMemsetD8 cuMemsetD8_v2
+CUresult cuMemsetD8 (CUdeviceptr, unsigned char, size_t);
+CUresult cuMemsetD8Async (CUdeviceptr, unsigned char, size_t, CUstream);
 #define cuMemFree cuMemFree_v2
 CUresult cuMemFree (CUdeviceptr);
 CUresult cuMemFreeHost (void *);
@@ -284,6 +308,8 @@ CUresult cuModuleGetGlobal (CUdeviceptr *, size_t *, CUmodule, const char *);
 CUresult cuModuleLoad (CUmodule *, const char *);
 CUresult cuModuleLoadData (CUmodule *, const void *);
 CUresult cuModuleUnload (CUmodule);
+CUresult cuPointerGetAttribute (CUmemorytype *, CUpointer_attribute,
+				CUdeviceptr);
 CUresult cuOccupancyMaxPotentialBlockSize(int *, int *, CUfunction,
 					  CUoccupancyB2DSize, size_t, int);
 typedef void (*CUstreamCallback)(CUstream, CUresult, void *);

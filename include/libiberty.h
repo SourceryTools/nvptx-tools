@@ -1,9 +1,9 @@
 /* Function declarations for libiberty.
 
-   Copyright (C) 1997-2024 Free Software Foundation, Inc.
-   
+   Copyright (C) 1997-2026 Free Software Foundation, Inc.
+
    Note - certain prototypes declared in this header file are for
-   functions whoes implementation copyright does not belong to the
+   functions whose implementation copyright does not belong to the
    FSF.  Those prototypes are present in this file for reference
    purposes only and their presence in this file should not construed
    as an indication of ownership by the FSF of the implementation of
@@ -23,7 +23,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street - Fifth Floor,
    Boston, MA 02110-1301, USA.
-   
+
    Written by Cygnus Support, 1994.
 
    The libiberty library provides a number of functions which are
@@ -94,6 +94,11 @@ extern int writeargv (char * const *, FILE *);
 
 extern int countargv (char * const *);
 
+/* Expand VAL as a response file if it begins with '@' and return the
+   result as a shell-quoted string.  */
+
+extern char *expandargstr (const char *, const char *);
+
 /* Return the last component of a path name.  Note that we can't use a
    prototype here because the parameter is declared inconsistently
    across different systems, sometimes as "char *" and sometimes as
@@ -108,7 +113,7 @@ extern int countargv (char * const *);
 #if defined (__GNU_LIBRARY__ ) || defined (__linux__) \
  || defined (__FreeBSD__) || defined (__OpenBSD__) || defined (__NetBSD__) \
  || defined (__CYGWIN__) || defined (__CYGWIN32__) || defined (__MINGW32__) \
- || defined (__DragonFly__) || defined (HAVE_DECL_BASENAME) 
+ || defined (__DragonFly__) || defined (HAVE_DECL_BASENAME)
 extern char *basename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIBUTE_NONNULL(1);
 #else
 /* Do not allow basename to be used if there is no prototype seen.  We
@@ -132,6 +137,18 @@ extern const char *dos_lbasename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIB
    regardless of host.  */
 
 extern const char *unix_lbasename (const char *) ATTRIBUTE_RETURNS_NONNULL ATTRIBUTE_NONNULL(1);
+
+/* A dirname () that is always compiled in.  */
+
+extern char *ldirname (const char *) ATTRIBUTE_NONNULL(1);
+
+/* Same, but assumes DOS semantics regardless of host.  */
+
+extern char *dos_ldirname (const char *) ATTRIBUTE_NONNULL(1);
+
+/* Same, but assumes Unix semantics regardless of host.  */
+
+extern char *unix_ldirname (const char *) ATTRIBUTE_NONNULL(1);
 
 /* A well-defined realpath () that is always compiled in.  */
 
@@ -199,6 +216,16 @@ extern int fdmatch (int fd1, int fd2);
 extern int ffs(int);
 #endif
 
+#if defined (HAVE_DECL_MKSTEMPS) && !HAVE_DECL_MKSTEMPS
+extern int mkstemps(char *, int);
+#endif
+
+/* Make memrchr available on systems that do not have it.  */
+#if !defined (__GNU_LIBRARY__ ) && !defined (__linux__) && \
+    !defined (HAVE_MEMRCHR)
+extern void *memrchr(const void *, int, size_t);
+#endif
+
 /* Get the working directory.  The result is cached, so don't call
    chdir() between calls to getpwd().  */
 
@@ -210,7 +237,7 @@ extern char * getpwd (void);
 #ifdef __MINGW32__
 /* Forward declaration to avoid #include <sys/time.h>.   */
 struct timeval;
-extern int gettimeofday (struct timeval *, void *); 
+extern int gettimeofday (struct timeval *, void *);
 #endif
 
 /* Get the amount of time the process has run, in microseconds.  */
@@ -460,7 +487,7 @@ extern struct pex_obj *pex_init (int flags, const char *pname,
 /* Capture stderr to a pipe.  The output can be read by
    calling pex_read_err and reading from the returned
    FILE object.  This flag may be specified only for
-   the last program in a pipeline.  
+   the last program in a pipeline.
 
    This flag is supported only on Unix and Windows.  */
 #define PEX_STDERR_TO_PIPE	0x40
@@ -472,7 +499,7 @@ extern struct pex_obj *pex_init (int flags, const char *pname,
 /* Append stdout to existing file instead of truncating it.  */
 #define PEX_STDOUT_APPEND	0x100
 
-/* Thes same as PEX_STDOUT_APPEND, but for STDERR.  */
+/* The same as PEX_STDOUT_APPEND, but for STDERR.  */
 #define PEX_STDERR_APPEND	0x200
 
 /* Execute one program.  Returns NULL on success.  On error returns an
